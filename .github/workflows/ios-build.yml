@@ -1,0 +1,43 @@
+name: iOS App Build (Capacitor)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  build-ios:
+    # Use GitHub's free Apple Mac servers!
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js Web App
+        run: npm run build
+
+      - name: Sync Capacitor iOS Project
+        run: npx cap sync ios
+
+      # We can build a simulator/debug version without an Apple Developer Account
+      # To build a 'Release' version for the App Store, you will need to add 
+      # Apple Certificates to GitHub Secrets and configure fastlane.
+      - name: Build iOS App (Debug/Simulator)
+        run: |
+          cd ios/App
+          xcodebuild build \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -destination 'generic/platform=iOS Simulator' \
+            -allowProvisioningUpdates

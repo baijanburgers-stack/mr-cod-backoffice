@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+  --font-brand: var(--font-brand), ui-sans-serif, system-ui, sans-serif;
+
+  /* ── Ferrari Rosso Corsa Red Scale ── */
+  --color-red-50:  #fff0ee;
+  --color-red-100: #ffd4cc;
+  --color-red-200: #ffaa99;
+  --color-red-300: #ff7a62;
+  --color-red-400: #ff4d33;
+  --color-red-500: #ff3d1a;   /* hover lighter  */
+  --color-red-600: #ff2800;   /* Rosso Corsa 🏎️ */
+  --color-red-700: #cc2000;   /* hover darker   */
+  --color-red-800: #991800;
+  --color-red-900: #660f00;
+  --color-red-950: #330800;
+}
+
+@layer utilities {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.03);
+  }
+
+  .glass-card-light {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 0, 0, 0.03);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 20px rgba(255, 40, 0, 0.45);
+  }
+
+  .bg-mesh {
+    background-color: #FAFAFA;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(255, 40, 0, 0.12) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(255, 40, 0, 0.07) 0px, transparent 50%);
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 99px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #ff2800;
+    border-radius: 99px;
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(2deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@media print {
+  @page {
+    margin: 0;
+    size: 80mm auto;
+  }
+  body * {
+    visibility: hidden;
+  }
+  body {
+    background: transparent !important;
+  }
+  .thermal-receipt, .thermal-receipt * {
+    visibility: visible;
+  }
+  .thermal-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+    margin: 0;
+    padding: 4mm;
+    background: white;
+    color: black;
+    font-family: monospace, ui-monospace, 'Courier New', Courier;
+  }
+}

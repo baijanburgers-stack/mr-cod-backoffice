@@ -1,0 +1,216 @@
+{
+  "entities": {
+    "Store": {
+      "title": "Store",
+      "description": "A physical store location",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "hqTelephone": { "type": "string" },
+        "email": { "type": "string" },
+        "isOpen": { "type": "boolean" },
+        "vatSettings": {
+          "type": "object",
+          "properties": {
+            "vatNumber": { "type": "string" },
+            "takeawayRate": { "type": "number" },
+            "drinksRate": { "type": "number" },
+            "deliveryVatRate": { "type": "number" }
+          }
+        },
+        "storeHours": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "day": { "type": "string" },
+              "isOpen": { "type": "boolean" },
+              "open": { "type": "string" },
+              "close": { "type": "string" }
+            }
+          }
+        },
+        "holidays": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "date": { "type": "string" },
+              "note": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["name", "address"]
+    },
+    "MenuItem": {
+      "title": "MenuItem",
+      "description": "An item on the menu",
+      "type": "object",
+      "properties": {
+        "storeId": { "type": "string" },
+        "name": {
+          "type": "object",
+          "properties": {
+            "en": { "type": "string" },
+            "fr": { "type": "string" },
+            "nl": { "type": "string" }
+          }
+        },
+        "description": {
+          "type": "object",
+          "properties": {
+            "en": { "type": "string" },
+            "fr": { "type": "string" },
+            "nl": { "type": "string" }
+          }
+        },
+        "price": { "type": "number" },
+        "vatRate": { "type": "number" },
+        "category": { "type": "string" },
+        "image": { "type": "string" },
+        "isAvailable": { "type": "boolean" },
+        "variations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": {
+                "type": "object",
+                "properties": {
+                  "en": { "type": "string" },
+                  "fr": { "type": "string" },
+                  "nl": { "type": "string" }
+                }
+              },
+              "priceAdjustment": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["storeId", "name", "price", "category"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A menu category",
+      "type": "object",
+      "properties": {
+        "storeId": { "type": "string" },
+        "name": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["storeId", "name"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A unified order document written by both POS terminals and the web checkout. Contains all fields needed for per-store filtering and X/Z fiscal reports.",
+      "type": "object",
+      "properties": {
+        "storeId": { "type": "string", "description": "Firestore store document ID" },
+        "branchId": { "type": "string", "description": "Alias of storeId for POS compatibility" },
+        "platform": { "type": "string", "enum": ["pos", "web", "kiosk"], "description": "Software that created the order" },
+        "channel": { "type": "string", "enum": ["pos", "web", "counter", "app"], "description": "Sales channel label" },
+        "sourceTerminal": { "type": "string", "description": "Terminal identifier, e.g. KASSA-1, WEB-CHECKOUT" },
+        "businessDate": { "type": "string", "description": "YYYY-MM-DD in Europe/Brussels timezone" },
+        "userId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "phone": { "type": "string" },
+        "orderType": { "type": "string", "enum": ["takeaway", "delivery", "dine-in"], "description": "Canonical lowercase service type" },
+        "type": { "type": "string", "enum": ["Delivery", "Pickup", "Dine-In"], "description": "Display label" },
+        "orderNumber": { "type": "string" },
+        "address": { "type": "string" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["New", "Preparing", "Ready", "Out for Delivery", "completed", "Completed", "Cancelled", "Rejected"] },
+        "grossSales": { "type": "number", "description": "Sum of raw item prices before any discount" },
+        "comboDiscount": { "type": "number", "description": "Combo bundle savings" },
+        "manualDiscount": { "type": "number", "description": "Promo code or manual discount" },
+        "netSales": { "type": "number", "description": "grossSales minus all discounts" },
+        "totalCollected": { "type": "number", "description": "Actual amount collected" },
+        "subtotal": { "type": "number", "description": "Legacy: raw subtotal" },
+        "discount": { "type": "number", "description": "Legacy: total discount amount" },
+        "total": { "type": "number", "description": "Legacy: final total" },
+        "vatTotal": { "type": "number", "description": "Sum of all VAT amounts" },
+        "vatBreakdown": {
+          "type": "array",
+          "description": "Canonical VAT breakdown as array of rate buckets",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rate": { "type": "number" },
+              "baseAmount": { "type": "number" },
+              "vatAmount": { "type": "number" },
+              "grossAmount": { "type": "number" }
+            }
+          }
+        },
+        "payments": {
+          "type": "array",
+          "description": "Payment methods used for this order",
+          "items": {
+            "type": "object",
+            "properties": {
+              "method": { "type": "string" },
+              "tendered": { "type": "number" },
+              "change": { "type": "number" }
+            }
+          }
+        },
+        "operatorName": { "type": ["string", "null"], "description": "POS operator, null for web" },
+        "terminalId": { "type": ["string", "null"], "description": "POS terminal ID, null for web" },
+        "terminalName": { "type": ["string", "null"], "description": "POS terminal display name, null for web" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "menuItemId": { "type": "string" },
+              "name": { "type": "string" },
+              "quantity": { "type": "number" },
+              "price": { "type": "number" },
+              "itemType": { "type": "string" },
+              "vatRate": { "type": "number" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["storeId", "branchId", "platform", "channel", "sourceTerminal", "businessDate", "status", "total", "items", "createdAt", "customerName"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "customer"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/stores/{storeId}": {
+      "schema": "Store",
+      "description": "Store configurations"
+    },
+    "/menuItems/{menuItemId}": {
+      "schema": "MenuItem",
+      "description": "Menu items available across stores"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Menu categories for stores"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer orders"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    }
+  }
+}

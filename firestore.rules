@@ -1,0 +1,263 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == "mrcod.belgium@gmail.com" ||
+        request.auth.token.email == "baijanburgers@gmail.com" ||
+        request.auth.token.email == "yasirmahmood158@gmail.com" ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/users/$(request.auth.token.email)) && get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'admin')
+      );
+    }
+    
+    function isStoreAdmin(storeId) {
+      return isAuthenticated() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'store_admin' && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId) ||
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/users/$(request.auth.token.email)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'store_admin' && 
+         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeId == storeId)
+      );
+    }
+
+    function isManager(storeId) {
+      return isAuthenticated() && (
+        isStoreAdmin(storeId) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager' && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId) ||
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/users/$(request.auth.token.email)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'manager' && 
+         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeId == storeId)
+      );
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && (request.auth.uid == userId || request.auth.token.email == userId);
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+    
+    function isValidUser(data) {
+      return hasRequiredFields(['email', 'role']) &&
+             data.email is string && isValidEmail(data.email) &&
+             data.role in ['admin', 'store_admin', 'customer', 'delivery', 'manager'];
+    }
+    
+    function isValidStore(data) {
+      return hasRequiredFields(['name', 'address']);
+    }
+    
+    function isValidMenuItem(data) {
+      return hasRequiredFields(['storeId', 'name', 'price', 'category']);
+    }
+    
+    function isValidOrder(data) {
+      return hasRequiredFields(['storeId', 'status', 'total', 'items', 'createdAt']) && (
+        ('customerName' in data) ||
+        data.source == 'kiosk' ||
+        data.terminalId != null
+      );
+    }
+
+    function isDelivery(storeId) {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'delivery' && 
+         (
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId || 
+           ('storeIds' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data && storeId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeIds)
+         )
+        ) ||
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/users/$(request.auth.token.email)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'delivery' && 
+         (
+           get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeId == storeId || 
+           ('storeIds' in get(/databases/$(database)/documents/users/$(request.auth.token.email)).data && storeId in get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeIds)
+         )
+        )
+      );
+    }
+
+    match /users/{userId} {
+      allow get: if isAuthenticated() && (
+        request.auth.uid == userId || 
+        (request.auth.token.email != null && request.auth.token.email == userId) || 
+        isAdmin()
+      );
+      allow list: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (
+        (isOwner(userId) && request.resource.data.role == 'customer') || 
+        isAdmin() || 
+        (hasRequiredFields(['storeId']) && isStoreAdmin(request.resource.data.storeId) && request.resource.data.role in ['delivery', 'manager']) ||
+        (hasRequiredFields(['storeIds']) && request.resource.data.storeIds.size() > 0 && isStoreAdmin(request.resource.data.storeIds[0]) && request.resource.data.role in ['delivery', 'manager'])
+      );
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (
+        (isOwner(userId) && request.resource.data.role == resource.data.role) || 
+        (resource.data.email == request.auth.token.email && request.resource.data.role == resource.data.role) || 
+        isAdmin() ||
+        (hasRequiredFields(['storeId']) && isStoreAdmin(resource.data.storeId) && request.resource.data.role in ['delivery', 'manager']) ||
+        ('storeIds' in resource.data && resource.data.storeIds.size() > 0 && isStoreAdmin(resource.data.storeIds[0]) && request.resource.data.role in ['delivery', 'manager'])
+      );
+      allow delete: if isAdmin() || (isStoreAdmin(resource.data.storeId) && resource.data.role in ['delivery', 'manager']);
+    }
+
+    match /stores/{storeId} {
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin() || isStoreAdmin(storeId);
+      allow delete: if isAdmin();
+
+      // ── Kiosks (logo, idle video/image, accent colour) ────────────────────
+      match /kiosks/{kioskId} {
+        allow read:   if isAdmin() || isManager(storeId);
+        allow create: if isAdmin() || isManager(storeId);
+        allow update: if isAdmin() || isManager(storeId);
+        allow delete: if isAdmin() || isManager(storeId);
+      }
+
+      // ── POS Terminals ─────────────────────────────────────────────────────
+      match /pos_terminals/{terminalId} {
+        allow read:  if isAdmin() || isStoreAdmin(storeId);
+        allow write: if isAdmin() || isStoreAdmin(storeId);
+      }
+
+      // ── KDS Screens ───────────────────────────────────────────────────────
+      match /kds_screens/{screenId} {
+        allow read:  if isAdmin() || isStoreAdmin(storeId);
+        allow write: if isAdmin() || isStoreAdmin(storeId);
+      }
+
+      // ── Staff / Managers ──────────────────────────────────────────────────
+      match /staff/{staffId} {
+        allow read:  if isAdmin() || isStoreAdmin(storeId);
+        allow write: if isAdmin() || isStoreAdmin(storeId);
+      }
+
+      // ── Active Shift ──────────────────────────────────────────────────────
+      match /activeShift/{shiftId} {
+        allow read:  if true;
+        allow write: if true;
+      }
+    }
+
+    match /menuItems/{menuItemId} {
+      allow read: if true;
+      allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
+      allow update: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
+      allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
+    }
+    
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if (isValidOrder(request.resource.data) && (
+        request.resource.data.userId == 'anonymous' ||
+        (isAuthenticated() && isOwner(request.resource.data.userId)) ||
+        request.resource.data.source == 'kiosk'
+      )) || (request.resource.data.terminalId != null && request.resource.data.customerName == 'POS Walk-in');
+      allow update: if isAdmin() || true;
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /deliveryZones/{zoneId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
+      allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
+    }
+
+    match /modifiers/{modifierId} {
+      allow read: if true;
+      allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
+      allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
+    }
+
+    match /combos/{comboId} {
+      allow read: if true;
+      allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
+      allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
+    }
+
+    match /drivers/{driverId} {
+      allow read: if true;
+      allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
+      allow update: if true;
+      allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
+    }
+
+    match /terminals/{terminalId} {
+      allow read: if true;
+      allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
+      allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
+    }
+
+    // ── Z-Reports ─────────────────────────────────────────────────────────────
+    match /z_reports/{reportId} {
+      allow read: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow create: if true;
+      allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow delete: if isAdmin();
+    }
+
+    // ── Cash Drawer Logs ──────────────────────────────────────────────────────
+    match /drawer_logs/{logId} {
+      allow read: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow create: if true;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Driver GPS locations ──────────────────────────────────────────────────
+    match /driver_locations/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ── CCV Transactions ──────────────────────────────────────────────────────
+    // Written by backend Admin SDK only (bypasses rules).
+    // Store admins and managers can read for the reconciliation panel.
+    match /ccv_transactions/{txId} {
+      allow read:   if isAdmin() || isStoreAdmin(resource.data.storeId) || isManager(resource.data.storeId);
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── CCV Certification Runs ────────────────────────────────────────────────
+    // Stores test evidence for remote CCV certification session.
+    match /ccv_certification_runs/{runId} {
+      allow read:   if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
+      allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
+    }
+  }
+}

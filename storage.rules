@@ -1,0 +1,97 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isAdminEmail() {
+      return request.auth.token.email in [
+        "mrcod.belgium@gmail.com",
+        "baijanburgers@gmail.com",
+        "yasirmahmood158@gmail.com"
+      ];
+    }
+
+    function hasAdminRole() {
+      return request.auth.token.get('role', '') in [
+        'admin', 'superadmin', 'storeAdmin', 'store_admin', 'manager'
+      ];
+    }
+
+    function canManageStore() {
+      return isAuth() && (isAdminEmail() || hasAdminRole());
+    }
+
+    // ── Store Branding Studio uploads ─────────────────────────────────────
+    // Path: stores/{storeId}/branding/{folder}/{filename}
+    //   folder: logo | backgrounds | videos
+    //
+    // Used by the Admin Branding Studio page (branding/page.tsx).
+    // Write: admin emails or role. Read: any authenticated user.
+
+    match /stores/{storeId}/branding/{folder}/{filename} {
+      allow read: if isAuth();
+      allow write: if canManageStore()
+                   && folder in ["logo", "backgrounds", "videos", "banners"]
+                   && (
+                        (folder in ["logo", "backgrounds", "banners"]
+                          && request.resource.size < 10 * 1024 * 1024
+                          && request.resource.contentType.matches("image/.*"))
+                        ||
+                        (folder == "videos"
+                          && request.resource.size < 200 * 1024 * 1024
+                          && request.resource.contentType.matches("video/.*"))
+                      );
+      allow delete: if canManageStore();
+    }
+
+    // ── Kiosk branding (logo, background image, idle video) ───────────────
+    // Path: kiosk-branding/{storeId}/{folder}/{filename}
+    //   folder: logo | background | video
+    //
+    // Legacy path — kept for backward compat with older kiosk builds.
+    // Write: admin emails only. Read: any authenticated user (kiosk app).
+
+    match /kiosk-branding/{storeId}/{folder}/{filename} {
+      allow read: if isAuth();
+      allow write: if canManageStore()
+                   && (
+                        (folder in ["logo", "background"]
+                          && request.resource.size < 10 * 1024 * 1024
+                          && request.resource.contentType.matches("image/.*"))
+                        ||
+                        (folder == "video"
+                          && request.resource.size < 200 * 1024 * 1024
+                          && request.resource.contentType.matches("video/.*"))
+                      );
+      allow delete: if canManageStore();
+    }
+
+    // ── Menu images (public read) ─────────────────────────────────────────
+    match /menu-images/{storeId}/{filename} {
+      allow read: if true;
+      allow write: if canManageStore()
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches("image/.*");
+      allow delete: if canManageStore();
+    }
+
+    // ── Store assets (public read) ────────────────────────────────────────
+    match /store-assets/{storeId}/{filename} {
+      allow read: if true;
+      allow write: if canManageStore()
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches("image/.*");
+      allow delete: if canManageStore();
+    }
+
+    // ── Deny everything else ──────────────────────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
