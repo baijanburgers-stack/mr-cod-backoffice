@@ -5,12 +5,12 @@ import { motion } from 'motion/react';
 import Link from 'next/link';
 import { Shield, Store, ShoppingBag, ArrowRight, Clock } from 'lucide-react';
 import Image from 'next/image';
-import { useI18n } from '@/lib/i18n/I18nContext';
+
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 export default function UnifiedLoginPortal() {
-  const { t } = useI18n();
+
   const [brand, setBrand] = useState({ name: 'MR COD', subtitle: '' });
 
   useEffect(() => {

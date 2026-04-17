@@ -1,7 +1,7 @@
 import type {Metadata} from 'next';
 import { Inter, Outfit, Montserrat } from 'next/font/google';
 import './globals.css';
-import { I18nProvider } from '@/lib/i18n/I18nContext';
+
 import { ClientLayoutWrapper } from '@/components/layout/ClientLayoutWrapper';
 import { AuthProvider } from '@/lib/AuthContext';
 
@@ -56,11 +56,9 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
     <html lang="en" className={`${inter.variable} ${outfit.variable} ${montserrat.variable}`}>
       <body className="flex flex-col min-h-screen bg-[#FAFAFA] text-slate-900 font-sans antialiased selection:bg-amber-200 selection:text-amber-900" suppressHydrationWarning>
         <AuthProvider>
-          <I18nProvider>
-            <ClientLayoutWrapper>
-              {children}
-            </ClientLayoutWrapper>
-          </I18nProvider>
+          <ClientLayoutWrapper>
+            {children}
+          </ClientLayoutWrapper>
         </AuthProvider>
       </body>
     </html>
