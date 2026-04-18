@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Clock, ShoppingBag, User, Phone, MapPin, Printer, X, Bike, Car, AlertCircle } from 'lucide-react';
+import { Search, Clock, ShoppingBag, User, Phone, MapPin, Printer, X, Bike, Car, AlertCircle, CalendarDays } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, doc, getDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
@@ -43,6 +43,8 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('Today');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [platformFilter, setPlatformFilter] = useState('All Platforms');
   const [storeName, setStoreName] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<OrderType | null>(null);
@@ -155,7 +157,7 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
     // Platform
     const matchesPlatform = platformFilter === 'All Platforms' || order.platform === platformFilter;
 
-    // Date
+    // Date filtering
     let matchesDate = true;
     let orderDate = new Date();
     if (order.createdAt && (order.createdAt as any).toDate) {
@@ -164,11 +166,16 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
       const parsed = new Date(order.createdAt);
       if (!isNaN(parsed.getTime())) orderDate = parsed;
     }
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (dateFilter === 'Today') {
+    if (dateFilter === 'Custom Range') {
+      const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
+      const to   = dateTo   ? new Date(dateTo   + 'T23:59:59') : null;
+      if (from) matchesDate = orderDate >= from;
+      if (to)   matchesDate = matchesDate && orderDate <= to;
+    } else if (dateFilter === 'Today') {
       matchesDate = orderDate >= today;
     } else if (dateFilter === 'Yesterday') {
       const yesterday = new Date(today);
@@ -181,7 +188,7 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
     } else if (dateFilter === 'This Month') {
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
       matchesDate = orderDate >= startOfMonth;
-    }
+    } // 'All Time' → matchesDate stays true
 
     return matchesSearch && matchesPlatform && matchesDate;
   });
@@ -273,39 +280,78 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Order Log</h1>
             <p className="text-sm font-medium text-slate-500 mt-1">Full historical log of all online and kiosk orders.</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <select
-              value={platformFilter}
-              onChange={(e) => setPlatformFilter(e.target.value)}
-              className="px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-700 outline-none focus:border-slate-400 cursor-pointer transition-colors"
-            >
-              <option value="All Platforms">All Platforms</option>
-              <option value="Online">Online</option>
-              <option value="Kiosk">Kiosk</option>
-              <option value="POS">POS</option>
-            </select>
-            <select
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-700 outline-none focus:border-slate-400 cursor-pointer transition-colors"
-            >
-              <option value="Today">Today</option>
-              <option value="Yesterday">Yesterday</option>
-              <option value="Last 7 Days">Last 7 Days</option>
-              <option value="This Month">This Month</option>
-              <option value="All Time">All Time</option>
-            </select>
-            <div className="relative w-full sm:w-64">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-slate-400" />
+          <div className="flex flex-col gap-3 w-full">
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Platform */}
+              <select
+                value={platformFilter}
+                onChange={(e) => setPlatformFilter(e.target.value)}
+                className="px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-700 outline-none focus:border-slate-400 cursor-pointer transition-colors"
+              >
+                <option value="All Platforms">All Platforms</option>
+                <option value="Online">Online</option>
+                <option value="Kiosk">Kiosk</option>
+                <option value="POS">POS</option>
+              </select>
+
+              {/* Date preset */}
+              <select
+                value={dateFilter}
+                onChange={(e) => {
+                  setDateFilter(e.target.value);
+                  if (e.target.value !== 'Custom Range') { setDateFrom(''); setDateTo(''); }
+                }}
+                className="px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-700 outline-none focus:border-slate-400 cursor-pointer transition-colors"
+              >
+                <option value="Today">Today</option>
+                <option value="Yesterday">Yesterday</option>
+                <option value="Last 7 Days">Last 7 Days</option>
+                <option value="This Month">This Month</option>
+                <option value="All Time">All Time</option>
+                <option value="Custom Range">Custom Range…</option>
+              </select>
+
+              {/* Custom date range — only shown when Custom Range is selected */}
+              {dateFilter === 'Custom Range' && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-300 bg-white shadow-sm">
+                    <CalendarDays className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest">From</span>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      className="border-0 outline-none text-sm font-bold text-slate-800 bg-transparent cursor-pointer"
+                    />
+                  </div>
+                  <span className="text-slate-400 font-bold">→</span>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-300 bg-white shadow-sm">
+                    <CalendarDays className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest">To</span>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      min={dateFrom}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      className="border-0 outline-none text-sm font-bold text-slate-800 bg-transparent cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Search */}
+              <div className="relative flex-1 min-w-[180px]">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-slate-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search order # or customer…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="block w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none bg-white text-sm font-medium"
+                />
               </div>
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none bg-white text-sm font-medium"
-              />
             </div>
           </div>
         </div>
