@@ -62,6 +62,12 @@ type Combo = {
 
 
 
+type LocalizedString = {
+  en: string;
+  fr: string;
+  nl: string;
+};
+
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function StoreCombosPage({ params }: { params: Promise<{ storeId: string }> }) {
@@ -80,6 +86,12 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const getCategoryName = (name: string | LocalizedString | undefined) => {
+    if (!name) return '';
+    if (typeof name === 'string') return name;
+    return name.en || '';
+  };
 
   const emptyForm = (): Partial<Combo> => ({
     name: '',
@@ -117,7 +129,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
     const qCats = query(collection(db, 'categories'), where('storeId', '==', storeId));
     const unsubCats = onSnapshot(qCats, (snap) => {
       const rows: { id: string; name: string }[] = [];
-      snap.forEach((d) => rows.push({ id: d.id, name: d.data().name }));
+      snap.forEach((d) => rows.push({ id: d.id, name: getCategoryName(d.data().name) }));
       setCategories(rows);
     });
 

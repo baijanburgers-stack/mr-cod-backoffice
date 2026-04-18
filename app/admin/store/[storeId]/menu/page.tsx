@@ -38,7 +38,7 @@ type MenuItem = {
 
 type Category = {
   id: string;
-  name: string;
+  name: string | LocalizedString;
   order: number;
 };
 
@@ -59,6 +59,12 @@ type Modifier = {
 };
 
 function getModName(name: Modifier['name']): string {
+  if (!name) return '';
+  if (typeof name === 'string') return name;
+  return name.en || '';
+}
+
+function getCategoryName(name: Category['name']): string {
   if (!name) return '';
   if (typeof name === 'string') return name;
   return name.en || '';
@@ -231,7 +237,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
         fetchedCategories.push({ id: doc.id, ...doc.data() } as Category);
       });
       // Sort by order if available, otherwise by name
-      fetchedCategories.sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
+      fetchedCategories.sort((a, b) => (a.order || 0) - (b.order || 0) || getCategoryName(a.name).localeCompare(getCategoryName(b.name)));
       setCategories(fetchedCategories);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'categories');
@@ -384,11 +390,15 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     const name = formData.get('name') as string;
     const order = parseInt(formData.get('order') as string) || 0;
 
+    // Default save as an object with the same string for en/fr/nl to avoid breaking changes, 
+    // real multilingual editing happens in the Categories page.
+    const safeName = { en: name, fr: name, nl: name };
+
     try {
       if (editingCategory) {
-        await updateDoc(doc(db, 'categories', editingCategory.id), { name, order });
+        await updateDoc(doc(db, 'categories', editingCategory.id), { name: safeName, order });
       } else {
-        await addDoc(collection(db, 'categories'), { storeId, name, order });
+        await addDoc(collection(db, 'categories'), { storeId, name: safeName, order });
       }
       setIsCategoryModalOpen(false);
     } catch (error) {
@@ -557,7 +567,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       {/* Filters & Search */}
       <div className="mb-8 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
         <div className="flex overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:pb-0 space-x-2 w-full lg:w-auto scrollbar-hide">
-          {['All', ...categories.map(c => c.name)].map((category) => (
+          {['All', ...categories.map(c => getCategoryName(c.name))].map((category) => (
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
@@ -810,11 +820,11 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                           <select
                             name="category"
                             required
-                            defaultValue={editingItem?.category || (categories[0]?.name || '')}
+                            defaultValue={editingItem?.category || getCategoryName(categories[0]?.name)}
                             className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all bg-white text-sm font-medium"
                           >
                             {categories.map(c => (
-                              <option key={c.id} value={c.name}>{c.name}</option>
+                              <option key={c.id} value={getCategoryName(c.name)}>{getCategoryName(c.name)}</option>
                             ))}
                           </select>
                         </div>
