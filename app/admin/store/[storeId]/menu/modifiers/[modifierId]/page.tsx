@@ -300,174 +300,176 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
         </div>
       </div>
 
-      {/* Options Grid */}
-      {options.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm text-center py-20">
-          <ImageIcon className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-          <h3 className="text-lg font-bold text-slate-900 mb-1">No options yet</h3>
-          <p className="text-slate-500 text-sm mb-6">Add your first option with an image for the kiosk.</p>
-          <button
-            onClick={addOption}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 text-slate-900 font-bold rounded-xl hover:bg-amber-400 transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Add First Option
-          </button>
+      {/* Options List */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+          <h3 className="font-bold text-slate-700">All Options</h3>
+          <span className="text-sm font-medium text-slate-500">{options.length} option{options.length !== 1 ? 's' : ''}</span>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <AnimatePresence mode="popLayout">
-            {options.map((opt) => {
-              const imgState = optionImages[opt.id] || { file: null, preview: null, uploading: false, progress: 0 };
-              const optName = getOptName(opt.name);
-              return (
-                <motion.div
-                  key={opt.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.2 }}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-shadow"
-                >
-                  {/* Image Area */}
-                  <div className="relative w-full aspect-[4/3] bg-slate-100">
-                    {imgState.preview ? (
-                      <>
-                        <img
-                          src={imgState.preview}
-                          alt={optName || 'option'}
-                          className="w-full h-full object-cover"
-                        />
-                        {/* Upload overlay */}
-                        <AnimatePresence>
-                          {imgState.uploading && (
-                            <motion.div
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              className="absolute inset-0 bg-slate-900/60 flex flex-col items-center justify-center gap-2"
-                            >
-                              <Loader2 className="w-6 h-6 text-white animate-spin" />
-                              <div className="w-2/3 bg-slate-700 rounded-full h-1.5">
-                                <motion.div
-                                  className="h-full bg-amber-400 rounded-full"
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${imgState.progress}%` }}
-                                  transition={{ ease: 'linear' }}
-                                />
-                              </div>
-                              <span className="text-white text-xs font-bold">{Math.round(imgState.progress)}%</span>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                        {/* Controls */}
-                        {!imgState.uploading && (
-                          <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => fileInputRefs.current[opt.id]?.click()}
-                              className="p-1.5 bg-slate-900/70 hover:bg-slate-900/90 text-white rounded-lg transition-colors"
-                              title="Change image"
-                            >
-                              <Upload className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => removeImage(opt.id)}
-                              className="p-1.5 bg-slate-900/70 hover:bg-rose-600 text-white rounded-lg transition-colors"
-                              title="Remove image"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRefs.current[opt.id]?.click()}
-                        className="absolute inset-0 flex flex-col items-center justify-center gap-2 hover:bg-amber-50/80 transition-colors cursor-pointer group/upload"
-                      >
-                        <div className="w-12 h-12 rounded-2xl bg-slate-200 group-hover/upload:bg-amber-100 flex items-center justify-center transition-colors">
-                          <ImageIcon className="w-6 h-6 text-slate-400 group-hover/upload:text-amber-500 transition-colors" />
-                        </div>
-                        <span className="text-xs font-bold text-slate-400 group-hover/upload:text-amber-600 transition-colors">
-                          Click to add image
-                        </span>
-                        <span className="text-[10px] text-slate-300">PNG · JPG · WEBP</span>
-                      </button>
-                    )}
-                    <input
-                      ref={el => { fileInputRefs.current[opt.id] = el; }}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleImageFile(opt.id, f);
-                      }}
-                    />
-                  </div>
 
-                  {/* Fields */}
-                  <div className="p-4 space-y-2.5 flex-1">
-                    <input
-                      type="text"
-                      value={typeof opt.name === 'string' ? opt.name : opt.name?.en || ''}
-                      onChange={(e) => updateName(opt.id, 'en', e.target.value)}
-                      placeholder="Name (EN) — e.g. Extra Cheese"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors text-sm font-medium"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
+        {options.length === 0 ? (
+          <div className="text-center py-20">
+            <ImageIcon className="mx-auto h-12 w-12 text-slate-300 mb-4" />
+            <h3 className="text-lg font-bold text-slate-900 mb-1">No options yet</h3>
+            <p className="text-slate-500 text-sm mb-6">Add your first option with an image for the kiosk.</p>
+            <button
+              onClick={addOption}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 text-slate-900 font-bold rounded-xl hover:bg-amber-400 transition-colors shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Add First Option
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            <AnimatePresence mode="popLayout">
+              {options.map((opt, idx) => {
+                const imgState = optionImages[opt.id] || { file: null, preview: null, uploading: false, progress: 0 };
+                return (
+                  <motion.div
+                    key={opt.id}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2, delay: idx * 0.03 }}
+                    className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 hover:bg-slate-50/50 transition-colors group"
+                  >
+                    {/* Image thumbnail */}
+                    <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0 border-2 border-slate-200 group-hover:border-amber-200 transition-colors">
+                      {imgState.preview ? (
+                        <>
+                          <img
+                            src={imgState.preview}
+                            alt="option"
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Upload progress overlay */}
+                          <AnimatePresence>
+                            {imgState.uploading && (
+                              <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 bg-slate-900/60 flex flex-col items-center justify-center gap-1.5"
+                              >
+                                <Loader2 className="w-5 h-5 text-white animate-spin" />
+                                <div className="w-4/5 bg-slate-700 rounded-full h-1">
+                                  <motion.div
+                                    className="h-full bg-amber-400 rounded-full"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${imgState.progress}%` }}
+                                    transition={{ ease: 'linear' }}
+                                  />
+                                </div>
+                                <span className="text-white text-[10px] font-bold">{Math.round(imgState.progress)}%</span>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                          {/* Hover controls */}
+                          {!imgState.uploading && (
+                            <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/40 flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                              <button
+                                onClick={() => fileInputRefs.current[opt.id]?.click()}
+                                className="p-1.5 bg-white/90 hover:bg-white text-slate-700 rounded-lg transition-colors"
+                                title="Change image"
+                              >
+                                <Upload className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => removeImage(opt.id)}
+                                className="p-1.5 bg-white/90 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors"
+                                title="Remove image"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => fileInputRefs.current[opt.id]?.click()}
+                          className="absolute inset-0 flex flex-col items-center justify-center gap-1 hover:bg-amber-50 transition-colors cursor-pointer"
+                        >
+                          <ImageIcon className="w-6 h-6 text-slate-300" />
+                          <span className="text-[10px] font-bold text-slate-400">Add image</span>
+                        </button>
+                      )}
                       <input
-                        type="text"
-                        value={typeof opt.name === 'string' ? '' : opt.name?.fr || ''}
-                        onChange={(e) => updateName(opt.id, 'fr', e.target.value)}
-                        placeholder="Name (FR)"
-                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
-                      />
-                      <input
-                        type="text"
-                        value={typeof opt.name === 'string' ? '' : opt.name?.nl || ''}
-                        onChange={(e) => updateName(opt.id, 'nl', e.target.value)}
-                        placeholder="Name (NL)"
-                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
+                        ref={el => { fileInputRefs.current[opt.id] = el; }}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleImageFile(opt.id, f);
+                        }}
                       />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <CurrencyInput
-                          defaultValue={opt.price}
-                          onChange={(val) => updatePrice(opt.id, val)}
-                          className="w-full py-2 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors text-sm"
+
+                    {/* Fields */}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <input
+                        type="text"
+                        value={typeof opt.name === 'string' ? opt.name : opt.name?.en || ''}
+                        onChange={(e) => updateName(opt.id, 'en', e.target.value)}
+                        placeholder="Name (EN) — e.g. Extra Cheese"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors text-sm font-medium"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={typeof opt.name === 'string' ? '' : opt.name?.fr || ''}
+                          onChange={(e) => updateName(opt.id, 'fr', e.target.value)}
+                          placeholder="Name (FR)"
+                          className="w-full px-3 py-1.5 text-sm rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
+                        />
+                        <input
+                          type="text"
+                          value={typeof opt.name === 'string' ? '' : opt.name?.nl || ''}
+                          onChange={(e) => updateName(opt.id, 'nl', e.target.value)}
+                          placeholder="Name (NL)"
+                          className="w-full px-3 py-1.5 text-sm rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
                         />
                       </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-32">
+                          <CurrencyInput
+                            defaultValue={opt.price}
+                            onChange={(val) => updatePrice(opt.id, val)}
+                            className="w-full py-1.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Delete */}
+                    <div className="flex items-start flex-shrink-0 sm:pt-1">
                       <button
                         onClick={() => setOptionToDelete(opt.id)}
-                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors flex-shrink-0"
+                        className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
                         title="Delete option"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
 
-          {/* Add-option card */}
-          <motion.button
-            layout
-            onClick={addOption}
-            className="bg-white rounded-2xl border-2 border-dashed border-slate-200 hover:border-amber-400 hover:bg-amber-50/30 min-h-[260px] flex flex-col items-center justify-center gap-3 transition-all group"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-slate-100 group-hover:bg-amber-100 flex items-center justify-center transition-colors">
-              <Plus className="w-6 h-6 text-slate-400 group-hover:text-amber-500 transition-colors" />
-            </div>
-            <span className="text-sm font-bold text-slate-400 group-hover:text-amber-600 transition-colors">Add Option</span>
-          </motion.button>
-        </div>
-      )}
+            {/* Add option row */}
+            <button
+              onClick={addOption}
+              className="w-full p-4 sm:p-5 flex items-center justify-center gap-2 text-sm font-bold text-slate-400 hover:text-amber-600 hover:bg-amber-50/50 transition-colors"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Add Another Option
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Sticky save footer (visible when dirty) */}
       <AnimatePresence>
