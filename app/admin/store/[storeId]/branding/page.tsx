@@ -98,12 +98,14 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
     splashVideo: '', // Idle video
     accentColor: '#DC2626',
     tagline: '',
-    promoBanners: [] as string[]
+    promoBanners: [] as string[],
+    receiptLogo: ''
   });
 
   const bannerRef = useRef<HTMLInputElement>(null);
 
   const [logoUp, setLogoUp] = useState({ uploading: false, progress: 0 });
+  const [rcptUp, setRcptUp] = useState({ uploading: false, progress: 0 });
   const [bgUp, setBgUp] = useState({ uploading: false, progress: 0 });
   const [vidUp, setVidUp] = useState({ uploading: false, progress: 0 });
   const [bannerUploading, setBannerUploading] = useState(false);
@@ -124,7 +126,8 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
             splashVideo: savedBranding.splashVideo || savedBranding.idleVideoUrl || '',
             accentColor: savedBranding.accentColor || '#DC2626',
             tagline: savedBranding.tagline || '',
-            promoBanners: Array.isArray(savedBranding.promoBanners) ? savedBranding.promoBanners : (Array.isArray(data.promoBanners) ? data.promoBanners : [])
+            promoBanners: Array.isArray(savedBranding.promoBanners) ? savedBranding.promoBanners : (Array.isArray(data.promoBanners) ? data.promoBanners : []),
+            receiptLogo: savedBranding.receiptLogo || ''
           });
         }
       } catch (error) {
@@ -174,7 +177,7 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
     }
   };
 
-  const handleClearFile = async (url: string, field: 'storeLogo' | 'heroImage' | 'splashVideo') => {
+  const handleClearFile = async (url: string, field: 'storeLogo' | 'receiptLogo' | 'heroImage' | 'splashVideo') => {
     if (url && url.includes('firebasestorage.googleapis.com')) {
       await deleteObject(ref(storage, url)).catch(() => {});
     }
@@ -192,6 +195,7 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
       await updateDoc(docRef, {
         branding: {
           storeLogo: branding.storeLogo,
+          receiptLogo: branding.receiptLogo,
           heroImage: branding.heroImage,
           splashVideo: branding.splashVideo,
           accentColor: branding.accentColor,
@@ -323,13 +327,34 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
           </div>
         </div>
 
+        {/* Receipt Printer Logo */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden md:col-span-2">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-800 text-slate-100 flex items-center justify-center"><ImageIcon className="w-5 h-5" /></div>
+            <div>
+              <h2 className="font-bold text-slate-900 text-lg">Receipt Printer Artwork</h2>
+              <p className="text-xs text-slate-500">Black and white, high-contrast logo optimized for thermal receipt printers.</p>
+            </div>
+          </div>
+          <div className="p-6 md:p-8">
+            <UploadZone
+              accept="image/*"
+              currentUrl={branding.receiptLogo}
+              uploadState={rcptUp}
+              onFile={file => uploadFile(file, 'logo', setRcptUp, url => setBranding(b => ({ ...b, receiptLogo: url })), branding.receiptLogo)}
+              onClear={() => handleClearFile(branding.receiptLogo, 'receiptLogo')}
+              hint="JPG/PNG — Pure black & white without gradients (max 500x500)."
+            />
+          </div>
+        </div>
+
         {/* Global Hero & Idle */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center"><ImageIcon className="w-5 h-5" /></div>
             <div>
-              <h2 className="font-bold text-slate-900 text-lg">Universal Background</h2>
-              <p className="text-xs text-slate-500">Web header • POS wallpaper • Kiosk fallback</p>
+              <h2 className="font-bold text-slate-900 text-lg">Kiosk Background & Hero</h2>
+              <p className="text-xs text-slate-500">Kiosk background • Web header • POS wallpaper</p>
             </div>
           </div>
           <div className="p-6 md:p-8">
@@ -339,7 +364,7 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
                 uploadState={bgUp}
                 onFile={file => uploadFile(file, 'backgrounds', setBgUp, url => setBranding(b => ({ ...b, heroImage: url })), branding.heroImage)}
                 onClear={() => handleClearFile(branding.heroImage, 'heroImage')}
-                hint="JPG/PNG — Large high-res image (approx 1920x1080)."
+                hint="JPG/PNG — Large high-res portrait image for Kiosk."
               />
           </div>
         </div>
@@ -349,8 +374,8 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center"><Video className="w-5 h-5" /></div>
             <div>
-              <h2 className="font-bold text-slate-900 text-lg">Immersive Splash Video</h2>
-              <p className="text-xs text-slate-500">Takes priority on Kiosk Idle Screens & POS Screen Savers.</p>
+              <h2 className="font-bold text-slate-900 text-lg">Kiosk Screen Saver Video</h2>
+              <p className="text-xs text-slate-500">Takes priority on Kiosk Idle Screens & POS.</p>
             </div>
           </div>
           <div className="p-6 md:p-8">
