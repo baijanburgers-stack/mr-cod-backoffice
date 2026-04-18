@@ -1044,7 +1044,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                         type="text" 
                         name="name"
                         required
-                        defaultValue={editingCategory?.name || ''}
+                        defaultValue={getCategoryName(editingCategory?.name) || ''}
                         placeholder="e.g. Burgers"
                         className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
                       />
