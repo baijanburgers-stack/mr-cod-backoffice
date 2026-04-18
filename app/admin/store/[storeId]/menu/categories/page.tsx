@@ -429,7 +429,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 24, scale: 0.96 }}
               transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+              className="relative w-full max-w-md sm:max-w-xl lg:max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
             >
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -444,7 +444,11 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                 </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-6 overflow-y-auto space-y-5">
+              <form onSubmit={handleSave} className="p-6 overflow-y-auto">
+                <div className="flex flex-col lg:flex-row gap-6">
+
+                  {/* ── Left column: fields ── */}
+                  <div className="flex-1 space-y-5">
 
                 {/* Category Name */}
                 <div>
@@ -484,6 +488,11 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                     </p>
                   )}
                 </div>
+
+                  </div>{/* end left column */}
+
+                  {/* ── Right column: image ── */}
+                  <div className="lg:w-56 flex-shrink-0">
 
                 {/* Image Upload */}
                 <div>
@@ -582,28 +591,31 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                   />
                 </div>
 
-                {/* Active Status */}
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div>
-                    <h4 className="font-bold text-slate-900">Active Status</h4>
-                    <p className="text-sm text-slate-500">Show this category on the customer menu.</p>
-                  </div>
-                  <label className="flex items-center cursor-pointer">
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={isActiveState}
-                        onChange={(e) => setIsActiveState(e.target.checked)}
-                      />
-                      <div className={`block w-12 h-7 rounded-full transition-colors ${isActiveState ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-                      <div className={`dot absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform shadow-sm ${isActiveState ? 'translate-x-5' : ''}`}></div>
+                  {/* Active Status */}
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 mt-5">
+                    <div>
+                      <h4 className="font-bold text-slate-900">Active</h4>
+                      <p className="text-xs text-slate-500">Show on customer menu.</p>
                     </div>
-                  </label>
-                </div>
+                    <label className="flex items-center cursor-pointer">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={isActiveState}
+                          onChange={(e) => setIsActiveState(e.target.checked)}
+                        />
+                        <div className={`block w-12 h-7 rounded-full transition-colors ${isActiveState ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                        <div className={`dot absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform shadow-sm ${isActiveState ? 'translate-x-5' : ''}`}></div>
+                      </div>
+                    </label>
+                  </div>
+
+                  </div>{/* end right column */}
+                </div>{/* end flex row */}
 
                 {/* Actions */}
-                <div className="pt-2 border-t border-slate-100 flex justify-end gap-3">
+                <div className="pt-4 mt-2 border-t border-slate-100 flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={closeModal}

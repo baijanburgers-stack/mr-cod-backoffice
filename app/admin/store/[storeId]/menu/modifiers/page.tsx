@@ -390,7 +390,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+              className="relative w-full max-w-2xl lg:max-w-3xl max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
             >
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 flex-shrink-0">
                 <h2 className="text-2xl font-heading font-black text-slate-900">
@@ -405,7 +405,11 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
               </div>
 
               <div className="p-6 overflow-y-auto flex-1">
-                <div className="space-y-6">
+                <div className="flex flex-col lg:flex-row gap-6">
+
+                  {/* ── Left column: identity & rules ── */}
+                  <div className="flex-1 space-y-5">
+
                   {/* Basic Info (Multilingual Names) */}
                   <div className="space-y-4">
                     <div>
@@ -492,6 +496,11 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                     </label>
                   </div>
 
+                  </div>{/* end left column */}
+
+                  {/* ── Right column: options ── */}
+                  <div className="lg:w-72 flex-shrink-0">
+
                   {/* Options List */}
                   <div>
                     <div className="flex items-center justify-between mb-3">
@@ -524,7 +533,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
                               />
                             </div>
-                            <div className="w-32">
+                            <div className="w-28">
                               <CurrencyInput 
                                 defaultValue={option.price}
                                 onChange={(val) => updateOption(option.id, 'price', val)}
@@ -543,7 +552,9 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                       </AnimatePresence>
                     </div>
                   </div>
-                </div>
+
+                  </div>{/* end right column */}
+                </div>{/* end flex row */}
               </div>
 
               <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 flex-shrink-0">

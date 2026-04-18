@@ -577,7 +577,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
               initial={{ opacity: 0, y: 24, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 24, scale: 0.96 }}
-              className="relative w-full max-w-2xl max-h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+              className="relative w-full max-w-2xl lg:max-w-4xl max-h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden"
             >
               {/* Modal Header */}
               <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center flex-shrink-0">
@@ -590,12 +590,16 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="overflow-y-auto flex-1">
+                <div className="flex flex-col lg:flex-row lg:divide-x lg:divide-slate-100">
+
+                  {/* ── Left: Details ── */}
+                  <div className="flex-1 p-6 space-y-5">
 
                 {/* ─ Basic Info ─ */}
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Basic Info</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1.5">Combo Name <span className="text-rose-500">*</span></label>
                       <input
@@ -606,57 +610,28 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:outline-none transition-colors"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Category</label>
-                      <select
-                        value={formData.category || ''}
-                        onChange={e => setFormData({ ...formData, category: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:outline-none bg-white font-medium text-slate-700"
-                      >
-                        <option value="">Select category</option>
-                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Combo Price (€) <span className="text-rose-500">*</span></label>
-                      <CurrencyInput
-                        defaultValue={formData.price}
-                        onChange={val => setFormData({ ...formData, price: val })}
-                        className="w-full py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Image (Optional)</label>
-                      <div className="relative h-[46px] w-full rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-amber-400 transition-colors cursor-pointer overflow-hidden flex items-center justify-center">
-                        <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                        {imagePreview ? (
-                          <div className="relative w-full h-full flex items-center justify-between px-3">
-                            <span className="text-xs font-bold text-emerald-600 truncate mr-2">✓ Image Uploaded</span>
-                            <div className="relative w-8 h-8 rounded overflow-hidden border border-slate-200">
-                              <Image src={imagePreview} alt="Preview" fill className="object-cover" />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-slate-500">
-                            <ImageIcon className="w-4 h-4" />
-                            <span className="text-sm font-bold">Upload Image</span>
-                          </div>
-                        )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Category</label>
+                        <select
+                          value={formData.category || ''}
+                          onChange={e => setFormData({ ...formData, category: e.target.value })}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:outline-none bg-white font-medium text-slate-700"
+                        >
+                          <option value="">Select category</option>
+                          {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Combo Price (€) <span className="text-rose-500">*</span></label>
+                        <CurrencyInput
+                          defaultValue={formData.price}
+                          onChange={val => setFormData({ ...formData, price: val })}
+                          className="w-full py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:outline-none"
+                        />
                       </div>
                     </div>
-                    <div className="flex items-center h-[46px] px-4 rounded-xl border border-slate-200 bg-white mt-auto">
-                      <label className="flex items-center cursor-pointer w-full justify-between">
-                        <span className="text-sm font-bold text-slate-700">Active on Menu</span>
-                        <div className="relative">
-                          <input type="checkbox" className="sr-only" checked={formData.isActive ?? true}
-                            onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />
-                          <div className={`block w-10 h-6 rounded-full transition-colors ${formData.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                          <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${formData.isActive ? 'translate-x-4' : ''}`} />
-                        </div>
-                      </label>
-                    </div>
-                    <div className="sm:col-span-2">
+                    <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1.5">Description</label>
                       <textarea
                         rows={2}
@@ -666,8 +641,45 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:outline-none resize-none"
                       />
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Image (Optional)</label>
+                        <div className="relative h-[46px] w-full rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-amber-400 transition-colors cursor-pointer overflow-hidden flex items-center justify-center">
+                          <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                          {imagePreview ? (
+                            <div className="relative w-full h-full flex items-center justify-between px-3">
+                              <span className="text-xs font-bold text-emerald-600 truncate mr-2">✓ Image Uploaded</span>
+                              <div className="relative w-8 h-8 rounded overflow-hidden border border-slate-200">
+                                <Image src={imagePreview} alt="Preview" fill className="object-cover" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-slate-500">
+                              <ImageIcon className="w-4 h-4" />
+                              <span className="text-sm font-bold">Upload Image</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center h-[46px] px-4 rounded-xl border border-slate-200 bg-white mt-auto">
+                        <label className="flex items-center cursor-pointer w-full justify-between">
+                          <span className="text-sm font-bold text-slate-700">Active on Menu</span>
+                          <div className="relative">
+                            <input type="checkbox" className="sr-only" checked={formData.isActive ?? true}
+                              onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />
+                            <div className={`block w-10 h-6 rounded-full transition-colors ${formData.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                            <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${formData.isActive ? 'translate-x-4' : ''}`} />
+                          </div>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
+
+                  </div>{/* end left column */}
+
+                  {/* ── Right: Slots ── */}
+                  <div className="lg:w-96 flex-shrink-0 p-6 space-y-4 bg-slate-50/50">
 
                 {/* ─ Combo Slots ─ */}
                 <div>
@@ -713,6 +725,9 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
                     </button>
                   )}
                 </div>
+
+                  </div>{/* end right column */}
+                </div>{/* end flex row */}
               </div>
 
               {/* Modal Footer */}
