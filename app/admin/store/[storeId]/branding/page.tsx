@@ -348,45 +348,46 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
           </div>
         </div>
 
-        {/* Global Hero & Idle */}
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        {/* Unified Kiosk Idle Media */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden md:col-span-2">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center"><ImageIcon className="w-5 h-5" /></div>
+            <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center"><Video className="w-5 h-5" /></div>
             <div>
-              <h2 className="font-bold text-slate-900 text-lg">Kiosk Background & Hero</h2>
-              <p className="text-xs text-slate-500">Kiosk background • Web header • POS wallpaper</p>
+              <h2 className="font-bold text-slate-900 text-lg">Kiosk Idle Media (Image or Video)</h2>
+              <p className="text-xs text-slate-500">Upload an Image (Web + Kiosk) OR a Video (Kiosk Screensaver).</p>
             </div>
           </div>
           <div className="p-6 md:p-8">
             <UploadZone
-                accept="image/*"
-                currentUrl={branding.heroImage}
-                uploadState={bgUp}
-                onFile={file => uploadFile(file, 'backgrounds', setBgUp, url => setBranding(b => ({ ...b, heroImage: url })), branding.heroImage)}
-                onClear={() => handleClearFile(branding.heroImage, 'heroImage')}
-                hint="JPG/PNG — Large high-res portrait image for Kiosk."
-              />
-          </div>
-        </div>
-
-        {/* Splash Video */}
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center"><Video className="w-5 h-5" /></div>
-            <div>
-              <h2 className="font-bold text-slate-900 text-lg">Kiosk Screen Saver Video</h2>
-              <p className="text-xs text-slate-500">Takes priority on Kiosk Idle Screens & POS.</p>
-            </div>
-          </div>
-          <div className="p-6 md:p-8">
-            <UploadZone
-              accept="video/mp4,video/webm"
-              currentUrl={branding.splashVideo}
-              uploadState={vidUp}
-              previewType="video"
-              onFile={file => uploadFile(file, 'videos', setVidUp, url => setBranding(b => ({ ...b, splashVideo: url })), branding.splashVideo)}
-              onClear={() => handleClearFile(branding.splashVideo, 'splashVideo')}
-              hint="MP4/WebM — Portrait 9:16 (Max ~20MB). Plays silently in a loop."
+              accept="image/*,video/mp4,video/webm"
+              currentUrl={branding.splashVideo || branding.heroImage}
+              uploadState={bgUp}
+              previewType={branding.splashVideo ? 'video' : 'image'}
+              onFile={file => {
+                const isVideo = file.type.startsWith('video/');
+                uploadFile(
+                  file,
+                  isVideo ? 'videos' : 'backgrounds',
+                  setBgUp,
+                  url => {
+                    if (isVideo) {
+                      setBranding(b => ({ ...b, splashVideo: url }));
+                    } else {
+                      // If user uploads an image, explicitly clear the video so the image actually plays on the Kiosk
+                      setBranding(b => ({ ...b, heroImage: url, splashVideo: '' }));
+                    }
+                  },
+                  isVideo ? branding.splashVideo : branding.heroImage
+                );
+              }}
+              onClear={() => {
+                if (branding.splashVideo) {
+                  handleClearFile(branding.splashVideo, 'splashVideo');
+                } else if (branding.heroImage) {
+                  handleClearFile(branding.heroImage, 'heroImage');
+                }
+              }}
+              hint="Drop a JPG/PNG for a static background, or an MP4/WebM to play an animated screen saver."
             />
           </div>
         </div>
