@@ -1,6 +1,6 @@
 import OrderHistoryDashboard from '@/components/orders/OrderHistoryDashboard';
 
-export default async function AdminStoreOrderHistoryPage({ 
+export default async function ManagerStoreOrderHistoryPage({ 
   params 
 }: { 
   params: Promise<{ storeId: string }> 
