@@ -40,7 +40,6 @@ type Category = {
   id: string;
   name: string;
   order: number;
-  parentId?: string | null;
 };
 
 function MenuItemRow({ 
@@ -207,18 +206,9 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       snapshot.forEach((doc) => {
         fetchedCategories.push({ id: doc.id, ...doc.data() } as Category);
       });
-      // Sort to group children with parents
-      const sorted: Category[] = [];
-      const mains = fetchedCategories.filter(c => !c.parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
-      mains.forEach(m => {
-        sorted.push(m);
-        const subs = fetchedCategories.filter(c => c.parentId === m.id).sort((a, b) => (a.order || 0) - (b.order || 0));
-        sorted.push(...subs);
-      });
-      const handled = new Set(sorted.map(s => s.id));
-      sorted.push(...fetchedCategories.filter(c => !handled.has(c.id)));
-      
-      setCategories(sorted);
+      // Sort by order if available, otherwise by name
+      fetchedCategories.sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
+      setCategories(fetchedCategories);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'categories');
     });
@@ -681,16 +671,11 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                         name="category"
                         required
                         defaultValue={editingItem?.category || (categories[0]?.name || '')}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white font-medium"
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white"
                       >
-                        {categories.map(c => {
-                          const parentName = c.parentId ? categories.find(p => p.id === c.parentId)?.name : null;
-                          return (
-                            <option key={c.id} value={c.name}>
-                              {parentName ? `${parentName} — ${c.name}` : c.name}
-                            </option>
-                          );
-                        })}
+                        {categories.map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
                       </select>
                     </div>
                   </div>

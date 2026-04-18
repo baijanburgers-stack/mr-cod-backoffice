@@ -45,7 +45,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categoryName, setCategoryName] = useState('');
   const [isActiveState, setIsActiveState] = useState(true);
-  const [parentIdState, setParentIdState] = useState<string>('');
+  const [selectedParentId, setSelectedParentId] = useState<string>('');
 
   useEffect(() => {
     if (!user) return;
@@ -70,23 +70,9 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     return () => unsubscribe();
   }, [storeId, user]);
 
-  const filteredCategoriesRaw = categories.filter(category =>
+  const filteredCategories = categories.filter(category =>
     category.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const mainCategories = categories.filter(c => !c.parentId);
-
-  // Sort them so that subcategories physically render immediately under their parents
-  const filteredCategories: Category[] = [];
-  const mainFiltered = filteredCategoriesRaw.filter(c => !c.parentId);
-  mainFiltered.forEach(m => {
-    filteredCategories.push(m);
-    const children = filteredCategoriesRaw.filter(c => c.parentId === m.id);
-    filteredCategories.push(...children);
-  });
-  // Toss any orphaned categories at the end just in case
-  const handled = new Set(filteredCategories.map(c => c.id));
-  filteredCategories.push(...filteredCategoriesRaw.filter(c => !handled.has(c.id)));
 
   const toggleStatus = async (id: string, currentStatus: boolean) => {
     try {
@@ -118,10 +104,10 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     setEditingCategory(category);
     setCategoryName(category.name);
     setIsActiveState(category.isActive);
-    setParentIdState(category.parentId || '');
     setImagePreview(category.imageUrl || null);
     setImageFile(null);
     setUploadProgress(0);
+    setSelectedParentId(category.parentId || '');
     setIsModalOpen(true);
   };
 
@@ -129,10 +115,10 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     setEditingCategory(null);
     setCategoryName('');
     setIsActiveState(true);
-    setParentIdState('');
     setImagePreview(null);
     setImageFile(null);
     setUploadProgress(0);
+    setSelectedParentId('');
     setIsModalOpen(true);
   };
 
@@ -141,7 +127,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     setImageFile(null);
     setImagePreview(null);
     setUploadProgress(0);
-    setParentIdState('');
+    setSelectedParentId('');
   };
 
   const handleFileSelect = (file: File) => {
@@ -231,7 +217,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
         await updateDoc(doc(db, 'categories', editingCategory.id), {
           name: categoryName,
           isActive: isActiveState,
-          parentId: parentIdState || null,
+          parentId: selectedParentId || null,
           ...imageData,
         });
       } else {
@@ -240,11 +226,11 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
           storeId,
           name: categoryName,
           isActive: isActiveState,
-          parentId: parentIdState || null,
           itemCount: 0,
           order: categories.length,
           imageUrl: '',
           imagePath: '',
+          parentId: selectedParentId || null,
         });
 
         if (imageFile) {
@@ -338,92 +324,90 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
             className="divide-y divide-slate-100"
           >
             <AnimatePresence mode="popLayout">
-              {filteredCategories.map((category, idx) => (
-                <Reorder.Item
-                  value={category}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2, delay: idx * 0.05 }}
-                  key={category.id}
-                  className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-slate-50 transition-colors group bg-white border border-slate-100 ${category.parentId ? 'ml-8 sm:ml-12 border-l-4 border-l-amber-400' : ''} ${!category.isActive ? 'opacity-75' : ''}`}
-                >
-                  {/* Drag Handle & Image */}
-                  <div className="flex items-center gap-4">
-                    <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500 transition-colors">
-                      <GripVertical className="w-5 h-5" />
-                    </div>
-                    {/* Category thumbnail */}
-                    <div className={`w-14 h-14 rounded-2xl flex-shrink-0 overflow-hidden border-2 ${category.isActive ? 'border-amber-200' : 'border-slate-200'}`}>
-                      {category.imageUrl ? (
-                        <img
-                          src={category.imageUrl}
-                          alt={category.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className={`w-full h-full flex items-center justify-center ${category.isActive ? 'bg-amber-50 text-amber-400' : 'bg-slate-100 text-slate-400'}`}>
-                          <ImageIcon className="w-6 h-6" />
+              {(() => {
+                const mainCats = filteredCategories.filter(c => !c.parentId);
+                const subCats = filteredCategories.filter(c => !!c.parentId);
+                const rows: Category[] = [];
+                mainCats.forEach(mc => {
+                  rows.push(mc);
+                  subCats.filter(sc => sc.parentId === mc.id).forEach(sc => rows.push(sc));
+                });
+                // orphaned subs whose parent was deleted
+                subCats.filter(sc => !categories.find(c => c.id === sc.parentId)).forEach(sc => { if (!rows.includes(sc)) rows.push(sc); });
+
+                return rows.map((category, idx) => {
+                  const isSubCat = !!category.parentId;
+                  const parentName = isSubCat ? categories.find(c => c.id === category.parentId)?.name : null;
+                  return (
+                    <Reorder.Item
+                      value={category}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.2, delay: idx * 0.04 }}
+                      key={category.id}
+                      className={`flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-slate-50 transition-colors group bg-white ${!category.isActive ? 'opacity-75' : ''} ${isSubCat ? 'pl-8 border-l-4 border-amber-200' : ''} p-4 sm:p-5`}
+                    >
+                      {/* Drag Handle & Image */}
+                      <div className="flex items-center gap-4">
+                        <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500 transition-colors">
+                          <GripVertical className="w-5 h-5" />
                         </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-0.5">
-                      <h4 className="text-base font-bold text-slate-900 truncate">{category.name}</h4>
-                      {!category.isActive && (
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-bold border border-slate-200">
-                          Hidden
-                        </span>
-                      )}
-                    </div>
-                    {!category.imageUrl && (
-                      <p className="text-xs text-slate-400 font-medium">No image — click edit to add one</p>
-                    )}
-                  </div>
-
-                  {/* Stats & Actions */}
-                  <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 mt-2 sm:mt-0">
-                    <div className="text-center">
-                      <span className="block text-xl font-black text-slate-900">{category.itemCount}</span>
-                      <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Items</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {/* Toggle Switch */}
-                      <label className="flex items-center cursor-pointer mr-2">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={category.isActive}
-                            onChange={() => toggleStatus(category.id, category.isActive)}
-                          />
-                          <div className={`block w-10 h-6 rounded-full transition-colors ${category.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-                          <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${category.isActive ? 'transform translate-x-4' : ''}`}></div>
+                        <div className={`w-14 h-14 rounded-2xl flex-shrink-0 overflow-hidden border-2 ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'}`}>
+                          {category.imageUrl ? (
+                            <img src={category.imageUrl} alt={category.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className={`w-full h-full flex items-center justify-center ${isSubCat ? 'bg-amber-50/50 text-amber-300' : category.isActive ? 'bg-amber-50 text-amber-400' : 'bg-slate-100 text-slate-400'}`}>
+                              <ImageIcon className="w-6 h-6" />
+                            </div>
+                          )}
                         </div>
-                      </label>
+                      </div>
 
-                      <button
-                        onClick={() => openEditModal(category)}
-                        className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors"
-                        title="Edit Category"
-                      >
-                        <Edit2 className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(category.id)}
-                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
-                        title="Delete Category"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </Reorder.Item>
-              ))}
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                          {isSubCat && (
+                            <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[9px] font-black border border-amber-200 uppercase tracking-widest flex-shrink-0">
+                              Sub of {parentName ?? '?'}
+                            </span>
+                          )}
+                          <h4 className="text-base font-bold text-slate-900 truncate">{category.name}</h4>
+                          {!category.isActive && (
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-bold border border-slate-200">Hidden</span>
+                          )}
+                        </div>
+                        {!category.imageUrl && (
+                          <p className="text-xs text-slate-400 font-medium">No image — click edit to add one</p>
+                        )}
+                      </div>
+
+                      {/* Stats & Actions */}
+                      <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 mt-2 sm:mt-0">
+                        <div className="text-center">
+                          <span className="block text-xl font-black text-slate-900">{category.itemCount}</span>
+                          <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Items</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center cursor-pointer mr-2">
+                            <div className="relative">
+                              <input type="checkbox" className="sr-only" checked={category.isActive} onChange={() => toggleStatus(category.id, category.isActive)} />
+                              <div className={`block w-10 h-6 rounded-full transition-colors ${category.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                              <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${category.isActive ? 'transform translate-x-4' : ''}`}></div>
+                            </div>
+                          </label>
+                          <button onClick={() => openEditModal(category)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors" title="Edit Category">
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                          <button onClick={() => handleDeleteClick(category.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Delete Category">
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    </Reorder.Item>
+                  );
+                });
+              })()}
             </AnimatePresence>
           </Reorder.Group>
         )}
@@ -475,20 +459,30 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                   />
                 </div>
 
-                {/* Parent Category Header */}
+                {/* Parent Category Selector */}
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Parent Category (Optional)</label>
-                  <p className="text-xs text-slate-400 mb-2">If you select a parent, this category will appear inside it on the Kiosk as a sub-category.</p>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                    Parent Category
+                    <span className="text-slate-400 font-medium ml-1">(leave empty for a main category)</span>
+                  </label>
                   <select
-                    value={parentIdState}
-                    onChange={(e) => setParentIdState(e.target.value)}
+                    value={selectedParentId}
+                    onChange={(e) => setSelectedParentId(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all bg-white"
                   >
-                    <option value="">-- None (This is a Main Category) --</option>
-                    {mainCategories.filter(c => c.id !== editingCategory?.id).map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
+                    <option value="">— None (Main Category) —</option>
+                    {categories
+                      .filter(c => !c.parentId && c.id !== editingCategory?.id)
+                      .map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))
+                    }
                   </select>
+                  {selectedParentId && (
+                    <p className="mt-1.5 text-xs text-amber-600 font-medium">
+                      ✦ This will appear as a sub-category inside "{categories.find(c => c.id === selectedParentId)?.name}"
+                    </p>
+                  )}
                 </div>
 
                 {/* Image Upload */}
