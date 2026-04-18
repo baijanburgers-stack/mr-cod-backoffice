@@ -112,7 +112,6 @@ export default function StoreAdminLayout({ children, params }: { children: React
     { name: 'Managers', href: `/admin/store/${storeId}/managers`, icon: Users },
     { name: 'POS Terminals', href: `/admin/store/${storeId}/terminals`, icon: Monitor },
     { name: 'Kiosks', href: `/admin/store/${storeId}/kiosks`, icon: Tablet },
-    { name: 'CCV Payments', href: `/admin/store/${storeId}/ccv`, icon: CreditCard },
   ];
 
   return (
