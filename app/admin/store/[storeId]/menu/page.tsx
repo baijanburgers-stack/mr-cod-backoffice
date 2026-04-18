@@ -1044,7 +1044,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                         type="text" 
                         name="name"
                         required
-                        defaultValue={getCategoryName(editingCategory?.name) || ''}
+                        defaultValue={getCategoryName(editingCategory?.name ?? '') || ''}
                         placeholder="e.g. Burgers"
                         className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
                       />
@@ -1090,7 +1090,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                             <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 font-bold text-xs">
                               {cat.order || 0}
                             </div>
-                            <span className="font-bold text-slate-900">{cat.name}</span>
+                            <span className="font-bold text-slate-900">{getCategoryName(cat.name)}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <button 
