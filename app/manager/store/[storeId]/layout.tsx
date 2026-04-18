@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Clock, History, PackageOpen, Settings, LogOut, Menu, X, Tablet } from 'lucide-react';
+import { LayoutDashboard, History, PackageOpen, Settings, LogOut, Menu, X, Tablet } from 'lucide-react';
 import { useState, use, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '@/lib/AuthContext';
@@ -75,8 +75,7 @@ export default function ManagerLayout({ children, params }: { children: React.Re
   }
 
   const navItems = [
-    { name: 'Live Orders', href: `/manager/store/${storeId}/orders`, icon: Clock },
-    { name: 'History', href: `/manager/store/${storeId}/history`, icon: History },
+    { name: 'Order History', href: `/manager/store/${storeId}/history`, icon: History },
     { name: 'Inventory', href: `/manager/store/${storeId}/inventory`, icon: PackageOpen },
     { name: 'Live Settings', href: `/manager/store/${storeId}/settings`, icon: Settings },
     { name: 'Kiosks', href: `/manager/store/${storeId}/kiosks`, icon: Tablet },

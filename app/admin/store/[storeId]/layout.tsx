@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '@/lib/AuthContext';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import AudioUnlockOverlay from '@/components/ui/AudioUnlockOverlay';
+
 
 export default function StoreAdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storeId: string }> }) {
   const pathname = usePathname();
@@ -18,7 +18,6 @@ export default function StoreAdminLayout({ children, params }: { children: React
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>(() => ({
     Menu: pathname.includes(`/admin/store/${storeId}/menu`),
-    Orders: pathname.includes(`/admin/store/${storeId}/orders`)
   }));
   const [storeName, setStoreName] = useState('');
   const { user, loading } = useAuth();
@@ -76,10 +75,6 @@ export default function StoreAdminLayout({ children, params }: { children: React
       newExpanded['Menu'] = true;
       changed = true;
     }
-    if (pathname.includes(`/admin/store/${storeId}/orders`) && !expandedMenus['Orders']) {
-      newExpanded['Orders'] = true;
-      changed = true;
-    }
     
     if (changed) {
       const timer = setTimeout(() => setExpandedMenus(newExpanded), 0);
@@ -102,14 +97,7 @@ export default function StoreAdminLayout({ children, params }: { children: React
 
   const navItems = [
     { name: 'Dashboard', href: `/admin/store/${storeId}`, icon: LayoutDashboard },
-    { 
-      name: 'Orders', 
-      icon: ShoppingBag,
-      subItems: [
-        { name: 'Live Orders', href: `/admin/store/${storeId}/orders` },
-        { name: 'Order History', href: `/admin/store/${storeId}/orders/history` },
-      ]
-    },
+    { name: 'Order History', href: `/admin/store/${storeId}/orders/history`, icon: ShoppingBag },
     { 
       name: 'Menu', 
       icon: Package,
@@ -286,7 +274,6 @@ export default function StoreAdminLayout({ children, params }: { children: React
         </header>
 
         <main className="flex-1 overflow-y-auto relative bg-[#F8FAFC]">
-          <AudioUnlockOverlay />
           {children}
         </main>
       </div>
