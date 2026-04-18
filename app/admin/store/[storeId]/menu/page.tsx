@@ -575,224 +575,288 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              initial={{ opacity: 0, y: 24, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              exit={{ opacity: 0, y: 24, scale: 0.96 }}
+              transition={{ type: 'spring', bounce: 0.18, duration: 0.45 }}
+              className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
             >
-              <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h2 className="text-2xl font-heading font-black text-slate-900">
-                  {editingItem ? 'Edit Item' : 'Add New Item'}
-                </h2>
-                <button 
+              {/* Modal Header */}
+              <div className="px-7 py-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-amber-50/40 flex-shrink-0">
+                <div>
+                  <h2 className="text-2xl font-heading font-black text-slate-900">
+                    {editingItem ? 'Edit Menu Item' : 'Add New Item'}
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5 font-medium">
+                    {editingItem ? 'Update the details below and save.' : 'Fill in the details to create a new menu item.'}
+                  </p>
+                </div>
+                <button
                   onClick={() => setIsModalOpen(false)}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-full transition-colors"
+                  className="p-2.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-full transition-all"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <form id="item-form" onSubmit={handleSave} className="p-6 overflow-y-auto">
-                <div className="flex border-b border-slate-200 mb-5">
-                  {(['en', 'fr', 'nl'] as const).map(lang => (
-                    <button
-                      key={lang}
-                      type="button"
-                      onClick={() => setModalLang(lang)}
-                      className={`px-4 py-2 font-bold text-sm border-b-2 transition-colors ${
-                        modalLang === lang 
-                          ? 'border-amber-500 text-amber-600' 
-                          : 'border-transparent text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
-                      {lang.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
+              <form id="item-form" onSubmit={handleSave} className="overflow-y-auto flex-1">
+                <div className="flex flex-col lg:flex-row min-h-0">
 
-                <div className="space-y-5">
-                   <div className="mb-4 pt-4 border-t border-slate-200">
-                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Item Name (Global)</label>
-                     <input 
-                       type="text" 
-                       name="name"
-                       required
-                       defaultValue={editingItem?.name}
-                       placeholder="e.g. Spicy Cod Bites"
-                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
-                     />
-                   </div>
-
-                  {(['en', 'fr', 'nl'] as const).map(lang => (
-                    <div key={lang} className={modalLang === lang ? 'block space-y-5' : 'hidden'}>
-                      <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Description ({lang.toUpperCase()})</label>
-                        <textarea 
-                          name={`description_${lang}`}
-                          required={lang === 'en'}
-                          rows={3}
-                          defaultValue={editingItem?.description[lang]}
-                          placeholder="Describe the item..."
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors resize-none"
+                  {/* ── LEFT PANEL: Image Upload ── */}
+                  <div className="lg:w-64 xl:w-72 flex-shrink-0 bg-slate-50 border-b lg:border-b-0 lg:border-r border-slate-100 p-6 flex flex-col gap-4">
+                    <div>
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Item Photo</p>
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="relative w-full aspect-square rounded-2xl border-2 border-dashed border-slate-200 overflow-hidden cursor-pointer group hover:border-amber-400 transition-colors bg-white"
+                      >
+                        {imagePreview ? (
+                          <>
+                            <Image src={imagePreview} alt="Preview" fill className="object-contain p-3 group-hover:scale-105 transition-transform duration-500" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end pb-5 gap-1">
+                              <ImageIcon className="w-5 h-5 text-white" />
+                              <span className="text-white font-bold text-xs">Change Photo</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 group-hover:text-amber-500 transition-colors">
+                            <div className="w-14 h-14 rounded-2xl bg-slate-100 group-hover:bg-amber-50 flex items-center justify-center transition-colors">
+                              <ImageIcon className="w-7 h-7" />
+                            </div>
+                            <span className="text-xs font-bold text-center px-2 leading-relaxed">
+                              Click to upload<br />
+                              <span className="font-medium text-slate-400">PNG, JPG up to 5MB</span>
+                            </span>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleImageUpload}
+                          accept="image/png, image/jpeg"
+                          className="hidden"
                         />
                       </div>
+                      {imagePreview && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setImagePreview(null); }}
+                          className="mt-2.5 w-full text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center gap-1.5 py-1.5"
+                        >
+                          <X className="w-3.5 h-3.5" /> Remove photo
+                        </button>
+                      )}
                     </div>
-                  ))}
-                  
-                  <div className="grid grid-cols-3 gap-5">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Price</label>
-                      <CurrencyInput
-                        name="price"
-                        required
-                        defaultValue={editingItem?.price || 0}
-                        className="w-full py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Item Type</label>
-                      <select 
-                        name="itemType"
-                        required
-                        defaultValue={editingItem?.itemType || 'food'}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white"
-                      >
-                        <option value="food">Food</option>
-                        <option value="soft_drink">Soft Drink</option>
-                        <option value="alcohol">Alcoholic Drink</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Category</label>
-                      <select 
-                        name="category"
-                        required
-                        defaultValue={editingItem?.category || (categories[0]?.name || '')}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white"
-                      >
-                        {categories.map(c => (
-                          <option key={c.id} value={c.name}>{c.name}</option>
-                        ))}
-                      </select>
+
+                    {/* Quick-info pills */}
+                    <div className="mt-auto pt-4 border-t border-slate-200 space-y-2">
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Tips</p>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">Use a square, high-contrast image on a white or transparent background for best kiosk & web display.</p>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Image</label>
-                    <div 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 hover:border-amber-400 transition-colors cursor-pointer relative overflow-hidden min-h-[160px]"
-                    >
-                      {imagePreview ? (
-                        <div className="absolute inset-0 w-full h-full bg-slate-50">
-                          <Image src={imagePreview} alt="Preview" fill className="object-contain p-4" />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <span className="text-white font-bold text-sm">Change Image</span>
+                  {/* ── RIGHT PANEL: Form Fields ── */}
+                  <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+
+                    {/* — Section: Identity — */}
+                    <div>
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Identity</p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-1.5">Item Name <span className="text-slate-400 font-medium">(shown on all platforms)</span></label>
+                          <input
+                            type="text"
+                            name="name"
+                            required
+                            defaultValue={editingItem?.name}
+                            placeholder="e.g. Spicy Cod Bites"
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all text-sm font-medium placeholder:text-slate-300"
+                          />
+                        </div>
+
+                        {/* Language Tabs */}
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
+                          <div className="flex gap-1 mb-2 bg-slate-100 p-1 rounded-xl w-fit">
+                            {([['en', '🇬🇧'], ['fr', '🇫🇷'], ['nl', '🇳🇱']] as const).map(([lang, flag]) => (
+                              <button
+                                key={lang}
+                                type="button"
+                                onClick={() => setModalLang(lang as 'en' | 'fr' | 'nl')}
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                  modalLang === lang
+                                    ? 'bg-white text-slate-900 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                              >
+                                {flag} {lang.toUpperCase()}
+                              </button>
+                            ))}
                           </div>
+                          {(['en', 'fr', 'nl'] as const).map(lang => (
+                            <div key={lang} className={modalLang === lang ? 'block' : 'hidden'}>
+                              <textarea
+                                name={`description_${lang}`}
+                                required={lang === 'en'}
+                                rows={3}
+                                defaultValue={editingItem?.description[lang]}
+                                placeholder={
+                                  lang === 'en' ? 'Describe the item in English...' :
+                                  lang === 'fr' ? 'Décrivez l\'article en français...' :
+                                  'Beschrijf het artikel in het Nederlands...'
+                                }
+                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all resize-none text-sm placeholder:text-slate-300"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <hr className="border-slate-100" />
+
+                    {/* — Section: Pricing & Classification — */}
+                    <div>
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Pricing &amp; Classification</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-1.5">Base Price</label>
+                          <CurrencyInput
+                            name="price"
+                            required
+                            defaultValue={editingItem?.price || 0}
+                            className="w-full py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-1.5">Item Type</label>
+                          <select
+                            name="itemType"
+                            required
+                            defaultValue={editingItem?.itemType || 'food'}
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all bg-white text-sm font-medium"
+                          >
+                            <option value="food">🍔 Food</option>
+                            <option value="soft_drink">🥤 Soft Drink</option>
+                            <option value="alcohol">🍺 Alcoholic Drink</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-1.5">Category</label>
+                          <select
+                            name="category"
+                            required
+                            defaultValue={editingItem?.category || (categories[0]?.name || '')}
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all bg-white text-sm font-medium"
+                          >
+                            {categories.map(c => (
+                              <option key={c.id} value={c.name}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <hr className="border-slate-100" />
+
+                    {/* — Section: Variations — */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Variations</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">Sizes or options — customer picks one. Leave empty if not needed.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddVariation}
+                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 font-bold text-xs hover:bg-amber-100 transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add Variation
+                        </button>
+                      </div>
+
+                      {editingVariations.length === 0 ? (
+                        <div className="text-center py-7 bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
+                          <div className="text-2xl mb-1">🔀</div>
+                          <p className="text-xs font-bold text-slate-500">No variations yet</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">Add one if this item comes in sizes (e.g. Small / Large)</p>
                         </div>
                       ) : (
-                        <>
-                          <ImageIcon className="w-8 h-8 mb-2 text-slate-400" />
-                          <span className="text-sm font-bold">Click to upload image</span>
-                          <span className="text-xs mt-1">PNG, JPG up to 5MB</span>
-                        </>
-                      )}
-                      <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleImageUpload} 
-                        accept="image/png, image/jpeg" 
-                        className="hidden" 
-                      />
-                    </div>
-                  </div>
-
-                  {/* Variations Section */}
-                  <div className="pt-6 border-t border-slate-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <label className="block text-sm font-bold text-slate-700">Variations (Sizes / Options)</label>
-                        <p className="text-xs text-slate-400 mt-0.5">Each variation = a different version. Customer picks one only.</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleAddVariation}
-                        className="text-sm font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1"
-                      >
-                        <Plus className="w-4 h-4" /> Add Variation
-                      </button>
-                    </div>
-                    
-                    {editingVariations.length === 0 ? (
-                      <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-200 border-dashed text-slate-500 text-sm">
-                        No variations added yet. Add one if this item has different sizes (e.g. Small / Large).
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {editingVariations.map((variation, vidx) => {
-                          const basePrice = editingItem?.price || 0;
-                          const adj = parseFloat(variation.priceAdjustment as any) || 0;
-                          const finalPrice = basePrice + adj;
-                          return (
-                            <div key={variation.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs font-black text-slate-400 w-5 shrink-0">{vidx + 1}.</span>
+                        <div className="space-y-2.5">
+                          {editingVariations.map((variation, vidx) => {
+                            const basePrice = editingItem?.price || 0;
+                            const adj = parseFloat(variation.priceAdjustment as any) || 0;
+                            const finalPrice = basePrice + adj;
+                            return (
+                              <div key={variation.id} className="flex items-center gap-2.5 bg-slate-50 px-3.5 py-3 rounded-xl border border-slate-200">
+                                <span className="text-[10px] font-black text-slate-400 w-4 shrink-0 text-center">{vidx + 1}</span>
                                 <input
                                   type="text"
                                   value={variation.name}
                                   onChange={(e) => handleUpdateVariation(variation.id, 'name', e.target.value)}
-                                  placeholder="e.g. Large, Extra Spicy, With Cheese"
-                                  className="flex-1 px-3 py-2 rounded-lg border border-slate-200 focus:border-amber-500 focus:outline-none text-sm font-bold"
+                                  placeholder="e.g. Large, With Cheese…"
+                                  className="flex-1 px-3 py-2 rounded-lg border border-slate-200 focus:border-amber-500 focus:outline-none text-sm font-bold bg-white min-w-0"
                                 />
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <span className="text-xs font-bold text-slate-500">+/- €</span>
+                                <div className="flex items-center gap-1 shrink-0 bg-white border border-slate-200 rounded-lg px-2 py-1.5">
+                                  <span className="text-[11px] font-bold text-slate-400">±€</span>
                                   <input
                                     type="number"
                                     step="0.01"
                                     value={adj}
                                     onChange={(e) => handleUpdateVariation(variation.id, 'priceAdjustment', parseFloat(e.target.value) || 0)}
-                                    className="w-20 px-2 py-2 rounded-lg border border-slate-200 focus:border-amber-500 focus:outline-none text-sm font-mono text-center"
+                                    className="w-16 text-sm font-mono text-center bg-transparent focus:outline-none"
                                   />
                                 </div>
-                                <span className={`text-sm font-black shrink-0 ${adj > 0 ? 'text-emerald-600' : adj < 0 ? 'text-rose-500' : 'text-slate-500'}`}>
-                                  = €{finalPrice.toFixed(2)}
+                                <span className={`text-xs font-black shrink-0 w-16 text-right ${adj > 0 ? 'text-emerald-600' : adj < 0 ? 'text-rose-500' : 'text-slate-400'}`}>
+                                  €{finalPrice.toFixed(2)}
                                 </span>
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveVariation(variation.id)}
-                                  className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors shrink-0"
+                                  className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
-                            </div>
-                          );
-                        })}
-                        <p className="text-xs text-slate-400 italic px-1">💡 Use + for more expensive options (e.g. Large +€1.50) and - for cheaper ones (e.g. Small -€1.00). 0 = same price as base.</p>
-                      </div>
-                    )}
+                            );
+                          })}
+                          <p className="text-[11px] text-slate-400 italic px-1 pt-1">
+                            💡 +€1.50 for pricier option, -€1.00 for cheaper. 0 = same as base price.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </form>
 
-              <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                <button 
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors shadow-sm"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  form="item-form"
-                  className="px-6 py-2.5 bg-amber-500 text-slate-900 font-bold rounded-xl hover:bg-amber-400 transition-colors shadow-sm"
-                >
-                  {editingItem ? 'Save Changes' : 'Create Item'}
-                </button>
+              {/* Modal Footer */}
+              <div className="px-7 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between flex-shrink-0">
+                <p className="text-xs text-slate-400 font-medium hidden sm:block">
+                  {editingItem ? `Last edited · ID: ${editingItem.id.slice(0, 8)}…` : 'New item will be marked visible by default.'}
+                </p>
+                <div className="flex gap-3 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors shadow-sm text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    form="item-form"
+                    className="px-6 py-2.5 bg-amber-500 text-slate-900 font-bold rounded-xl hover:bg-amber-400 active:bg-amber-600 transition-colors shadow-sm text-sm flex items-center gap-2"
+                  >
+                    <Check className="w-4 h-4" />
+                    {editingItem ? 'Save Changes' : 'Create Item'}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
