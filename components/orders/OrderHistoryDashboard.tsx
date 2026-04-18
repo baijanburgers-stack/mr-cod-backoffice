@@ -30,6 +30,7 @@ type OrderType = {
   total: number;
   vatBreakdown?: { [rate: string]: { net: number; vatAmount: number; gross: number } };
   items: { name: string; qty: number; price: number }[];
+  platform: string;
   notes: string;
   driver?: Driver | null;
   createdAt?: string;
@@ -41,6 +42,8 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
   const [orders, setOrders] = useState<OrderType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState('Today');
+  const [platformFilter, setPlatformFilter] = useState('All Platforms');
   const [storeName, setStoreName] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<OrderType | null>(null);
 
@@ -87,7 +90,18 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
                         parsedDate.getFullYear() === today.getFullYear();
         
         timeString = (isToday ? 'Today, ' : parsedDate.toLocaleDateString() + ' ') + 
-                     parsedDate.toLocaleTimeString([], { hour: '1-digit', minute: '2-digit' });
+                     parsedDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+        let rawPlatform = (data.platform || data.source || 'online').toLowerCase();
+        // Normalise: 'web' and 'online' both map to 'Online'
+        let platformStr: string;
+        if (rawPlatform === 'pos') {
+          platformStr = 'POS';
+        } else if (rawPlatform === 'kiosk') {
+          platformStr = 'Kiosk';
+        } else {
+          platformStr = 'Online'; // 'online', 'web', or anything else
+        }
 
         fetchedOrders.push({
           id: doc.id,
@@ -95,6 +109,7 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
           customerName: data.customerName || 'Unknown Customer',
           phone: data.phone || '',
           type: data.type || 'Pickup',
+          platform: platformStr,
           address: data.address || '',
           status: data.status || 'New',
           time: timeString,
@@ -132,9 +147,43 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
   }, [storeId, user]);
 
   const filteredOrders = orders.filter(order => {
+    // Search
     const searchLower = searchQuery.toLowerCase();
-    return order.orderNumber?.toLowerCase().includes(searchLower) || 
-           order.customerName.toLowerCase().includes(searchLower);
+    const matchesSearch = order.orderNumber?.toLowerCase().includes(searchLower) || 
+                          order.customerName.toLowerCase().includes(searchLower);
+
+    // Platform
+    const matchesPlatform = platformFilter === 'All Platforms' || order.platform === platformFilter;
+
+    // Date
+    let matchesDate = true;
+    let orderDate = new Date();
+    if (order.createdAt && (order.createdAt as any).toDate) {
+      orderDate = (order.createdAt as any).toDate();
+    } else if (order.createdAt) {
+      const parsed = new Date(order.createdAt);
+      if (!isNaN(parsed.getTime())) orderDate = parsed;
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (dateFilter === 'Today') {
+      matchesDate = orderDate >= today;
+    } else if (dateFilter === 'Yesterday') {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      matchesDate = orderDate >= yesterday && orderDate < today;
+    } else if (dateFilter === 'Last 7 Days') {
+      const last7 = new Date(today);
+      last7.setDate(last7.getDate() - 7);
+      matchesDate = orderDate >= last7;
+    } else if (dateFilter === 'This Month') {
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      matchesDate = orderDate >= startOfMonth;
+    }
+
+    return matchesSearch && matchesPlatform && matchesDate;
   });
 
   const getStatusStyle = (status: string) => {
@@ -224,17 +273,40 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Order Log</h1>
             <p className="text-sm font-medium text-slate-500 mt-1">Full historical log of all online and kiosk orders.</p>
           </div>
-          <div className="relative w-full sm:w-80">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-slate-400" />
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <select
+              value={platformFilter}
+              onChange={(e) => setPlatformFilter(e.target.value)}
+              className="px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-700 outline-none focus:border-slate-400 cursor-pointer transition-colors"
+            >
+              <option value="All Platforms">All Platforms</option>
+              <option value="Online">Online</option>
+              <option value="Kiosk">Kiosk</option>
+              <option value="POS">POS</option>
+            </select>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-700 outline-none focus:border-slate-400 cursor-pointer transition-colors"
+            >
+              <option value="Today">Today</option>
+              <option value="Yesterday">Yesterday</option>
+              <option value="Last 7 Days">Last 7 Days</option>
+              <option value="This Month">This Month</option>
+              <option value="All Time">All Time</option>
+            </select>
+            <div className="relative w-full sm:w-64">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-slate-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="block w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none bg-white text-sm font-medium"
+              />
             </div>
-            <input
-              type="text"
-              placeholder="Search Name or Order #..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none bg-slate-50 text-sm font-medium"
-            />
           </div>
         </div>
         
@@ -248,7 +320,7 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
                 <th className="px-6 py-4">Customer Name</th>
                 <th className="px-6 py-4">Amount</th>
                 <th className="px-6 py-4 hidden md:table-cell">Time</th>
-                <th className="px-6 py-4 hidden sm:table-cell">Type</th>
+                <th className="px-6 py-4 hidden sm:table-cell">Source / Type</th>
                 <th className="px-6 py-4 text-right">Action</th>
               </tr>
             </thead>
@@ -286,9 +358,11 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
                         {order.time}
                       </td>
                       <td className="px-6 py-4 hidden sm:table-cell">
-                        <div className="flex items-center gap-1.5 text-sm font-bold text-slate-500">
-                          {order.type === 'Delivery' ? <Bike className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />}
-                          {order.type}
+                        <div className="flex items-center gap-1 text-sm font-bold text-slate-700">
+                          {order.platform}
+                          <span className="text-slate-400 font-medium ml-1 flex items-center gap-1 text-xs uppercase tracking-widest">
+                            • {order.type === 'Delivery' ? <Bike className="w-3 h-3" /> : <ShoppingBag className="w-3 h-3" />} {order.type}
+                          </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
