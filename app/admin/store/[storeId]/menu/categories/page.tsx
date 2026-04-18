@@ -18,6 +18,7 @@ type Category = {
   order: number;
   imageUrl?: string;
   imagePath?: string;
+  parentId?: string | null;
 };
 
 export default function StoreCategoriesPage({ params }: { params: Promise<{ storeId: string }> }) {
@@ -44,6 +45,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categoryName, setCategoryName] = useState('');
   const [isActiveState, setIsActiveState] = useState(true);
+  const [parentIdState, setParentIdState] = useState<string>('');
 
   useEffect(() => {
     if (!user) return;
@@ -68,9 +70,23 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     return () => unsubscribe();
   }, [storeId, user]);
 
-  const filteredCategories = categories.filter(category =>
+  const filteredCategoriesRaw = categories.filter(category =>
     category.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const mainCategories = categories.filter(c => !c.parentId);
+
+  // Sort them so that subcategories physically render immediately under their parents
+  const filteredCategories: Category[] = [];
+  const mainFiltered = filteredCategoriesRaw.filter(c => !c.parentId);
+  mainFiltered.forEach(m => {
+    filteredCategories.push(m);
+    const children = filteredCategoriesRaw.filter(c => c.parentId === m.id);
+    filteredCategories.push(...children);
+  });
+  // Toss any orphaned categories at the end just in case
+  const handled = new Set(filteredCategories.map(c => c.id));
+  filteredCategories.push(...filteredCategoriesRaw.filter(c => !handled.has(c.id)));
 
   const toggleStatus = async (id: string, currentStatus: boolean) => {
     try {
@@ -102,6 +118,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     setEditingCategory(category);
     setCategoryName(category.name);
     setIsActiveState(category.isActive);
+    setParentIdState(category.parentId || '');
     setImagePreview(category.imageUrl || null);
     setImageFile(null);
     setUploadProgress(0);
@@ -112,6 +129,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     setEditingCategory(null);
     setCategoryName('');
     setIsActiveState(true);
+    setParentIdState('');
     setImagePreview(null);
     setImageFile(null);
     setUploadProgress(0);
@@ -123,6 +141,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     setImageFile(null);
     setImagePreview(null);
     setUploadProgress(0);
+    setParentIdState('');
   };
 
   const handleFileSelect = (file: File) => {
@@ -212,6 +231,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
         await updateDoc(doc(db, 'categories', editingCategory.id), {
           name: categoryName,
           isActive: isActiveState,
+          parentId: parentIdState || null,
           ...imageData,
         });
       } else {
@@ -220,6 +240,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
           storeId,
           name: categoryName,
           isActive: isActiveState,
+          parentId: parentIdState || null,
           itemCount: 0,
           order: categories.length,
           imageUrl: '',
@@ -325,7 +346,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2, delay: idx * 0.05 }}
                   key={category.id}
-                  className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-slate-50 transition-colors group bg-white ${!category.isActive ? 'opacity-75' : ''}`}
+                  className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-slate-50 transition-colors group bg-white border border-slate-100 ${category.parentId ? 'ml-8 sm:ml-12 border-l-4 border-l-amber-400' : ''} ${!category.isActive ? 'opacity-75' : ''}`}
                 >
                   {/* Drag Handle & Image */}
                   <div className="flex items-center gap-4">
@@ -452,6 +473,22 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                     placeholder="e.g. Starters"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all"
                   />
+                </div>
+
+                {/* Parent Category Header */}
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Parent Category (Optional)</label>
+                  <p className="text-xs text-slate-400 mb-2">If you select a parent, this category will appear inside it on the Kiosk as a sub-category.</p>
+                  <select
+                    value={parentIdState}
+                    onChange={(e) => setParentIdState(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all bg-white"
+                  >
+                    <option value="">-- None (This is a Main Category) --</option>
+                    {mainCategories.filter(c => c.id !== editingCategory?.id).map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Image Upload */}
