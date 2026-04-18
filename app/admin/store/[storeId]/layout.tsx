@@ -108,7 +108,6 @@ export default function StoreAdminLayout({ children, params }: { children: React
         { name: 'Combos', href: `/admin/store/${storeId}/menu/combos` },
       ]
     },
-    { name: 'Store Branding', href: `/admin/store/${storeId}/branding`, icon: Palette },
     { name: 'Store Settings', href: `/admin/store/${storeId}/settings`, icon: Settings },
     { name: 'Managers', href: `/admin/store/${storeId}/managers`, icon: Users },
     { name: 'POS Terminals', href: `/admin/store/${storeId}/terminals`, icon: Monitor },
