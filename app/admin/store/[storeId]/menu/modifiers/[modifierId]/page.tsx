@@ -246,10 +246,10 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
       <div className="mb-8">
         <button
           onClick={() => router.push(`/admin/store/${storeId}/menu/modifiers`)}
-          className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-amber-600 transition-colors mb-4 group"
+          className="inline-flex items-center gap-2 px-3 py-1.5 mb-5 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-bold shadow-sm hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all group"
         >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Back to Modifier Groups
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          Back to Modifiers
         </button>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
