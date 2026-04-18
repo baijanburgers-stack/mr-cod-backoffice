@@ -166,7 +166,7 @@ export default function StoreManagersPage({ params }: { params: Promise<{ storeI
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-black text-slate-900">Shift Managers</h1>
-          <p className="mt-2 text-slate-500 font-medium">Manage shift managers assigned to control Live Operations and KDS.</p>
+          <p className="mt-2 text-slate-500 font-medium">Add and remove store managers. Managers receive full operational access to the backoffice but cannot modify store administrators.</p>
         </div>
         <button 
           onClick={openAddModal}

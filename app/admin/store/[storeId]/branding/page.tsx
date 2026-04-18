@@ -6,7 +6,7 @@ import { Save, Check, Image as ImageIcon, Video, Palette, Type, X, Upload } from
 import Image from 'next/image';
 import { db, storage } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -140,9 +140,13 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
     file: File, 
     folder: string, 
     setUploadState: any, 
-    onSuccess: (url: string) => void
+    onSuccess: (url: string) => void,
+    existingUrl: string = ''
   ) => {
     try {
+      if (existingUrl && existingUrl.includes('firebasestorage.googleapis.com')) {
+        await deleteObject(ref(storage, existingUrl)).catch(() => {});
+      }
       setUploadState({ uploading: true, progress: 0 });
       const filename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
       const fileRef = ref(storage, `stores/${storeId}/branding/${folder}/${filename}`);
@@ -168,6 +172,13 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
       console.error(e);
       setUploadState({ uploading: false, progress: 0 });
     }
+  };
+
+  const handleClearFile = async (url: string, field: 'storeLogo' | 'heroImage' | 'splashVideo') => {
+    if (url && url.includes('firebasestorage.googleapis.com')) {
+      await deleteObject(ref(storage, url)).catch(() => {});
+    }
+    setBranding(b => ({ ...b, [field]: '' }));
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -283,8 +294,8 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
                 accept="image/*"
                 currentUrl={branding.storeLogo}
                 uploadState={logoUp}
-                onFile={file => uploadFile(file, 'logo', setLogoUp, url => setBranding(b => ({ ...b, storeLogo: url })))}
-                onClear={() => setBranding(b => ({ ...b, storeLogo: '' }))}
+                onFile={file => uploadFile(file, 'logo', setLogoUp, url => setBranding(b => ({ ...b, storeLogo: url })), branding.storeLogo)}
+                onClear={() => handleClearFile(branding.storeLogo, 'storeLogo')}
                 hint="PNG/SVG (transparent) — used everywhere"
               />
             </div>
@@ -326,8 +337,8 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
                 accept="image/*"
                 currentUrl={branding.heroImage}
                 uploadState={bgUp}
-                onFile={file => uploadFile(file, 'backgrounds', setBgUp, url => setBranding(b => ({ ...b, heroImage: url })))}
-                onClear={() => setBranding(b => ({ ...b, heroImage: '' }))}
+                onFile={file => uploadFile(file, 'backgrounds', setBgUp, url => setBranding(b => ({ ...b, heroImage: url })), branding.heroImage)}
+                onClear={() => handleClearFile(branding.heroImage, 'heroImage')}
                 hint="JPG/PNG — Large high-res image (approx 1920x1080)."
               />
           </div>
@@ -348,8 +359,8 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
               currentUrl={branding.splashVideo}
               uploadState={vidUp}
               previewType="video"
-              onFile={file => uploadFile(file, 'videos', setVidUp, url => setBranding(b => ({ ...b, splashVideo: url })))}
-              onClear={() => setBranding(b => ({ ...b, splashVideo: '' }))}
+              onFile={file => uploadFile(file, 'videos', setVidUp, url => setBranding(b => ({ ...b, splashVideo: url })), branding.splashVideo)}
+              onClear={() => handleClearFile(branding.splashVideo, 'splashVideo')}
               hint="MP4/WebM — Portrait 9:16 (Max ~20MB). Plays silently in a loop."
             />
           </div>
@@ -385,7 +396,12 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
                   <div key={i} className="group relative aspect-video rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
                     <Image src={url} alt={`Promo ${i+1}`} fill className="object-cover" />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <button type="button" onClick={() => setBranding(b => ({ ...b, promoBanners: b.promoBanners.filter((_, idx) => idx !== i) }))} className="px-3 py-1.5 bg-rose-500 text-white rounded-lg text-xs font-bold shadow-sm hover:scale-105 transition-transform">
+                      <button type="button" onClick={async () => {
+                        if (url.includes('firebasestorage.googleapis.com')) {
+                          await deleteObject(ref(storage, url)).catch(() => {});
+                        }
+                        setBranding(b => ({ ...b, promoBanners: b.promoBanners.filter((_, idx) => idx !== i) }));
+                      }} className="px-3 py-1.5 bg-rose-500 text-white rounded-lg text-xs font-bold shadow-sm hover:scale-105 transition-transform">
                         Delete
                       </button>
                     </div>
