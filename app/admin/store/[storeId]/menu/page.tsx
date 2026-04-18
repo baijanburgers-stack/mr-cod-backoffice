@@ -2,7 +2,7 @@
 
 import { useState, use, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
-import { Search, Plus, Edit2, Trash2, Image as ImageIcon, MoreVertical, Check, X, Tag, GripVertical } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Image as ImageIcon, MoreVertical, Check, X, Tag, GripVertical, Settings2 } from 'lucide-react';
 import Image from 'next/image';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, getDoc } from 'firebase/firestore';
@@ -41,6 +41,28 @@ type Category = {
   name: string;
   order: number;
 };
+
+type ModifierOption = {
+  id: string;
+  name: string;
+  price: number;
+};
+
+type Modifier = {
+  id: string;
+  storeId: string;
+  name: string | { en: string; fr: string; nl: string };
+  isRequired: boolean;
+  allowMultiple: boolean;
+  itemIds?: string[];
+  options: ModifierOption[];
+};
+
+function getModName(name: Modifier['name']): string {
+  if (!name) return '';
+  if (typeof name === 'string') return name;
+  return name.en || '';
+}
 
 function MenuItemRow({ 
   item, 
@@ -182,6 +204,8 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [editingVariations, setEditingVariations] = useState<Variation[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [modifiers, setModifiers] = useState<Modifier[]>([]);
+  const [selectedModifierIds, setSelectedModifierIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -226,9 +250,19 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       setIsLoading(false);
     });
 
+    // Fetch modifiers
+    const modQuery = query(collection(db, 'modifiers'), where('storeId', '==', storeId));
+    const unsubscribeModifiers = onSnapshot(modQuery, (snapshot) => {
+      const mods: Modifier[] = [];
+      snapshot.forEach((doc) => mods.push({ id: doc.id, ...doc.data() } as Modifier));
+      mods.sort((a, b) => getModName(a.name).localeCompare(getModName(b.name)));
+      setModifiers(mods);
+    });
+
     return () => {
       unsubscribeCategories();
       unsubscribeItems();
+      unsubscribeModifiers();
     };
   }, [storeId, user]);
 
@@ -325,6 +359,9 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     }
     setImagePreview(img);
     setEditingVariations(item.variations || []);
+    // Pre-select modifiers already associated with this item
+    const preSelected = new Set(modifiers.filter(m => m.itemIds?.includes(item.id)).map(m => m.id));
+    setSelectedModifierIds(preSelected);
     setIsModalOpen(true);
   };
 
@@ -332,6 +369,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     setEditingItem(null);
     setImagePreview(null);
     setEditingVariations([]);
+    setSelectedModifierIds(new Set());
     setIsModalOpen(true);
   };
 
@@ -403,15 +441,37 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     };
 
     try {
+      let savedItemId: string;
       if (editingItem) {
         const docRef = doc(db, 'menuItems', editingItem.id);
         await updateDoc(docRef, itemData);
+        savedItemId = editingItem.id;
       } else {
-        await addDoc(collection(db, 'menuItems'), {
+        const newDoc = await addDoc(collection(db, 'menuItems'), {
           ...itemData,
           isAvailable: true,
         });
+        savedItemId = newDoc.id;
       }
+
+      // Sync modifier itemIds — add/remove this item from each modifier
+      const modifierUpdatePromises = modifiers.map(async (modifier) => {
+        const currentIds: string[] = modifier.itemIds || [];
+        const shouldBeAttached = selectedModifierIds.has(modifier.id);
+        const isCurrentlyAttached = currentIds.includes(savedItemId);
+
+        if (shouldBeAttached && !isCurrentlyAttached) {
+          await updateDoc(doc(db, 'modifiers', modifier.id), {
+            itemIds: [...currentIds, savedItemId],
+          });
+        } else if (!shouldBeAttached && isCurrentlyAttached) {
+          await updateDoc(doc(db, 'modifiers', modifier.id), {
+            itemIds: currentIds.filter(id => id !== savedItemId),
+          });
+        }
+      });
+      await Promise.all(modifierUpdatePromises);
+
       setIsModalOpen(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'menuItems');
@@ -828,6 +888,80 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                           <p className="text-[11px] text-slate-400 italic px-1 pt-1">
                             💡 +€1.50 for pricier option, -€1.00 for cheaper. 0 = same as base price.
                           </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Divider */}
+                    <hr className="border-slate-100" />
+
+                    {/* — Section: Modifiers — */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Modifiers</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">Add-ons or choices that appear at checkout for this item.</p>
+                        </div>
+                        {selectedModifierIds.size > 0 && (
+                          <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black">
+                            {selectedModifierIds.size} attached
+                          </span>
+                        )}
+                      </div>
+
+                      {modifiers.length === 0 ? (
+                        <div className="text-center py-7 bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
+                          <Settings2 className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
+                          <p className="text-xs font-bold text-slate-500">No modifiers yet</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">Create modifiers from the Modifiers page first.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {modifiers.map((modifier) => {
+                            const isChecked = selectedModifierIds.has(modifier.id);
+                            return (
+                              <label
+                                key={modifier.id}
+                                className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                                  isChecked
+                                    ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200'
+                                    : 'bg-slate-50 border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/30'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-400 shrink-0"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    setSelectedModifierIds(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(modifier.id)) next.delete(modifier.id);
+                                      else next.add(modifier.id);
+                                      return next;
+                                    });
+                                  }}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                                    <span className={`text-sm font-bold ${isChecked ? 'text-indigo-900' : 'text-slate-800'}`}>
+                                      {getModName(modifier.name)}
+                                    </span>
+                                    {modifier.isRequired && (
+                                      <span className="px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-600 text-[9px] font-black border border-rose-100 uppercase tracking-wider">Required</span>
+                                    )}
+                                    {modifier.allowMultiple && (
+                                      <span className="px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[9px] font-black border border-indigo-100 uppercase tracking-wider">Multi</span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-slate-400 truncate">
+                                    {modifier.options.slice(0, 4).map(o => o.name).join(' · ')}
+                                    {modifier.options.length > 4 ? ` +${modifier.options.length - 4} more` : ''}
+                                  </p>
+                                </div>
+                                {isChecked && <Check className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />}
+                              </label>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
