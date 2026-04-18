@@ -44,7 +44,7 @@ type Category = {
 
 type ModifierOption = {
   id: string;
-  name: string;
+  name: string | { en: string; fr: string; nl: string };
   price: number;
 };
 

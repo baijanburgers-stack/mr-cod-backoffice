@@ -17,7 +17,7 @@ type LocalizedString = {
 
 type ModifierOption = {
   id: string;
-  name: string;
+  name: string | LocalizedString;
   price: number;
   vatRate?: number; // legacy
 };
@@ -156,7 +156,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
       isRequired: false,
       allowMultiple: false,
       itemType: 'food',
-      options: [{ id: crypto.randomUUID(), name: '', price: 0 }]
+      options: [{ id: crypto.randomUUID(), name: { en: '', fr: '', nl: '' }, price: 0 }]
     });
     setIsModalOpen(true);
   };
@@ -217,7 +217,22 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
   const addOption = () => {
     setFormData(prev => ({
       ...prev,
-      options: [...(prev.options || []), { id: crypto.randomUUID(), name: '', price: 0 }]
+      options: [...(prev.options || []), { id: crypto.randomUUID(), name: { en: '', fr: '', nl: '' }, price: 0 }]
+    }));
+  };
+
+  const updateOptionName = (id: string, lang: 'en'|'fr'|'nl', value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      options: prev.options?.map(opt => {
+        if (opt.id === id) {
+          const currentName = typeof opt.name === 'string' 
+            ? { en: opt.name, fr: opt.name, nl: opt.name }
+            : (opt.name || { en: '', fr: '', nl: '' });
+          return { ...opt, name: { ...currentName, [lang]: value } };
+        }
+        return opt;
+      })
     }));
   };
 
@@ -524,29 +539,44 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                             exit={{ opacity: 0, height: 0 }}
                             className="flex items-center gap-3"
                           >
-                            <div className="flex-1">
+                            <div className="flex-1 space-y-1.5 min-w-[140px]">
                               <input 
                                 type="text" 
-                                value={option.name}
-                                onChange={(e) => updateOption(option.id, 'name', e.target.value)}
-                                placeholder="Option name (e.g. Extra Cheese)"
-                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
+                                value={typeof option.name === 'string' ? option.name : option.name?.en || ''}
+                                onChange={(e) => updateOptionName(option.id, 'en', e.target.value)}
+                                placeholder="Name (EN) e.g. Extra Cheese"
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors text-sm"
+                              />
+                              <input 
+                                type="text" 
+                                value={typeof option.name === 'string' ? option.name : option.name?.fr || ''}
+                                onChange={(e) => updateOptionName(option.id, 'fr', e.target.value)}
+                                placeholder="Name (FR)"
+                                className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
+                              />
+                              <input 
+                                type="text" 
+                                value={typeof option.name === 'string' ? option.name : option.name?.nl || ''}
+                                onChange={(e) => updateOptionName(option.id, 'nl', e.target.value)}
+                                placeholder="Name (NL)"
+                                className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
                               />
                             </div>
-                            <div className="w-28">
+                            <div className="w-24 shrink-0 flex flex-col items-end gap-2">
                               <CurrencyInput 
                                 defaultValue={option.price}
                                 onChange={(val) => updateOption(option.id, 'price', val)}
-                                className="w-full py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
+                                className="w-full py-2 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors text-sm"
                               />
+                              <button 
+                                onClick={() => removeOption(option.id)}
+                                disabled={(formData.options?.length || 0) <= 1}
+                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-slate-400 w-full flex justify-center"
+                                title="Remove Option"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
-                            <button 
-                              onClick={() => removeOption(option.id)}
-                              disabled={(formData.options?.length || 0) <= 1}
-                              className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-slate-400"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
                           </motion.div>
                         ))}
                       </AnimatePresence>
