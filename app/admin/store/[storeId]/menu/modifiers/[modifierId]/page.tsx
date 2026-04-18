@@ -149,7 +149,7 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
   const addOption = () => {
     const newOpt: ModifierOption = {
       id: crypto.randomUUID(),
-      name: { en: '', fr: '', nl: '' },
+      name: '',
       price: 0,
       imageUrl: '',
       imagePath: ''
@@ -159,12 +159,11 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
     setIsDirty(true);
   };
 
-  const updateName = (id: string, lang: 'en' | 'fr' | 'nl', value: string) => {
+  const updateName = (id: string, value: string) => {
     setIsDirty(true);
     setOptions(prev => prev.map(o => {
       if (o.id !== id) return o;
-      const cur = typeof o.name === 'string' ? { en: o.name, fr: o.name, nl: o.name } : (o.name || { en: '', fr: '', nl: '' });
-      return { ...o, name: { ...cur, [lang]: value } };
+      return { ...o, name: value };
     }));
   };
 
@@ -413,26 +412,10 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
                       <input
                         type="text"
                         value={typeof opt.name === 'string' ? opt.name : opt.name?.en || ''}
-                        onChange={(e) => updateName(opt.id, 'en', e.target.value)}
-                        placeholder="Name (EN) — e.g. Extra Cheese"
+                        onChange={(e) => updateName(opt.id, e.target.value)}
+                        placeholder="Option Name — e.g. Extra Cheese"
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors text-sm font-medium"
                       />
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          value={typeof opt.name === 'string' ? '' : opt.name?.fr || ''}
-                          onChange={(e) => updateName(opt.id, 'fr', e.target.value)}
-                          placeholder="Name (FR)"
-                          className="w-full px-3 py-1.5 text-sm rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
-                        />
-                        <input
-                          type="text"
-                          value={typeof opt.name === 'string' ? '' : opt.name?.nl || ''}
-                          onChange={(e) => updateName(opt.id, 'nl', e.target.value)}
-                          placeholder="Name (NL)"
-                          className="w-full px-3 py-1.5 text-sm rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
-                        />
-                      </div>
                       <div className="flex items-center gap-2">
                         <div className="w-32">
                           <CurrencyInput
