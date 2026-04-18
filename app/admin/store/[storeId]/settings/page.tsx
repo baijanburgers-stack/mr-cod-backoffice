@@ -9,6 +9,7 @@ import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
+import CcvTransactionViewer from '@/components/settings/CcvTransactionViewer';
 
 function UploadZone({ 
   accept, 
@@ -871,8 +872,9 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
         )}
 
         {activeTab === 'pos' && (
-           <div className="space-y-6 max-w-2xl bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-             {/* Environment Toggle */}
+           <div className="space-y-8">
+             <div className="space-y-6 max-w-2xl bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+               {/* Environment Toggle */}
              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/80 flex items-center gap-3">
                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0"><Wifi className="w-5 h-5 text-blue-600" /></div>
@@ -957,6 +959,9 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                </button>
              </div>
            </div>
+
+           <CcvTransactionViewer storeId={storeId} />
+         </div>
         )}
 
         {activeTab === 'vat' && (
