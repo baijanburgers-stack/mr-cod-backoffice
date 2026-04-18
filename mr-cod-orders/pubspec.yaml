@@ -1,0 +1,40 @@
+name: mr_cod_orders
+description: MR COD Live Order Management — Android App for kitchen & counter staff.
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+
+  # Audio alerts
+  audioplayers: ^6.0.0
+
+  # Google Maps for GPS live tracking
+  google_maps_flutter: ^2.9.0
+
+  # Shared prefs for persisting login
+  shared_preferences: ^2.3.3
+
+  # Intl for date/time formatting
+  intl: ^0.19.0
+
+  # Icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/sounds/
