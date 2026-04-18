@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Globe, ArrowLeft, Shield, Store, ShoppingBag, Clock } from 'lucide-react';
+import { Lock, Globe, ArrowLeft, Shield, Store, Clock } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'motion/react';
@@ -126,7 +126,7 @@ export default function AdminLoginPage() {
         }
 
         if (finalRole === 'manager' && userData?.storeId) {
-          router.push(`/manager/store/${userData.storeId}/orders`);
+          router.push(`/manager/store/${userData.storeId}/history`);
           return;
         }
 
@@ -214,18 +214,9 @@ export default function AdminLoginPage() {
 
                 {loggedInUser.role === 'store_admin' && !loggedInUser.storeId && (
                   <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl font-bold text-sm text-center border border-rose-100">
-                    Your account is missing a Store Assignment.
+                    Your account is missing a Store Assignment. Contact your administrator.
                   </div>
                 )}
-
-                <button onClick={() => router.push('/')} className="w-full flex items-center justify-between p-5 border-2 border-slate-100 rounded-2xl hover:border-slate-300 hover:bg-slate-50 transition-all font-black text-slate-700 hover:text-slate-900 group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
-                      <ShoppingBag className="w-6 h-6 text-slate-600" />
-                    </div>
-                    <span className="text-lg">Order Food (Customer)</span>
-                  </div>
-                </button>
              </div>
         </div>
       </div>
@@ -290,15 +281,7 @@ export default function AdminLoginPage() {
             </button>
           </div>
 
-          <div className="pt-8 mt-8 border-t border-slate-200 text-center">
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center px-4 py-2 text-sm font-bold text-slate-500 hover:text-red-600 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Main Portal
-            </Link>
-          </div>
+
         </motion.div>
       </div>
     </div>
