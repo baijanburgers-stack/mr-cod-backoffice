@@ -35,7 +35,7 @@ service firebase.storage {
 
     match /stores/{storeId}/branding/{folder}/{filename} {
       allow read: if isAuth();
-      allow write: if canManageStore()
+      allow create, update: if canManageStore()
                    && folder in ["logo", "backgrounds", "videos", "banners"]
                    && (
                         (folder in ["logo", "backgrounds", "banners"]
@@ -58,7 +58,7 @@ service firebase.storage {
 
     match /kiosk-branding/{storeId}/{folder}/{filename} {
       allow read: if isAuth();
-      allow write: if canManageStore()
+      allow create, update: if canManageStore()
                    && (
                         (folder in ["logo", "background"]
                           && request.resource.size < 10 * 1024 * 1024
