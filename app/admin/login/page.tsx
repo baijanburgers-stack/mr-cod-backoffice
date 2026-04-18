@@ -56,7 +56,7 @@ export default function AdminLoginPage() {
       }
 
       // Merge provisioned admin data into UID if necessary
-      if (preProvisionedData && (['admin', 'store_admin', 'delivery', 'manager'].includes(preProvisionedData.role))) {
+      if (preProvisionedData && (['admin', 'store_admin', 'manager'].includes(preProvisionedData.role))) {
         const mergedData = { ...userData, ...preProvisionedData, uid: user.uid, lastLogin: new Date().toISOString() };
         await setDoc(doc(db, 'users', user.uid), mergedData, { merge: true });
         
@@ -190,16 +190,7 @@ export default function AdminLoginPage() {
                   </button>
                 )}
 
-                {['delivery', 'store_admin', 'admin'].includes(loggedInUser.role) && loggedInUser.storeId && (
-                  <button onClick={() => router.push('/delivery')} className="w-full flex items-center justify-between p-5 border-2 border-slate-100 rounded-2xl hover:border-red-600 hover:bg-red-50 transition-all font-black text-slate-700 hover:text-red-700 group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center group-hover:bg-red-200 transition-colors">
-                        <Store className="w-6 h-6 text-red-600" />
-                      </div>
-                      <span className="text-lg">Delivery Dashboard</span>
-                    </div>
-                  </button>
-                )}
+
 
                 {['manager', 'store_admin', 'admin'].includes(loggedInUser.role) && loggedInUser.storeId && (
                   <button onClick={() => router.push(`/manager/store/${loggedInUser.storeId}/orders`)} className="w-full flex items-center justify-between p-5 border-2 border-slate-100 rounded-2xl hover:border-orange-500 hover:bg-orange-50 transition-all font-black text-slate-700 hover:text-orange-600 group">
