@@ -2,7 +2,7 @@
 
 import { useState, use, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Save, Check, Percent, FileText, Settings, Clock, Phone, Mail, MapPin, CalendarOff, Plus, Trash2, Copy, Image as ImageIcon, Volume2, CreditCard, Eye, EyeOff, Wifi, WifiOff, Tablet, X, Upload, Store, Palette, Type, Video, Utensils, Coffee, Wine, Truck } from 'lucide-react';
+import { Save, Check, Percent, FileText, Settings, Clock, Phone, Mail, MapPin, CalendarOff, Plus, Trash2, Copy, Image as ImageIcon, Volume2, CreditCard, Eye, EyeOff, Wifi, WifiOff, Tablet, X, Upload, Store, Palette, Type, Video, Utensils, Coffee, Wine, Truck, Lock, Unlock, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import { db, storage } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -143,6 +143,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
   });
 
   // VAT Settings State
+  const [isVatUnlocked, setIsVatUnlocked] = useState(false);
   const [vatSettings, setVatSettings] = useState({
     vatNumber: '',
     foodTakeawayRate: 6,
@@ -879,13 +880,37 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
 
         {activeTab === 'vat' && (
            <div className="space-y-8 max-w-2xl bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-              <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100">
-                <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20"><Percent className="w-7 h-7"/></div>
-                <div>
-                  <h3 className="font-heading font-black text-slate-900 text-2xl">Tax Categories</h3>
-                  <p className="text-sm text-slate-500 font-medium">Configure VAT percentage by service</p>
+              <div className="flex items-start justify-between mb-8 pb-6 border-b border-slate-100">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20"><Percent className="w-7 h-7"/></div>
+                  <div>
+                    <h3 className="font-heading font-black text-slate-900 text-2xl">Tax Categories</h3>
+                    <p className="text-sm text-slate-500 font-medium">Configure VAT percentage by service</p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setIsVatUnlocked(!isVatUnlocked)}
+                  className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border ${
+                    isVatUnlocked 
+                      ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100' 
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm'
+                  }`}
+                >
+                  {isVatUnlocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4 text-emerald-600" />}
+                  {isVatUnlocked ? 'Lock Fields' : 'Unlock to Edit'}
+                </button>
               </div>
+
+              {isVatUnlocked && (
+                <div className="mb-6 p-4 bg-rose-50 border border-rose-200/60 rounded-xl flex items-start gap-3 text-rose-800 animate-in fade-in slide-in-from-top-2">
+                  <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <strong>Critical Warning:</strong> Modifying VAT rates directly alters tax calculations on all future orders. 
+                    Be careful of stray mouse scrolls or accidental clicks.
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* ── FOOD ── */}
@@ -903,14 +928,14 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-2">Takeaway</label>
                       <div className="relative">
-                        <input type="number" min="0" max="100" value={vatSettings.foodTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, foodTakeawayRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                        <input type="number" min="0" max="100" value={vatSettings.foodTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, foodTakeawayRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
                         <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
                       </div>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-2">Dine-In</label>
                       <div className="relative">
-                        <input type="number" min="0" max="100" value={vatSettings.foodDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, foodDineInRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                        <input type="number" min="0" max="100" value={vatSettings.foodDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, foodDineInRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
                         <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
                       </div>
                     </div>
@@ -932,14 +957,14 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-2">Takeaway</label>
                       <div className="relative">
-                        <input type="number" min="0" max="100" value={vatSettings.softDrinkTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, softDrinkTakeawayRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                        <input type="number" min="0" max="100" value={vatSettings.softDrinkTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, softDrinkTakeawayRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
                         <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
                       </div>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-2">Dine-In</label>
                       <div className="relative">
-                        <input type="number" min="0" max="100" value={vatSettings.softDrinkDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, softDrinkDineInRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                        <input type="number" min="0" max="100" value={vatSettings.softDrinkDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, softDrinkDineInRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
                         <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
                       </div>
                     </div>
@@ -961,14 +986,14 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-2">Takeaway</label>
                       <div className="relative">
-                        <input type="number" min="0" max="100" value={vatSettings.alcoholTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, alcoholTakeawayRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                        <input type="number" min="0" max="100" value={vatSettings.alcoholTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, alcoholTakeawayRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
                         <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
                       </div>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-2">Dine-In</label>
                       <div className="relative">
-                        <input type="number" min="0" max="100" value={vatSettings.alcoholDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, alcoholDineInRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                        <input type="number" min="0" max="100" value={vatSettings.alcoholDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, alcoholDineInRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
                         <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
                       </div>
                     </div>
@@ -989,7 +1014,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                   <div className="p-5">
                     <label className="block text-xs font-bold text-slate-700 mb-2">Delivery Service VAT (%)</label>
                     <div className="relative">
-                      <input type="number" min="0" max="100" value={vatSettings.deliveryVatRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, deliveryVatRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                      <input type="number" min="0" max="100" value={vatSettings.deliveryVatRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, deliveryVatRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
                       <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
                     </div>
                   </div>

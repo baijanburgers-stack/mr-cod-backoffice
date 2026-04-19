@@ -9,6 +9,102 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { resizeImage } from '@/lib/image-utils';
+import { useLoadScript } from '@react-google-maps/api';
+import usePlacesAutocomplete, { getGeocode } from 'use-places-autocomplete';
+import { getVatRulesByCountry } from '@/lib/vat-rules';
+
+type AddressAutocompleteProps = {
+  value: string;
+  onChange: (val: string, countryCode: string) => void;
+};
+
+const libraries: any = ["places"];
+
+function AddressAutocomplete({ value, onChange }: AddressAutocompleteProps) {
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string,
+    libraries,
+  });
+
+  const {
+    ready,
+    value: inputValue,
+    suggestions: { status, data },
+    setValue,
+    clearSuggestions,
+  } = usePlacesAutocomplete({
+    requestOptions: {
+      /* basic config */
+    },
+    debounce: 300,
+  });
+
+  // Sync external value when editing existing store
+  useEffect(() => {
+    if (value && inputValue === '') {
+      setValue(value, false);
+    }
+  }, [value, inputValue, setValue]);
+
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value);
+    onChange(e.target.value, 'DEFAULT'); // Default until they pick a suggestion
+  };
+
+  const handleSelect = async (address: string) => {
+    setValue(address, false);
+    clearSuggestions();
+    try {
+      const results = await getGeocode({ address });
+      const components = results[0]?.address_components || [];
+      const country = components.find(c => c.types.includes('country'));
+      onChange(address, country ? country.short_name : 'DEFAULT');
+    } catch (error) {
+      console.error('Error getting geocode:', error);
+      onChange(address, 'DEFAULT');
+    }
+  };
+
+  if (!isLoaded) {
+    return (
+      <input
+        required
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value, 'DEFAULT')}
+        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
+        placeholder="Loading Map Services..."
+      />
+    );
+  }
+
+  return (
+    <div className="relative w-full">
+      <input
+        required
+        type="text"
+        value={inputValue}
+        onChange={handleInput}
+        disabled={!ready}
+        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
+        placeholder="Search for an address..."
+      />
+      {status === "OK" && (
+        <ul className="absolute z-50 w-full bg-white mt-1 border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+          {data.map(({ place_id, description }) => (
+            <li
+              key={place_id}
+              onClick={() => handleSelect(description)}
+              className="px-4 py-3 hover:bg-slate-50 cursor-pointer text-sm text-slate-700 border-b border-slate-50 last:border-0"
+            >
+              {description}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 type Store = {
   id: string;
@@ -51,7 +147,8 @@ export default function SuperAdminStores() {
   // Form State
   const [formData, setFormData] = useState({
     name: '', address: '', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
-    ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest', ccvBackendUrl: 'https://app.mrcod.be'
+    ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest', ccvBackendUrl: 'https://app.mrcod.be',
+    countryCode: 'BE' 
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -105,13 +202,13 @@ export default function SuperAdminStores() {
 
   const openAddModal = () => {
     setEditingStore(null);
-    setFormData({ name: '', address: '', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', ccvBackendUrl: 'https://app.mrcod.be' });
+    setFormData({ name: '', address: '', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', ccvBackendUrl: 'https://app.mrcod.be', countryCode: 'BE' });
     setIsStoreModalOpen(true);
   };
 
   const openEditModal = (store: Store) => {
     setEditingStore(store);
-    setFormData({ name: store.name, address: store.address, manager: store.manager, phone: store.phone, email: store.email, companyName: store.companyName, vatNumber: store.vatNumber, status: store.status, image: store.image || '', logo: store.logo || '', maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', ccvBackendUrl: store.ccvBackendUrl || 'https://app.mrcod.be' });
+    setFormData({ name: store.name, address: store.address, manager: store.manager, phone: store.phone, email: store.email, companyName: store.companyName, vatNumber: store.vatNumber, status: store.status, image: store.image || '', logo: store.logo || '', maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', ccvBackendUrl: store.ccvBackendUrl || 'https://app.mrcod.be', countryCode: 'DEFAULT' });
     setIsStoreModalOpen(true);
   };
 
@@ -188,10 +285,15 @@ export default function SuperAdminStores() {
   const handleSaveStore = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const storeData = {
+      const storeData: any = {
         ...formData,
         isOpen: formData.status === 'Active'
       };
+      
+      // When creating a new store, apply VAT rules globally based on country
+      if (!editingStore) {
+        storeData.vatSettings = getVatRulesByCountry(formData.countryCode);
+      }
       
         // Store Save Logic
       let storeId = '';
@@ -520,13 +622,9 @@ export default function SuperAdminStores() {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">Address</label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
-                    placeholder="e.g. Grand Place 1, 1000 Brussels"
+                  <AddressAutocomplete 
+                    value={formData.address} 
+                    onChange={(val, country) => setFormData(f => ({ ...f, address: val, countryCode: country }))} 
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
