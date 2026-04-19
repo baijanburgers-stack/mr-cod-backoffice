@@ -99,8 +99,11 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
     accentColor: '#DC2626',
     tagline: '',
     promoBanners: [] as string[],
-    receiptLogo: ''
+    receiptLogo: '',
+    kioskFooterBanner: '' // Full-width image shown at the bottom of the kiosk idle screen
   });
+
+  const [footerUp, setFooterUp] = useState({ uploading: false, progress: 0 });
 
   const bannerRef = useRef<HTMLInputElement>(null);
 
@@ -127,7 +130,8 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
             accentColor: savedBranding.accentColor || '#DC2626',
             tagline: savedBranding.tagline || '',
             promoBanners: Array.isArray(savedBranding.promoBanners) ? savedBranding.promoBanners : (Array.isArray(data.promoBanners) ? data.promoBanners : []),
-            receiptLogo: savedBranding.receiptLogo || ''
+            receiptLogo: savedBranding.receiptLogo || '',
+            kioskFooterBanner: savedBranding.kioskFooterBanner || ''
           });
         }
       } catch (error) {
@@ -177,7 +181,7 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
     }
   };
 
-  const handleClearFile = async (url: string, field: 'storeLogo' | 'receiptLogo' | 'heroImage' | 'splashVideo') => {
+  const handleClearFile = async (url: string, field: 'storeLogo' | 'receiptLogo' | 'heroImage' | 'splashVideo' | 'kioskFooterBanner') => {
     if (url && url.includes('firebasestorage.googleapis.com')) {
       await deleteObject(ref(storage, url)).catch(() => {});
     }
@@ -200,7 +204,8 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
           splashVideo: branding.splashVideo,
           accentColor: branding.accentColor,
           tagline: branding.tagline,
-          promoBanners: branding.promoBanners
+          promoBanners: branding.promoBanners,
+          kioskFooterBanner: branding.kioskFooterBanner
         },
         storeLogo: branding.storeLogo,
         image: branding.heroImage, // Legacy website hero
@@ -388,6 +393,27 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
                 }
               }}
               hint="Drop a JPG/PNG for a static background, or an MP4/WebM to play an animated screen saver."
+            />
+          </div>
+        </div>
+
+        {/* Kiosk Footer Banner */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden md:col-span-2">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center"><ImageIcon className="w-5 h-5" /></div>
+            <div>
+              <h2 className="font-bold text-slate-900 text-lg">Kiosk Footer Banner</h2>
+              <p className="text-xs text-slate-500">Full-width image shown at the bottom of the idle screen (like a KFC-style brand bar). No overlay is applied — the image renders exactly as uploaded.</p>
+            </div>
+          </div>
+          <div className="p-6 md:p-8">
+            <UploadZone
+              accept="image/*"
+              currentUrl={branding.kioskFooterBanner}
+              uploadState={footerUp}
+              onFile={file => uploadFile(file, 'footer', setFooterUp, url => setBranding(b => ({ ...b, kioskFooterBanner: url })), branding.kioskFooterBanner)}
+              onClear={() => handleClearFile(branding.kioskFooterBanner, 'kioskFooterBanner')}
+              hint="Wide banner image (e.g. 1280×200 px). Displayed as-is at the bottom of the kiosk idle screen."
             />
           </div>
         </div>
