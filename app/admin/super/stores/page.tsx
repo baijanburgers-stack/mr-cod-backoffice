@@ -15,6 +15,7 @@ import { getVatRulesByCountry } from '@/lib/vat-rules';
 
 type AddressDetails = {
   street: string;
+  streetNumber: string;
   city: string;
   postalCode: string;
   countryCode: string;
@@ -87,9 +88,7 @@ function AddressAutocomplete({ value, onChange }: AddressAutocompleteProps) {
         if (c.types.includes('country')) countryCode = c.short_name;
       });
 
-      const street = `${streetName} ${streetNumber}`.trim();
-
-      onChange(address, { street, city, postalCode, countryCode });
+      onChange(address, { street: streetName, streetNumber, city, postalCode, countryCode });
     } catch (error) {
       console.error('Error getting geocode:', error);
       onChange(address, null);
@@ -150,6 +149,7 @@ type Store = {
   image?: string;
   logo?: string;
   street?: string;
+  streetNumber?: string;
   city?: string;
   postalCode?: string;
   countryCode?: string;
@@ -181,7 +181,7 @@ export default function SuperAdminStores() {
 
   // Form State
   const [formData, setFormData] = useState({
-    name: '', address: '', street: '', city: '', postalCode: '', countryCode: 'BE', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
+    name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
     ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest', ccvBackendUrl: 'https://app.mrcod.be'
   });
 
@@ -236,13 +236,13 @@ export default function SuperAdminStores() {
 
   const openAddModal = () => {
     setEditingStore(null);
-    setFormData({ name: '', address: '', street: '', city: '', postalCode: '', countryCode: 'BE', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', ccvBackendUrl: 'https://app.mrcod.be' });
+    setFormData({ name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', ccvBackendUrl: 'https://app.mrcod.be' });
     setIsStoreModalOpen(true);
   };
 
   const openEditModal = (store: Store) => {
     setEditingStore(store);
-    setFormData({ name: store.name, address: store.address, street: store.street || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'DEFAULT', manager: store.manager, phone: store.phone, email: store.email, companyName: store.companyName, vatNumber: store.vatNumber, status: store.status, image: store.image || '', logo: store.logo || '', maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', ccvBackendUrl: store.ccvBackendUrl || 'https://app.mrcod.be' });
+    setFormData({ name: store.name, address: store.address, street: store.street || '', streetNumber: store.streetNumber || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'DEFAULT', manager: store.manager, phone: store.phone, email: store.email, companyName: store.companyName, vatNumber: store.vatNumber, status: store.status, image: store.image || '', logo: store.logo || '', maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', ccvBackendUrl: store.ccvBackendUrl || 'https://app.mrcod.be' });
     setIsStoreModalOpen(true);
   };
 
@@ -666,18 +666,28 @@ export default function SuperAdminStores() {
                       }
                     }} 
                   />
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 pt-4 border-t border-slate-100">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-4 pt-4 border-t border-slate-100">
                     <div className="col-span-2 sm:col-span-2">
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Street + Number</label>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Street</label>
                       <input
                         type="text"
                         value={formData.street}
                         onChange={(e) => setFormData({ ...formData, street: e.target.value })}
                         className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-amber-500 focus:bg-white outline-none transition-colors"
-                        placeholder="e.g. Grand Place 1"
+                        placeholder="e.g. Grand Place"
                       />
                     </div>
-                    <div className="col-span-1">
+                    <div className="col-span-1 sm:col-span-1">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Number</label>
+                      <input
+                        type="text"
+                        value={formData.streetNumber}
+                        onChange={(e) => setFormData({ ...formData, streetNumber: e.target.value })}
+                        className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-amber-500 focus:bg-white outline-none transition-colors"
+                        placeholder="e.g. 1"
+                      />
+                    </div>
+                    <div className="col-span-1 sm:col-span-2">
                       <label className="block text-xs font-bold text-slate-700 mb-1">Post Code</label>
                       <input
                         type="text"
