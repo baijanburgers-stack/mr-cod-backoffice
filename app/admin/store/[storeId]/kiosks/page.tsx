@@ -52,12 +52,12 @@ type Kiosk = {
 };
 
 type FormData = {
-  name: string; loginId: string; password: string; ccvTerminalId: string;
+  name: string; loginId: string; password: string;
   isActive: boolean;
 };
 
 const defaultForm: FormData = {
-  name: '', loginId: '', password: '', ccvTerminalId: '',
+  name: '', loginId: '', password: '',
   isActive: true,
 };
 
@@ -148,7 +148,7 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
   const openEdit = (k: Kiosk) => {
     setEditingKiosk(k);
     setFormData({
-      name: k.name, loginId: k.loginId, password: '', ccvTerminalId: k.ccvTerminalId,
+      name: k.name, loginId: k.loginId, password: '',
       isActive: k.isActive,
     });
     setLoginIdError('');
@@ -171,9 +171,8 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
         name:          fd.name.trim(),
         loginId:       fd.loginId.trim(),
         passwordHash:  ph,
-        ccvTerminalId: fd.ccvTerminalId.trim(),
         isActive: fd.isActive,
-        // Printers are configured on-device via the Kiosk Config panel
+        // CCV Terminal ID and Printers are configured on-device via the Kiosk Config panel
       };
       const col = collection(db, 'stores', storeId, 'kiosks');
       if (editingKiosk) await updateDoc(doc(col, editingKiosk.id), data);
@@ -328,12 +327,6 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
                         </button>
                       </div>
                       <p className="text-xs text-slate-400 mt-1">Stored as SHA-256 hash.</p>
-                    </Field>
-                    <Field label="CCV Terminal ID">
-                      <input required value={fd.ccvTerminalId}
-                        onChange={e => setFd(f => ({ ...f, ccvTerminalId: e.target.value }))}
-                        className="input font-mono" placeholder="TRM-0012" />
-                      <p className="text-xs text-slate-400 mt-1">Found in CCV back-office → Terminals</p>
                     </Field>
                     <div className="flex items-center justify-between py-3 border-t border-slate-100">
                       <div>
