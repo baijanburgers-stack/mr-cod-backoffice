@@ -84,9 +84,9 @@ function UploadZone({
 }
 
 const TABS = [
-  { id: 'store', label: 'Store Settings',  icon: Store },
+  { id: 'general', label: 'General Settings', icon: Settings },
+  { id: 'store', label: 'Online Ordering', icon: Store },
   { id: 'kiosk', label: 'Kiosk Settings',  icon: Tablet },
-  { id: 'pos',   label: 'POS Settings',    icon: CreditCard },
   { id: 'vat',   label: 'VAT Settings',    icon: Percent },
 ];
 
@@ -95,7 +95,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
   const storeId = resolvedParams.storeId;
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('store');
+  const [activeTab, setActiveTab] = useState('general');
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -154,18 +154,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     deliveryVatRate: 21,
   });
 
-  // CCV Payment Settings State
-  const [ccvSettings, setCcvSettings] = useState({
-    ccvApiKeyLive: '',
-    ccvApiKeyTest: '',
-    ccvEnvironment: 'TEST' as 'TEST' | 'LIVE',
-    ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest',
-    ccvBackendUrl: 'https://app.mrcod.be',
-  });
-  const [showLiveKey, setShowLiveKey] = useState(false);
-  const [showTestKey, setShowTestKey] = useState(false);
-  const [isSavingCcv, setIsSavingCcv] = useState(false);
-  const [ccvSaveSuccess, setCcvSaveSuccess] = useState(false);
+
 
   // Holidays State
   const [holidays, setHolidays] = useState<{ id: string; date: string; note: string }[]>([]);
@@ -224,13 +213,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
           if (data.vatSettings) setVatSettings({ ...vatSettings, ...data.vatSettings });
           if (data.storeHours) setStoreHours(data.storeHours);
           if (data.holidays) setHolidays(data.holidays);
-          setCcvSettings({
-            ccvApiKeyLive: data.ccvApiKeyLive || '',
-            ccvApiKeyTest: data.ccvApiKeyTest || '',
-            ccvEnvironment: data.ccvEnvironment || 'TEST',
-            ccvManagementSystemId: data.ccvManagementSystemId || 'GrundmasterBE',
-            ccvBackendUrl: data.ccvBackendUrl || 'https://app.mrcod.be',
-          });
+
 
           const savedBranding = data.branding || {};
           setBranding({
@@ -416,24 +399,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     }
   };
 
-  const handleSaveCcv = async () => {
-    setIsSavingCcv(true);
-    try {
-      await updateDoc(doc(db, 'stores', storeId), {
-        ccvApiKeyLive: ccvSettings.ccvApiKeyLive.trim(),
-        ccvApiKeyTest: ccvSettings.ccvApiKeyTest.trim(),
-        ccvEnvironment: ccvSettings.ccvEnvironment,
-        ccvManagementSystemId: ccvSettings.ccvManagementSystemId,
-        ccvBackendUrl: ccvSettings.ccvBackendUrl.trim(),
-      });
-      setCcvSaveSuccess(true);
-      setTimeout(() => setCcvSaveSuccess(false), 3000);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `stores/${storeId}`);
-    } finally {
-      setIsSavingCcv(false);
-    }
-  };
+
 
   if (isLoading) {
     return (
@@ -453,19 +419,13 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
           <p className="mt-2 text-slate-500 font-medium">Manage your store configurations, branding, and POS from one place.</p>
         </div>
         <button 
-          onClick={(e) => {
-             if (activeTab === 'pos') {
-                 handleSaveCcv();
-             } else {
-                 handleSave(e);
-             }
-          }}
-          disabled={isSaving || isSavingCcv || logoUp.uploading || bgUp.uploading || vidUp.uploading || rcptUp.uploading}
+          onClick={handleSave}
+          disabled={isSaving || logoUp.uploading || bgUp.uploading || vidUp.uploading || rcptUp.uploading}
           className="inline-flex items-center justify-center px-6 py-2.5 bg-amber-500 text-slate-900 rounded-xl font-bold hover:bg-amber-400 transition-all shadow-sm disabled:opacity-70 disabled:cursor-not-allowed min-w-[140px]"
         >
-          {(isSaving || isSavingCcv) ? (
+          {isSaving ? (
             <div className="w-5 h-5 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" />
-          ) : (showSuccess || ccvSaveSuccess) ? (
+          ) : showSuccess ? (
             <>
               <Check className="w-5 h-5 mr-2" />
               Saved!
@@ -512,59 +472,19 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
         transition={{ duration: 0.2 }}
         className="space-y-8"
       >
-        {activeTab === 'store' && (
+        {activeTab === 'general' && (
            <div className="space-y-8">
-              {/* Store General Settings merged here */}
                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden pb-8">
                   <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
                       <Settings className="w-5 h-5"/>
                     </div>
                     <div>
                       <h2 className="text-xl font-heading font-black text-slate-900">General Settings</h2>
-                      <p className="text-sm text-slate-500 font-medium">Core contact info and services</p>
+                      <p className="text-sm text-slate-500 font-medium">Core contact info and notification sounds</p>
                     </div>
                   </div>
                   <div className="px-8 pt-8 space-y-8 max-w-2xl">
-                    {/* Ops services */}
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900 mb-4">Operational Services</h3>
-                      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-8">
-                        <div className="space-y-6 max-w-lg">
-                          <div className="flex items-center justify-between">
-                            <div>
-                               <div className="font-bold text-slate-900">Takeaway / Pickup</div>
-                               <div className="text-xs text-slate-500">Allow customers to pick up their orders</div>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input type="checkbox" checked={storeServices.takeaway} onChange={(e) => setStoreServices({ ...storeServices, takeaway: e.target.checked })} className="sr-only peer" />
-                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-amber-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                            </label>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div>
-                               <div className="font-bold text-slate-900">Delivery</div>
-                               <div className="text-xs text-slate-500">Allow customers to request delivery</div>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input type="checkbox" checked={storeServices.delivery} onChange={(e) => setStoreServices({ ...storeServices, delivery: e.target.checked })} className="sr-only peer" />
-                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-amber-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                            </label>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div>
-                               <div className="font-bold text-slate-900">Dine-In</div>
-                               <div className="text-xs text-slate-500">Allow customers to eat inside</div>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input type="checkbox" checked={storeServices.dineIn} onChange={(e) => setStoreServices({ ...storeServices, dineIn: e.target.checked })} className="sr-only peer" />
-                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-amber-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">Order Notification Sound</label>
                       <div className="flex items-center gap-3">
@@ -613,6 +533,10 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                     </div>
                     
                     <div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-4 pt-4 border-t border-slate-100">Contacts</h3>
+                    </div>
+                    
+                    <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">Telephone</label>
                       <div className="relative">
                         <Phone className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
@@ -633,6 +557,61 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                       <div className="relative">
                         <MapPin className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
                         <textarea rows={3} value={generalSettings.address} onChange={(e) => setGeneralSettings({ ...generalSettings, address: e.target.value })} className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none resize-none" placeholder="Grand Place 1, 1000 Brussels"/>
+                      </div>
+                    </div>
+                  </div>
+               </div>
+           </div>
+        )}
+
+        {activeTab === 'store' && (
+           <div className="space-y-8">
+               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden pb-8">
+                  <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                      <Store className="w-5 h-5"/>
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-heading font-black text-slate-900">Online Ordering Settings</h2>
+                      <p className="text-sm text-slate-500 font-medium">Configure store services and hours</p>
+                    </div>
+                  </div>
+                  <div className="px-8 pt-8 space-y-8 max-w-2xl">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-4">Operational Services</h3>
+                      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-8">
+                        <div className="space-y-6 max-w-lg">
+                          <div className="flex items-center justify-between">
+                            <div>
+                               <div className="font-bold text-slate-900">Takeaway / Pickup</div>
+                               <div className="text-xs text-slate-500">Allow customers to pick up their orders</div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" checked={storeServices.takeaway} onChange={(e) => setStoreServices({ ...storeServices, takeaway: e.target.checked })} className="sr-only peer" />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-amber-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                            </label>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                               <div className="font-bold text-slate-900">Delivery</div>
+                               <div className="text-xs text-slate-500">Allow customers to request delivery</div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" checked={storeServices.delivery} onChange={(e) => setStoreServices({ ...storeServices, delivery: e.target.checked })} className="sr-only peer" />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-amber-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                            </label>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                               <div className="font-bold text-slate-900">Dine-In</div>
+                               <div className="text-xs text-slate-500">Allow customers to eat inside</div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" checked={storeServices.dineIn} onChange={(e) => setStoreServices({ ...storeServices, dineIn: e.target.checked })} className="sr-only peer" />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-amber-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                            </label>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -727,104 +706,71 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                   </div>
                </div>
            </div>
-        )}
-
-        {activeTab === 'kiosk' && (
+        )}        {activeTab === 'kiosk' && (
            <div className="space-y-8">
-              {/* Branding / Kiosk Setting */}
+              {/* Branding / Visual Assets */}
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0"><Palette className="w-5 h-5" /></div>
                   <div>
-                    <h2 className="text-xl font-heading font-black text-slate-900">Core Branch Identity</h2>
-                    <p className="text-sm text-slate-500 font-medium">Configure visuals for Kiosks, Web Ordering, Driver App, and POS.</p>
+                    <h2 className="text-xl font-heading font-black text-slate-900">Kiosk Visual Assets</h2>
+                    <p className="text-sm text-slate-500 font-medium">Configure logos and idle screens for the kiosk.</p>
                   </div>
                 </div>
                 
                 <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div className="md:col-span-1">
-                    <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-widest text-xs">Primary Logo</label>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-widest text-xs flex items-center gap-2">
+                       Primary Logo
+                    </label>
                     <UploadZone
                       accept="image/*"
                       currentUrl={branding.storeLogo}
                       uploadState={logoUp}
                       onFile={file => uploadFile(file, 'logo', setLogoUp, url => setBranding(b => ({ ...b, storeLogo: url })), branding.storeLogo)}
                       onClear={() => handleClearFile(branding.storeLogo, 'storeLogo')}
-                      hint="PNG/SVG (transparent) — used everywhere"
+                      hint="PNG/SVG (transparent)"
                     />
                   </div>
-                  <div className="md:col-span-2 space-y-6">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-widest text-xs">Global Accent Color</label>
-                      <div className="flex items-center gap-4">
-                        <input type="color" value={branding.accentColor || '#DC2626'} onChange={e => setBranding(b => ({ ...b, accentColor: e.target.value }))} className="w-14 h-14 rounded-xl border border-slate-200 cursor-pointer p-0.5 outline-none" />
-                        <div className="flex-1">
-                          <input type="text" value={branding.accentColor || '#DC2626'} onChange={e => setBranding(b => ({ ...b, accentColor: e.target.value }))} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 outline-none font-mono text-sm uppercase" />
-                          <p className="text-xs text-slate-400 mt-2">Applies to checkout buttons, kiosk touches, and POS highlights.</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-widest text-xs">Branch Tagline (Optional)</label>
-                      <div className="flex items-center gap-3">
-                        <Type className="w-5 h-5 text-slate-400" />
-                        <input type="text" value={branding.tagline} onChange={e => setBranding(b => ({ ...b, tagline: e.target.value }))} placeholder="e.g. Belgian Kitchen" className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 outline-none text-sm" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 text-slate-200 flex items-center justify-center shrink-0"><ImageIcon className="w-5 h-5" /></div>
                   <div>
-                     <h2 className="font-bold text-slate-900 text-lg">Receipt Printer Artwork</h2>
-                     <p className="text-xs text-slate-500">Black and white, high-contrast logo optimized for thermal receipt printers.</p>
+                     <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-widest text-xs flex items-center gap-2">
+                        Receipt Artwork
+                     </label>
+                     <UploadZone
+                       accept="image/*"
+                       currentUrl={branding.receiptLogo}
+                       uploadState={rcptUp}
+                       onFile={file => uploadFile(file, 'logo', setRcptUp, url => setBranding(b => ({ ...b, receiptLogo: url })), branding.receiptLogo)}
+                       onClear={() => handleClearFile(branding.receiptLogo, 'receiptLogo')}
+                       hint="B&W high-contrast image"
+                     />
                   </div>
-                </div>
-                <div className="p-6 md:p-8 max-w-sm">
-                  <UploadZone
-                    accept="image/*"
-                    currentUrl={branding.receiptLogo}
-                    uploadState={rcptUp}
-                    onFile={file => uploadFile(file, 'logo', setRcptUp, url => setBranding(b => ({ ...b, receiptLogo: url })), branding.receiptLogo)}
-                    onClear={() => handleClearFile(branding.receiptLogo, 'receiptLogo')}
-                    hint="JPG/PNG — Pure black & white without gradients (max 500x500)."
-                  />
-                </div>
-              </div>
-
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0"><Video className="w-5 h-5" /></div>
                   <div>
-                     <h2 className="font-bold text-slate-900 text-lg">Kiosk Idle Media</h2>
-                     <p className="text-xs text-slate-500">Upload an Image (Web + Kiosk) OR a Video (Kiosk Screensaver).</p>
+                     <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-widest text-xs flex items-center gap-2">
+                        Idle Media
+                     </label>
+                     <UploadZone
+                       accept="image/*,video/mp4,video/webm"
+                       currentUrl={branding.splashVideo || branding.heroImage}
+                       uploadState={bgUp}
+                       previewType={branding.splashVideo ? 'video' : 'image'}
+                       onFile={file => {
+                         const isVideo = file.type.startsWith('video/');
+                         uploadFile(file, isVideo ? 'videos' : 'backgrounds', setBgUp, url => {
+                           if (isVideo) {
+                             setBranding(b => ({ ...b, splashVideo: url }));
+                           } else {
+                             setBranding(b => ({ ...b, heroImage: url, splashVideo: '' }));
+                           }
+                         }, isVideo ? branding.splashVideo : branding.heroImage);
+                       }}
+                       onClear={() => {
+                         if (branding.splashVideo) handleClearFile(branding.splashVideo, 'splashVideo');
+                         else if (branding.heroImage) handleClearFile(branding.heroImage, 'heroImage');
+                       }}
+                       hint="Image or Video (Screensaver)"
+                     />
                   </div>
-                </div>
-                <div className="p-6 md:p-8 max-w-sm">
-                  <UploadZone
-                    accept="image/*,video/mp4,video/webm"
-                    currentUrl={branding.splashVideo || branding.heroImage}
-                    uploadState={bgUp}
-                    previewType={branding.splashVideo ? 'video' : 'image'}
-                    onFile={file => {
-                      const isVideo = file.type.startsWith('video/');
-                      uploadFile(file, isVideo ? 'videos' : 'backgrounds', setBgUp, url => {
-                        if (isVideo) {
-                          setBranding(b => ({ ...b, splashVideo: url }));
-                        } else {
-                          setBranding(b => ({ ...b, heroImage: url, splashVideo: '' }));
-                        }
-                      }, isVideo ? branding.splashVideo : branding.heroImage);
-                    }}
-                    onClear={() => {
-                      if (branding.splashVideo) handleClearFile(branding.splashVideo, 'splashVideo');
-                      else if (branding.heroImage) handleClearFile(branding.heroImage, 'heroImage');
-                    }}
-                    hint="Drop a JPG/PNG for static bg, or MP4/WebM for screen saver."
-                  />
                 </div>
               </div>
 
@@ -868,100 +814,11 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
                   )}
                 </div>
               </div>
+
+
+             
+             <CcvTransactionViewer storeId={storeId} />
            </div>
-        )}
-
-        {activeTab === 'pos' && (
-           <div className="space-y-8">
-             <div className="space-y-6 max-w-2xl bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-               {/* Environment Toggle */}
-             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-               <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/80 flex items-center gap-3">
-                 <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0"><Wifi className="w-5 h-5 text-blue-600" /></div>
-                 <div>
-                   <h3 className="font-bold text-slate-900">Active Environment</h3>
-                   <p className="text-xs text-slate-500">Kiosks will use the selected environment API key</p>
-                 </div>
-               </div>
-               <div className="p-6">
-                 <div className="flex gap-3">
-                   <button type="button" onClick={() => setCcvSettings(s => ({ ...s, ccvEnvironment: 'TEST' }))} className={`flex-1 py-3 px-4 rounded-xl font-bold border-2 transition-all flex items-center justify-center gap-2 ${ccvSettings.ccvEnvironment === 'TEST' ? 'bg-amber-500 border-amber-500 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-amber-300'}`}><WifiOff className="w-4 h-4" /> TEST Mode</button>
-                   <button type="button" onClick={() => setCcvSettings(s => ({ ...s, ccvEnvironment: 'LIVE' }))} className={`flex-1 py-3 px-4 rounded-xl font-bold border-2 transition-all flex items-center justify-center gap-2 ${ccvSettings.ccvEnvironment === 'LIVE' ? 'bg-emerald-500 border-emerald-500 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-300'}`}><Wifi className="w-4 h-4" /> LIVE Mode</button>
-                 </div>
-                 {ccvSettings.ccvEnvironment === 'LIVE' && (
-                    <div className="mt-3 flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-xl p-3">
-                      <span className="text-rose-600 text-lg leading-none">⚠️</span>
-                      <p className="text-xs text-rose-700 font-medium">LIVE mode — real card transactions will be processed.</p>
-                    </div>
-                 )}
-               </div>
-             </div>
-
-             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-               <div className="px-6 py-4 border-b border-slate-100 bg-emerald-50/60 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center"><CreditCard className="w-5 h-5 text-emerald-700"/></div>
-                  <div>
-                     <h3 className="font-bold text-slate-900">Live API Key</h3>
-                     <p className="text-xs text-slate-500">From CCV back-office (starts with <code className="bg-slate-100 px-1 rounded font-mono">l_</code>)</p>
-                  </div>
-               </div>
-               <div className="p-6 relative">
-                 <input type={showLiveKey ? 'text' : 'password'} value={ccvSettings.ccvApiKeyLive} onChange={(e) => setCcvSettings(s => ({ ...s, ccvApiKeyLive: e.target.value }))} className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 outline-none font-mono text-sm" placeholder="l_xxxxxxxxxxxxxxxxxxxxxxxx" />
-                 <button type="button" onClick={() => setShowLiveKey(v=>!v)} className="absolute right-9 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-700 transition-colors">{showLiveKey ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}</button>
-               </div>
-             </div>
-
-             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-               <div className="px-6 py-4 border-b border-slate-100 bg-amber-50/60 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center"><CreditCard className="w-5 h-5 text-amber-700"/></div>
-                  <div>
-                     <h3 className="font-bold text-slate-900">Test API Key</h3>
-                     <p className="text-xs text-slate-500">Sandbox key for development (starts with <code className="bg-slate-100 px-1 rounded font-mono">t_</code>)</p>
-                  </div>
-               </div>
-               <div className="p-6 relative">
-                 <input type={showTestKey ? 'text' : 'password'} value={ccvSettings.ccvApiKeyTest} onChange={(e) => setCcvSettings(s => ({ ...s, ccvApiKeyTest: e.target.value }))} className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:border-amber-500 outline-none font-mono text-sm" placeholder="t_xxxxxxxxxxxxxxxxxxxxxxxx" />
-                 <button type="button" onClick={() => setShowTestKey(v=>!v)} className="absolute right-9 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-700 transition-colors">{showTestKey ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}</button>
-               </div>
-             </div>
-
-             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-               <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/80">
-                  <h3 className="font-bold text-slate-900">Management System ID</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Identifies your terminal region to CCV.</p>
-               </div>
-               <div className="p-6 flex gap-2">
-                  {(['GrundmasterBE', 'GrundmasterNL', 'GrundmasterNL-ThirdPartyTest'] as const).map(id => (
-                    <button key={id} type="button" onClick={() => setCcvSettings(s => ({ ...s, ccvManagementSystemId: id }))} className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border-2 transition-all ${ccvSettings.ccvManagementSystemId === id ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'}`}>
-                      {id === 'GrundmasterBE' ? '🇧🇪 BE' : id === 'GrundmasterNL' ? '🇳🇱 NL' : '🧪 Test'}
-                    </button>
-                  ))}
-               </div>
-             </div>
-
-             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-               <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/80">
-                 <h3 className="font-bold text-slate-900">Backend Base URL</h3>
-                 <p className="text-xs text-slate-500 mt-0.5">Your deployed Next.js app URL.</p>
-               </div>
-               <div className="p-6 space-y-3">
-                 <input type="url" value={ccvSettings.ccvBackendUrl} onChange={(e) => setCcvSettings(s => ({ ...s, ccvBackendUrl: e.target.value }))} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-900 outline-none font-mono text-sm" placeholder="https://app.mrcod.be" />
-                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Webhook URL (register in CCV portal)</p>
-                    <code className="text-xs text-emerald-700 font-mono break-all">{(ccvSettings.ccvBackendUrl || 'https://app.mrcod.be').replace(/\/$/, '')}/api/ccv/webhook</code>
-                 </div>
-               </div>
-             </div>
-
-             <div className="flex justify-end pt-4">
-               <button type="button" onClick={handleSaveCcv} disabled={isSavingCcv} className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-sm min-w-[160px] disabled:opacity-70">
-                 {isSavingCcv ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : ccvSaveSuccess ? <><Check className="w-4 h-4" /> Saved!</> : <><Save className="w-4 h-4" /> Save CCV Settings</>}
-               </button>
-             </div>
-           </div>
-
-           <CcvTransactionViewer storeId={storeId} />
-         </div>
         )}
 
         {activeTab === 'vat' && (

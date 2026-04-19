@@ -27,6 +27,11 @@ type Store = {
   maxKiosks?: number;
   fdmId?: string;
   vscId?: string;
+  ccvApiKeyLive?: string;
+  ccvApiKeyTest?: string;
+  ccvEnvironment?: 'TEST' | 'LIVE';
+  ccvManagementSystemId?: 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest';
+  ccvBackendUrl?: string;
 };
 
 export default function SuperAdminStores() {
@@ -45,7 +50,8 @@ export default function SuperAdminStores() {
 
   // Form State
   const [formData, setFormData] = useState({
-    name: '', address: '', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: ''
+    name: '', address: '', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
+    ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest', ccvBackendUrl: 'https://app.mrcod.be'
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -73,6 +79,11 @@ export default function SuperAdminStores() {
           maxKiosks: data.maxKiosks ?? 2,
           fdmId: data.fdmId || '',
           vscId: data.vscId || '',
+          ccvApiKeyLive: data.ccvApiKeyLive || '',
+          ccvApiKeyTest: data.ccvApiKeyTest || '',
+          ccvEnvironment: data.ccvEnvironment || 'TEST',
+          ccvManagementSystemId: data.ccvManagementSystemId || 'GrundmasterBE',
+          ccvBackendUrl: data.ccvBackendUrl || 'https://app.mrcod.be',
         });
       });
       setStores(fetchedStores);
@@ -94,13 +105,13 @@ export default function SuperAdminStores() {
 
   const openAddModal = () => {
     setEditingStore(null);
-    setFormData({ name: '', address: '', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '' });
+    setFormData({ name: '', address: '', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', ccvBackendUrl: 'https://app.mrcod.be' });
     setIsStoreModalOpen(true);
   };
 
   const openEditModal = (store: Store) => {
     setEditingStore(store);
-    setFormData({ name: store.name, address: store.address, manager: store.manager, phone: store.phone, email: store.email, companyName: store.companyName, vatNumber: store.vatNumber, status: store.status, image: store.image || '', logo: store.logo || '', maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '' });
+    setFormData({ name: store.name, address: store.address, manager: store.manager, phone: store.phone, email: store.email, companyName: store.companyName, vatNumber: store.vatNumber, status: store.status, image: store.image || '', logo: store.logo || '', maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', ccvBackendUrl: store.ccvBackendUrl || 'https://app.mrcod.be' });
     setIsStoreModalOpen(true);
   };
 
@@ -608,6 +619,65 @@ export default function SuperAdminStores() {
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
                       placeholder="e.g. VSC-999999991"
                     />
+                  </div>
+                </div>
+
+                <div className="pt-4 mt-4 border-t border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">CCV Terminal Configuration</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Active Environment</label>
+                      <select
+                        value={formData.ccvEnvironment}
+                        onChange={(e) => setFormData({ ...formData, ccvEnvironment: e.target.value as 'TEST' | 'LIVE' })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors bg-white font-bold"
+                      >
+                        <option value="TEST">TEST Mode (Sandbox)</option>
+                        <option value="LIVE">LIVE Mode (Production)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Test API Key</label>
+                      <input
+                        type="text"
+                        value={formData.ccvApiKeyTest}
+                        onChange={(e) => setFormData({ ...formData, ccvApiKeyTest: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors font-mono text-sm"
+                        placeholder="t_xxxxxxxxxxx"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Live API Key</label>
+                      <input
+                        type="text"
+                        value={formData.ccvApiKeyLive}
+                        onChange={(e) => setFormData({ ...formData, ccvApiKeyLive: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 outline-none transition-colors font-mono text-sm"
+                        placeholder="l_xxxxxxxxxxx"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Management System ID</label>
+                      <select
+                        value={formData.ccvManagementSystemId}
+                        onChange={(e) => setFormData({ ...formData, ccvManagementSystemId: e.target.value as any })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors bg-white"
+                      >
+                        <option value="GrundmasterBE">🇧🇪 GrundmasterBE</option>
+                        <option value="GrundmasterNL">🇳🇱 GrundmasterNL</option>
+                        <option value="GrundmasterNL-ThirdPartyTest">🧪 GrundmasterNL-ThirdPartyTest</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Backend Webhook URL</label>
+                      <input
+                        type="url"
+                        value={formData.ccvBackendUrl}
+                        onChange={(e) => setFormData({ ...formData, ccvBackendUrl: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors font-mono text-sm"
+                        placeholder="https://app.mrcod.be"
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="pt-4 flex justify-end gap-3">

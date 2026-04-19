@@ -53,15 +53,11 @@ type Kiosk = {
 
 type FormData = {
   name: string; loginId: string; password: string; ccvTerminalId: string;
-  customerPrinterType: 'lan' | 'usb'; customerPrinterIp: string; customerPrinterPort: string;
-  kitchenPrinterType:  'lan' | 'usb'; kitchenPrinterIp:  string; kitchenPrinterPort:  string;
-  isActive:     boolean;
+  isActive: boolean;
 };
 
 const defaultForm: FormData = {
   name: '', loginId: '', password: '', ccvTerminalId: '',
-  customerPrinterType: 'lan', customerPrinterIp: '', customerPrinterPort: '9100',
-  kitchenPrinterType:  'lan', kitchenPrinterIp:  '', kitchenPrinterPort:  '9100',
   isActive: true,
 };
 
@@ -81,7 +77,7 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
   const [showPw, setShowPw]         = useState(false);
   const [isSaving, setIsSaving]     = useState(false);
   const [loginIdError, setLoginIdError] = useState('');
-  const [activeTab, setActiveTab]   = useState<'identity' | 'hardware'>('identity');
+  const [activeTab, setActiveTab]   = useState<'identity'>('identity');
   const [delModal, setDelModal]     = useState<Kiosk | null>(null);
 
   // Publish state
@@ -153,11 +149,7 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
     setEditingKiosk(k);
     setFormData({
       name: k.name, loginId: k.loginId, password: '', ccvTerminalId: k.ccvTerminalId,
-      customerPrinterType: k.customerPrinter.type, customerPrinterIp: k.customerPrinter.ip,
-      customerPrinterPort: String(k.customerPrinter.port),
-      kitchenPrinterType:  k.kitchenPrinter.type,  kitchenPrinterIp: k.kitchenPrinter.ip,
-      kitchenPrinterPort:  String(k.kitchenPrinter.port),
-      isActive:      k.isActive,
+      isActive: k.isActive,
     });
     setLoginIdError('');
     setActiveTab('identity');
@@ -180,10 +172,8 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
         loginId:       fd.loginId.trim(),
         passwordHash:  ph,
         ccvTerminalId: fd.ccvTerminalId.trim(),
-        customerPrinter: { type: fd.customerPrinterType, ip: fd.customerPrinterIp.trim(), port: parseInt(fd.customerPrinterPort) || 9100 },
-        kitchenPrinter:  { type: fd.kitchenPrinterType,  ip: fd.kitchenPrinterIp.trim(),  port: parseInt(fd.kitchenPrinterPort)  || 9100 },
         isActive: fd.isActive,
-        // Branding is now managed globally at the store level
+        // Printers are configured on-device via the Kiosk Config panel
       };
       const col = collection(db, 'stores', storeId, 'kiosks');
       if (editingKiosk) await updateDoc(doc(col, editingKiosk.id), data);
@@ -307,17 +297,10 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
 
               {/* Tab bar */}
               <div className="flex border-b border-slate-100 flex-shrink-0">
-                {([
-                  { key: 'identity', label: 'Identity', icon: Tablet },
-                  { key: 'hardware', label: 'Hardware', icon: Printer },
-                ] as const).map(({ key, label, icon: Icon }) => (
-                  <button key={key} type="button" onClick={() => setActiveTab(key as any)}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-bold border-b-2 transition-all ${
-                      activeTab === key ? 'border-red-600 text-red-600' : 'border-transparent text-slate-500 hover:text-slate-700'
-                    }`}>
-                    <Icon className="w-4 h-4" />{label}
-                  </button>
-                ))}
+                <button type="button" onClick={() => setActiveTab('identity' as any)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-bold border-b-2 border-red-600 text-red-600">
+                  <Tablet className="w-4 h-4" />Identity
+                </button>
               </div>
 
               <form onSubmit={handleSave} className="overflow-y-auto flex-1">
@@ -365,21 +348,6 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
                     </div>
                   </div>
                 )}
-
-                {/* ── HARDWARE ─────────────────────────────────────────── */}
-                {activeTab === 'hardware' && (
-                  <div className="p-6 space-y-6">
-                    <div>
-                      <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Customer Receipt Printer (Star TSP143III)</h3>
-                      <PrinterFields type="customerPrinterType" ip="customerPrinterIp" port="customerPrinterPort" fd={fd} setFd={setFd} />
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Kitchen Printer (Star TSP143III)</h3>
-                      <PrinterFields type="kitchenPrinterType" ip="kitchenPrinterIp" port="kitchenPrinterPort" fd={fd} setFd={setFd} />
-                    </div>
-                  </div>
-                )}
-
 
 
                 {/* Footer */}
@@ -659,41 +627,6 @@ function IdlePreview({ logoUrl, bgUrl, videoUrl, accentColor, tagline, fullscree
 
 // ─── Printer fields ────────────────────────────────────────────────────────────
 
-function PrinterFields({ type, ip, port, fd, setFd }: {
-  type: 'customerPrinterType' | 'kitchenPrinterType';
-  ip:   'customerPrinterIp'   | 'kitchenPrinterIp';
-  port: 'customerPrinterPort' | 'kitchenPrinterPort';
-  fd: FormData; setFd: React.Dispatch<React.SetStateAction<FormData>>;
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-2">
-        {(['lan', 'usb'] as const).map(t => (
-          <button key={t} type="button" onClick={() => setFd(f => ({ ...f, [type]: t }))}
-            className={`flex-1 py-2 px-3 rounded-xl font-bold text-sm border-2 transition-all ${
-              fd[type] === t ? 'bg-red-600 border-red-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-red-300'
-            }`}>
-            {t === 'lan' ? <><Wifi className="w-4 h-4 inline mr-1" />LAN</> : <><WifiOff className="w-4 h-4 inline mr-1" />USB</>}
-          </button>
-        ))}
-      </div>
-      {fd[type] === 'lan' && (
-        <div className="grid grid-cols-3 gap-2">
-          <div className="col-span-2">
-            <label className="block text-xs font-bold text-slate-600 mb-1">IP Address</label>
-            <input value={fd[ip]} onChange={e => setFd(f => ({ ...f, [ip]: e.target.value }))}
-              className="input font-mono text-sm" placeholder="192.168.1.100" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Port</label>
-            <input type="number" value={fd[port]} onChange={e => setFd(f => ({ ...f, [port]: e.target.value }))}
-              className="input font-mono text-sm" placeholder="9100" />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Field wrapper ─────────────────────────────────────────────────────────────
 
