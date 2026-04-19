@@ -6,7 +6,8 @@ import {
   Plus, Tablet, Edit, Trash2, X, AlertTriangle,
   Eye, EyeOff, Printer, Wifi, WifiOff,
   Image as ImageIcon, Video, Palette, Upload, CheckCircle,
-  RotateCcw, Loader2, RefreshCw, Radio,
+  RotateCcw, Loader2, RefreshCw, Radio, 
+  User, Lock, Settings, Layout
 } from 'lucide-react';
 import { db, storage } from '@/lib/firebase';
 import {
@@ -329,68 +330,113 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
                 <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
               </div>
 
-              {/* Tab bar */}
-              <div className="flex border-b border-slate-100 flex-shrink-0">
-                <button type="button" onClick={() => setActiveTab('identity' as any)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-bold border-b-2 border-red-600 text-red-600">
-                  <Tablet className="w-4 h-4" />Identity
-                </button>
-              </div>
-
-              <form onSubmit={handleSave} className="overflow-y-auto flex-1">
-
-                {/* ── IDENTITY ─────────────────────────────────────────── */}
-                {activeTab === 'identity' && (
-                  <div className="p-6 space-y-4">
-                    <Field label="Kiosk Name">
-                      <input required value={fd.name} onChange={e => setFd(f => ({ ...f, name: e.target.value }))}
-                        className="input" placeholder="e.g. Kiosk 1 — Entrance" />
-                    </Field>
-                    <Field label="Login ID" error={loginIdError}>
-                      <input required value={fd.loginId}
-                        onChange={e => { setFd(f => ({ ...f, loginId: e.target.value })); setLoginIdError(''); }}
-                        className={`input ${loginIdError ? 'border-rose-400' : ''}`} placeholder="e.g. kiosk1" />
-                    </Field>
-                    <Field label={<>Password {editingKiosk && <span className="text-slate-400 font-normal">(blank = keep)</span>}</>}>
-                      <div className="relative">
-                        <input type={showPw ? 'text' : 'password'} required={!editingKiosk}
-                          value={fd.password} onChange={e => setFd(f => ({ ...f, password: e.target.value }))}
-                          className="input pr-12" placeholder={editingKiosk ? '••••••••' : 'Set password'} />
-                        <button type="button" onClick={() => setShowPw(v => !v)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400">
-                          {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
+              <form onSubmit={handleSave} className="overflow-y-auto flex-1 bg-slate-50">
+                <div className="p-6 space-y-6">
+                  
+                  {/* ── IDENTITY & ACCESS ── */}
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                        <User className="w-4 h-4" />
                       </div>
-                      <p className="text-xs text-slate-400 mt-1">Stored as SHA-256 hash.</p>
-                    </Field>
-                    
-                    <Field label="Order Mode">
-                      <select 
-                        value={fd.orderMode} 
-                        onChange={e => setFd(f => ({ ...f, orderMode: e.target.value as 'dine_in' | 'takeaway' | 'both' }))}
-                        className="input"
-                      >
-                        <option value="both">Dine In & Takeaway</option>
-                        <option value="dine_in">Dine In Only</option>
-                        <option value="takeaway">Takeaway Only</option>
-                      </select>
-                      <p className="text-xs text-slate-500 mt-1">Available dining options on this screen.</p>
-                    </Field>
-
-                    <div className="flex items-center justify-between py-3 border-t border-slate-100">
                       <div>
-                        <div className="font-bold text-slate-900">Active</div>
-                        <div className="text-xs text-slate-500">Inactive kiosks cannot process orders</div>
+                        <h3 className="font-bold text-slate-800 text-sm">Identity & Credentials</h3>
+                        <p className="text-[11px] text-slate-500">Device name and login information</p>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" checked={fd.isActive}
-                          onChange={e => setFd(f => ({ ...f, isActive: e.target.checked }))} className="sr-only peer" />
-                        <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600" />
-                      </label>
+                    </div>
+                    
+                    <div className="p-5 space-y-5">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Kiosk Name</label>
+                        <div className="relative">
+                          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <Tablet className="w-4.5 h-4.5" />
+                          </div>
+                          <input required value={fd.name} onChange={e => setFd(f => ({ ...f, name: e.target.value }))}
+                            className="w-full px-4 py-2.5 pl-10 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none text-slate-900 transition-all font-medium" placeholder="e.g. Front Entrance Kiosk" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Login ID</label>
+                          <input required value={fd.loginId}
+                            onChange={e => { setFd(f => ({ ...f, loginId: e.target.value })); setLoginIdError(''); }}
+                            className={`w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-slate-900 transition-all font-mono text-sm focus:border-red-500 focus:ring-4 focus:ring-red-500/10 ${loginIdError ? 'border-rose-400 bg-rose-50' : 'bg-slate-50 focus:bg-white'}`} placeholder="e.g. kiosk_1" />
+                          {loginIdError && <p className="text-[11px] text-rose-600 font-bold mt-1.5">{loginIdError}</p>}
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+                            Password {editingKiosk && <span className="text-slate-400 font-normal lowercase tracking-normal">(blank to keep)</span>}
+                          </label>
+                          <div className="relative">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                              <Lock className="w-4 h-4" />
+                            </div>
+                            <input type={showPw ? 'text' : 'password'} required={!editingKiosk}
+                              value={fd.password} onChange={e => setFd(f => ({ ...f, password: e.target.value }))}
+                              className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none text-slate-900 transition-all font-mono text-sm" placeholder={editingKiosk ? '••••••••' : 'Set password'} />
+                            <button type="button" onClick={() => setShowPw(v => !v)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors">
+                              {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                )}
 
+                  {/* ── SETTINGS ── */}
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                        <Settings className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-800 text-sm">Operation Settings</h3>
+                        <p className="text-[11px] text-slate-500">Ordering mode and terminal status</p>
+                      </div>
+                    </div>
+                    
+                    <div className="p-5 space-y-6">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Available Order Modes</label>
+                        <div className="relative flex items-center">
+                          <div className="absolute left-3 text-slate-400 pointer-events-none">
+                            <Layout className="w-4.5 h-4.5" />
+                          </div>
+                          <select 
+                            value={fd.orderMode} 
+                            onChange={e => setFd(f => ({ ...f, orderMode: e.target.value as 'dine_in' | 'takeaway' | 'both' }))}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none text-slate-900 transition-all font-medium appearance-none"
+                          >
+                            <option value="both">Dine In & Takeaway</option>
+                            <option value="dine_in">Dine In Only</option>
+                            <option value="takeaway">Takeaway Only</option>
+                          </select>
+                          <div className="absolute right-3 text-slate-400 pointer-events-none">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-1.5">Determines the options shown to the customer on the welcome screen.</p>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-5 border-t border-slate-100">
+                        <div>
+                          <div className="font-bold text-slate-900 text-sm">Active Terminal</div>
+                          <div className="text-[11px] text-slate-500 max-w-[200px] mt-0.5">Inactive kiosks will not connect to the system or process orders.</div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                          <input type="checkbox" checked={fd.isActive}
+                            onChange={e => setFd(f => ({ ...f, isActive: e.target.checked }))} className="sr-only peer" />
+                          <div className="w-12 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 shadow-inner" />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  
+                </div>
 
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 flex-shrink-0">

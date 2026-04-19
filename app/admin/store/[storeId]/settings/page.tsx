@@ -2,7 +2,7 @@
 
 import { useState, use, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Save, Check, Percent, FileText, Settings, Clock, Phone, Mail, MapPin, CalendarOff, Plus, Trash2, Copy, Image as ImageIcon, Volume2, CreditCard, Eye, EyeOff, Wifi, WifiOff, Tablet, X, Upload, Store, Palette, Type, Video } from 'lucide-react';
+import { Save, Check, Percent, FileText, Settings, Clock, Phone, Mail, MapPin, CalendarOff, Plus, Trash2, Copy, Image as ImageIcon, Volume2, CreditCard, Eye, EyeOff, Wifi, WifiOff, Tablet, X, Upload, Store, Palette, Type, Video, Utensils, Coffee, Wine, Truck } from 'lucide-react';
 import Image from 'next/image';
 import { db, storage } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -879,63 +879,118 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
 
         {activeTab === 'vat' && (
            <div className="space-y-8 max-w-2xl bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-              <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-100">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600"><Percent className="w-6 h-6"/></div>
+              <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20"><Percent className="w-7 h-7"/></div>
                 <div>
-                  <h3 className="font-heading font-black text-slate-900 text-xl">Tax Categories</h3>
+                  <h3 className="font-heading font-black text-slate-900 text-2xl">Tax Categories</h3>
                   <p className="text-sm text-slate-500 font-medium">Configure VAT percentage by service</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                <div className="col-span-1 md:col-span-2 pb-2">
-                  <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Food VAT</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Takeaway / Pickup (%)</label>
-                      <input type="number" min="0" max="100" value={vatSettings.foodTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, foodTakeawayRate: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-amber-500 outline-none transition-colors" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* ── FOOD ── */}
+                <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-3.5 border-b border-slate-200/60 bg-white/50 flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                      <Utensils className="w-4 h-4" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Dine-In (%)</label>
-                      <input type="number" min="0" max="100" value={vatSettings.foodDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, foodDineInRate: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-amber-500 outline-none transition-colors" />
+                      <h4 className="font-bold text-slate-800 text-sm tracking-wide">Food VAT</h4>
+                      <p className="text-[11px] text-slate-500">Standard meals and snacks</p>
+                    </div>
+                  </div>
+                  <div className="p-5 grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-2">Takeaway</label>
+                      <div className="relative">
+                        <input type="number" min="0" max="100" value={vatSettings.foodTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, foodTakeawayRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-2">Dine-In</label>
+                      <div className="relative">
+                        <input type="number" min="0" max="100" value={vatSettings.foodDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, foodDineInRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="col-span-1 md:col-span-2 pb-2">
-                  <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Soft Drinks VAT</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Takeaway / Pickup (%)</label>
-                      <input type="number" min="0" max="100" value={vatSettings.softDrinkTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, softDrinkTakeawayRate: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-amber-500 outline-none transition-colors" />
+                {/* ── SOFT DRINKS ── */}
+                <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-3.5 border-b border-slate-200/60 bg-white/50 flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                      <Coffee className="w-4 h-4" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Dine-In (%)</label>
-                      <input type="number" min="0" max="100" value={vatSettings.softDrinkDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, softDrinkDineInRate: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-amber-500 outline-none transition-colors" />
+                      <h4 className="font-bold text-slate-800 text-sm tracking-wide">Soft Drinks VAT</h4>
+                      <p className="text-[11px] text-slate-500">Non-alcoholic beverages</p>
+                    </div>
+                  </div>
+                  <div className="p-5 grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-2">Takeaway</label>
+                      <div className="relative">
+                        <input type="number" min="0" max="100" value={vatSettings.softDrinkTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, softDrinkTakeawayRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-2">Dine-In</label>
+                      <div className="relative">
+                        <input type="number" min="0" max="100" value={vatSettings.softDrinkDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, softDrinkDineInRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="col-span-1 md:col-span-2 pb-2">
-                  <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Alcoholic Drinks VAT</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Takeaway / Pickup (%)</label>
-                      <input type="number" min="0" max="100" value={vatSettings.alcoholTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, alcoholTakeawayRate: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-amber-500 outline-none transition-colors" />
+                {/* ── ALCOHOLIC DRINKS ── */}
+                <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-3.5 border-b border-slate-200/60 bg-white/50 flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center shrink-0">
+                      <Wine className="w-4 h-4" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Dine-In (%)</label>
-                      <input type="number" min="0" max="100" value={vatSettings.alcoholDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, alcoholDineInRate: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-amber-500 outline-none transition-colors" />
+                      <h4 className="font-bold text-slate-800 text-sm tracking-wide">Alcoholic Drinks VAT</h4>
+                      <p className="text-[11px] text-slate-500">Beer, wine, and spirits</p>
+                    </div>
+                  </div>
+                  <div className="p-5 grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-2">Takeaway</label>
+                      <div className="relative">
+                        <input type="number" min="0" max="100" value={vatSettings.alcoholTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, alcoholTakeawayRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-2">Dine-In</label>
+                      <div className="relative">
+                        <input type="number" min="0" max="100" value={vatSettings.alcoholDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, alcoholDineInRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="col-span-1 md:col-span-2 pb-2 pt-2">
-                  <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Service Fees</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* ── SERVICE FEES ── */}
+                <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-3.5 border-b border-slate-200/60 bg-white/50 flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                      <Truck className="w-4 h-4" />
+                    </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Delivery Service VAT (%)</label>
-                      <input type="number" min="0" max="100" value={vatSettings.deliveryVatRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, deliveryVatRate: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-amber-500 outline-none transition-colors" />
+                      <h4 className="font-bold text-slate-800 text-sm tracking-wide">Service Fees</h4>
+                      <p className="text-[11px] text-slate-500">Delivery and processing</p>
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <label className="block text-xs font-bold text-slate-700 mb-2">Delivery Service VAT (%)</label>
+                    <div className="relative">
+                      <input type="number" min="0" max="100" value={vatSettings.deliveryVatRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, deliveryVatRate: parseFloat(e.target.value) || 0 })} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono" />
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
                     </div>
                   </div>
                 </div>
