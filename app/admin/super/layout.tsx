@@ -98,32 +98,34 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           </div>
         </div>
 
-        <div className="p-4 border-t border-slate-100">
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 w-full rounded-xl font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            Logout
-          </button>
-        </div>
       </motion.aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile Header */}
-        <header className="lg:hidden bg-white border-b border-slate-200 h-16 flex items-center px-4 justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-2">
-            <span className="font-heading font-black text-xl tracking-tight text-slate-900">
+        {/* Header */}
+        <header className="bg-white border-b border-slate-200 h-16 flex items-center px-4 sm:px-6 justify-between sticky top-0 z-30">
+          <div className="flex items-center gap-4">
+            {/* Hamburger: hidden on lg+ because sidebar is always visible */}
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100/80 rounded-lg transition-colors border border-slate-200 shadow-sm"
+              title="Open Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="font-heading font-black text-xl tracking-tight text-slate-900 lg:hidden lg:border-l-0 border-l border-slate-200 pl-4 lg:pl-0">
               MR<span className="text-red-600 font-brand">COD</span>
             </span>
           </div>
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-2 -mr-2 text-slate-600 hover:bg-slate-100 rounded-lg"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors border border-transparent hover:border-red-100"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto">
