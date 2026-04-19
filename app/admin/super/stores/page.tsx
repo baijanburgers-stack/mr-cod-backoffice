@@ -32,12 +32,20 @@ function AddressAutocomplete({ value, onChange }: AddressAutocompleteProps) {
     suggestions: { status, data },
     setValue,
     clearSuggestions,
+    init,
   } = usePlacesAutocomplete({
+    initOnMount: false,
     requestOptions: {
       /* basic config */
     },
     debounce: 300,
   });
+
+  useEffect(() => {
+    if (isLoaded) {
+      init();
+    }
+  }, [isLoaded, init]);
 
   // Sync external value when editing existing store
   useEffect(() => {
