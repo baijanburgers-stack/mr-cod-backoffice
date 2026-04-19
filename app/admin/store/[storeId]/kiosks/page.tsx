@@ -254,7 +254,7 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
         </div>
       )}
 
-      {/* Kiosk Grid */}
+      {/* ── Kiosk List ───────────────────────────────────────────────────── */}
       {kiosks.length === 0 ? (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
@@ -269,9 +269,16 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
           </button>
         </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {kiosks.map(k => (
-            <KioskCard key={k.id} kiosk={k}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          {/* Table header */}
+          <div className="grid grid-cols-[2fr_1.5fr_1fr_auto] gap-4 px-5 py-3 border-b border-slate-100 bg-slate-50">
+            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Kiosk</span>
+            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Login ID</span>
+            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Status</span>
+            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Actions</span>
+          </div>
+          {kiosks.map((k, i) => (
+            <KioskRow key={k.id} kiosk={k} isLast={i === kiosks.length - 1}
               onEdit={() => openEdit(k)}
               onDelete={() => setDelModal(k)} />
           ))}
@@ -500,81 +507,64 @@ function UploadZone({
   );
 }
 
-// ─── Kiosk Card ────────────────────────────────────────────────────────────────
+// ─── Kiosk Row (list style) ────────────────────────────────────────────────────
 
-function KioskCard({ kiosk, onEdit, onDelete }: {
-  kiosk: Kiosk; onEdit: () => void; onDelete: () => void;
+function KioskRow({ kiosk, isLast, onEdit, onDelete }: {
+  kiosk: Kiosk; isLast: boolean; onEdit: () => void; onDelete: () => void;
 }) {
-  const b = kiosk.branding ?? {};
-  const hasMedia = !!(b.idleVideoUrl || b.idleBackgroundUrl);
-
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-
-      {/* Thumbnail */}
-      <div className="h-28 relative flex items-center justify-center overflow-hidden"
-        style={{ background: `linear-gradient(135deg, ${b.accentColor ?? '#E3000F'}33, #0B0D1166)` }}>
-        {b.idleBackgroundUrl && !b.idleVideoUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={b.idleBackgroundUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" />
-        )}
-        {b.idleVideoUrl && (
-          <video src={b.idleVideoUrl} muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-30" />
-        )}
-        {b.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={b.logoUrl} alt="logo" className="relative z-10 h-10 object-contain drop-shadow"
-            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-        ) : (
-          <div className="relative z-10 w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
-            <Tablet className="w-6 h-6 text-white/60" />
-          </div>
-        )}
-        <span className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-          kiosk.isActive ? 'bg-emerald-500/90 text-white' : 'bg-slate-500/70 text-white'
-        }`}>
-          {kiosk.isActive ? <><span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />Active</> : 'Inactive'}
-        </span>
-        <span className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-          kiosk.isActive ? 'bg-emerald-500/90 text-white' : 'bg-slate-500/70 text-white'
-        }`}>
-          {kiosk.isActive ? <><span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />Active</> : 'Inactive'}
-        </span>
+    <motion.div
+      initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+      className={`grid grid-cols-[2fr_1.5fr_1fr_auto] gap-4 items-center px-5 py-4 hover:bg-slate-50 transition-colors ${
+        isLast ? '' : 'border-b border-slate-100'
+      }`}
+    >
+      {/* Name + login */}
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+          <Tablet className="w-4 h-4 text-red-600" />
+        </div>
+        <div className="min-w-0">
+          <div className="font-bold text-slate-900 truncate">{kiosk.name}</div>
+          <div className="text-xs text-slate-400 font-mono truncate">{kiosk.loginId}</div>
+        </div>
       </div>
 
-      {/* Body */}
-      <div className="px-5 py-4">
-        <div className="flex items-start justify-between mb-2">
-          <div>
-            <div className="font-bold text-slate-900">{kiosk.name}</div>
-            <div className="text-xs text-slate-500 font-mono">{kiosk.loginId}</div>
-          </div>
-          {b.accentColor && (
-            <div className="w-5 h-5 rounded-lg border border-slate-200 mt-0.5" style={{ background: b.accentColor }} />
-          )}
+      {/* Login ID / CCV terminal */}
+      <div className="min-w-0">
+        <div className="text-sm text-slate-700 font-mono truncate">
+          {kiosk.ccvTerminalId || <span className="text-slate-400 italic font-sans">No terminal set</span>}
         </div>
-        {b.tagline && <p className="text-xs text-slate-400 italic mb-2 truncate">"{b.tagline}"</p>}
-        <div className="space-y-1.5 text-xs">
-          <div className="flex items-center gap-2 text-slate-600">
-            <Wifi className="w-3.5 h-3.5 text-blue-500" />
-            <span className="font-mono font-bold">{kiosk.ccvTerminalId || <span className="text-slate-400 italic font-normal">No terminal</span>}</span>
-          </div>
-          <div className="flex items-center gap-2 text-slate-600">
-            <Printer className="w-3.5 h-3.5 text-amber-500" />
-            <span>{kiosk.customerPrinter.type === 'lan' ? `${kiosk.customerPrinter.ip || '—'}:${kiosk.customerPrinter.port}` : 'USB'}</span>
-          </div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <Printer className="w-3 h-3 text-slate-400" />
+          <span className="text-xs text-slate-400 font-mono">
+            {kiosk.customerPrinter?.type === 'lan'
+              ? (kiosk.customerPrinter.ip || '— no IP')
+              : 'USB'}
+          </span>
         </div>
+      </div>
+
+      {/* Status pill */}
+      <div>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+          kiosk.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${
+            kiosk.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+          }`} />
+          {kiosk.isActive ? 'Active' : 'Inactive'}
+        </span>
       </div>
 
       {/* Actions */}
-      <div className="px-5 pb-4 flex gap-2">
+      <div className="flex items-center gap-2">
         <button onClick={onEdit}
-          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
-          <Edit className="w-4 h-4" /> Edit
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+          <Edit className="w-3.5 h-3.5" /> Edit
         </button>
         <button onClick={onDelete}
-          className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-sm font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors">
+          className="flex items-center justify-center w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors">
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
