@@ -13,9 +13,16 @@ import { useLoadScript } from '@react-google-maps/api';
 import usePlacesAutocomplete, { getGeocode } from 'use-places-autocomplete';
 import { getVatRulesByCountry } from '@/lib/vat-rules';
 
+type AddressDetails = {
+  street: string;
+  city: string;
+  postalCode: string;
+  countryCode: string;
+};
+
 type AddressAutocompleteProps = {
   value: string;
-  onChange: (val: string, countryCode: string) => void;
+  onChange: (val: string, details: AddressDetails | null) => void;
 };
 
 const libraries: any = ["places"];
@@ -56,7 +63,7 @@ function AddressAutocomplete({ value, onChange }: AddressAutocompleteProps) {
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
-    onChange(e.target.value, 'DEFAULT'); // Default until they pick a suggestion
+    onChange(e.target.value, null); // Default until they pick a suggestion
   };
 
   const handleSelect = async (address: string) => {
@@ -65,11 +72,27 @@ function AddressAutocomplete({ value, onChange }: AddressAutocompleteProps) {
     try {
       const results = await getGeocode({ address });
       const components = results[0]?.address_components || [];
-      const country = components.find(c => c.types.includes('country'));
-      onChange(address, country ? country.short_name : 'DEFAULT');
+      
+      let streetName = '';
+      let streetNumber = '';
+      let city = '';
+      let postalCode = '';
+      let countryCode = 'DEFAULT';
+
+      components.forEach(c => {
+        if (c.types.includes('route')) streetName = c.long_name;
+        if (c.types.includes('street_number')) streetNumber = c.long_name;
+        if (c.types.includes('locality')) city = c.long_name;
+        if (c.types.includes('postal_code')) postalCode = c.long_name;
+        if (c.types.includes('country')) countryCode = c.short_name;
+      });
+
+      const street = `${streetName} ${streetNumber}`.trim();
+
+      onChange(address, { street, city, postalCode, countryCode });
     } catch (error) {
       console.error('Error getting geocode:', error);
-      onChange(address, 'DEFAULT');
+      onChange(address, null);
     }
   };
 
@@ -79,7 +102,7 @@ function AddressAutocomplete({ value, onChange }: AddressAutocompleteProps) {
         required
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value, 'DEFAULT')}
+        onChange={(e) => onChange(e.target.value, null)}
         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
         placeholder="Loading Map Services..."
       />
@@ -126,6 +149,10 @@ type Store = {
   status: string;
   image?: string;
   logo?: string;
+  street?: string;
+  city?: string;
+  postalCode?: string;
+  countryCode?: string;
   isOpen?: boolean;
   maxPosTerminals?: number;
   maxKiosks?: number;
@@ -154,9 +181,8 @@ export default function SuperAdminStores() {
 
   // Form State
   const [formData, setFormData] = useState({
-    name: '', address: '', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
-    ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest', ccvBackendUrl: 'https://app.mrcod.be',
-    countryCode: 'BE' 
+    name: '', address: '', street: '', city: '', postalCode: '', countryCode: 'BE', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
+    ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest', ccvBackendUrl: 'https://app.mrcod.be'
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -210,13 +236,13 @@ export default function SuperAdminStores() {
 
   const openAddModal = () => {
     setEditingStore(null);
-    setFormData({ name: '', address: '', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', ccvBackendUrl: 'https://app.mrcod.be', countryCode: 'BE' });
+    setFormData({ name: '', address: '', street: '', city: '', postalCode: '', countryCode: 'BE', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', ccvBackendUrl: 'https://app.mrcod.be' });
     setIsStoreModalOpen(true);
   };
 
   const openEditModal = (store: Store) => {
     setEditingStore(store);
-    setFormData({ name: store.name, address: store.address, manager: store.manager, phone: store.phone, email: store.email, companyName: store.companyName, vatNumber: store.vatNumber, status: store.status, image: store.image || '', logo: store.logo || '', maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', ccvBackendUrl: store.ccvBackendUrl || 'https://app.mrcod.be', countryCode: 'DEFAULT' });
+    setFormData({ name: store.name, address: store.address, street: store.street || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'DEFAULT', manager: store.manager, phone: store.phone, email: store.email, companyName: store.companyName, vatNumber: store.vatNumber, status: store.status, image: store.image || '', logo: store.logo || '', maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', ccvBackendUrl: store.ccvBackendUrl || 'https://app.mrcod.be' });
     setIsStoreModalOpen(true);
   };
 
@@ -629,11 +655,63 @@ export default function SuperAdminStores() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Address</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Address Search</label>
                   <AddressAutocomplete 
                     value={formData.address} 
-                    onChange={(val, country) => setFormData(f => ({ ...f, address: val, countryCode: country }))} 
+                    onChange={(val, details) => {
+                      if (details) {
+                        setFormData(f => ({ ...f, address: val, ...details }));
+                      } else {
+                        setFormData(f => ({ ...f, address: val }));
+                      }
+                    }} 
                   />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 pt-4 border-t border-slate-100">
+                    <div className="col-span-2 sm:col-span-2">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Street + Number</label>
+                      <input
+                        type="text"
+                        value={formData.street}
+                        onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+                        className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-amber-500 focus:bg-white outline-none transition-colors"
+                        placeholder="e.g. Grand Place 1"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Post Code</label>
+                      <input
+                        type="text"
+                        value={formData.postalCode}
+                        onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                        className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-amber-500 focus:bg-white outline-none transition-colors"
+                        placeholder="e.g. 1000"
+                      />
+                    </div>
+                    <div className="col-span-1 sm:col-span-2 lg:col-span-1">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">City</label>
+                      <input
+                        type="text"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-amber-500 focus:bg-white outline-none transition-colors"
+                        placeholder="e.g. Brussels"
+                      />
+                    </div>
+                    <div className="col-span-2 sm:col-span-2 lg:col-span-1 hidden">
+                       {/* Hidden Country field because users shouldn't change the base code manually easily or at least it doesn't need to be huge, but maybe show it */}
+                    </div>
+                    <div className="col-span-2 sm:col-span-2 lg:col-span-full">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Country Code (For Tax Isolation)</label>
+                      <input
+                        type="text"
+                        maxLength={2}
+                        value={formData.countryCode}
+                        onChange={(e) => setFormData({ ...formData, countryCode: e.target.value.toUpperCase() })}
+                        className="w-16 px-3 py-2.5 text-center font-bold text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-amber-500 focus:bg-white outline-none transition-colors"
+                        placeholder="BE"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
