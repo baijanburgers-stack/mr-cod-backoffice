@@ -42,6 +42,7 @@ type Kiosk = {
   id:              string;
   name:            string;
   loginId:         string;
+  orderMode:       'dine_in' | 'takeaway' | 'both';
   password:        string;
   passwordHash:    string;
   ccvTerminalId:   string;
@@ -54,11 +55,13 @@ type Kiosk = {
 
 type FormData = {
   name: string; loginId: string; password: string;
+  orderMode: 'dine_in' | 'takeaway' | 'both';
   isActive: boolean;
 };
 
 const defaultForm: FormData = {
   name: '', loginId: '', password: '',
+  orderMode: 'both',
   isActive: true,
 };
 
@@ -119,6 +122,7 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
           id: d.id,
           name:            d.data().name || '',
           loginId:         d.data().loginId || '',
+          orderMode:       d.data().orderMode || 'both',
           password:        d.data().password || '',
           passwordHash:    d.data().passwordHash || '',
           ccvTerminalId:   d.data().ccvTerminalId || '',
@@ -151,6 +155,7 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
     setEditingKiosk(k);
     setFormData({
       name: k.name, loginId: k.loginId, password: '',
+      orderMode: k.orderMode || 'both',
       isActive: k.isActive,
     });
     setLoginIdError('');
@@ -173,6 +178,7 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
       const data = {
         name:         fd.name.trim(),
         loginId:      fd.loginId.trim(),
+        orderMode:    fd.orderMode,
         password:     newPassword,
         passwordHash: ph,
         isActive: fd.isActive,
@@ -357,6 +363,20 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
                       </div>
                       <p className="text-xs text-slate-400 mt-1">Stored as SHA-256 hash.</p>
                     </Field>
+                    
+                    <Field label="Order Mode">
+                      <select 
+                        value={fd.orderMode} 
+                        onChange={e => setFd(f => ({ ...f, orderMode: e.target.value as 'dine_in' | 'takeaway' | 'both' }))}
+                        className="input"
+                      >
+                        <option value="both">Dine In & Takeaway</option>
+                        <option value="dine_in">Dine In Only</option>
+                        <option value="takeaway">Takeaway Only</option>
+                      </select>
+                      <p className="text-xs text-slate-500 mt-1">Available dining options on this screen.</p>
+                    </Field>
+
                     <div className="flex items-center justify-between py-3 border-t border-slate-100">
                       <div>
                         <div className="font-bold text-slate-900">Active</div>

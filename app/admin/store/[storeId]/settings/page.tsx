@@ -183,6 +183,12 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     receiptLogo: ''
   });
 
+  const [kioskSettings, setKioskSettings] = useState({
+    autoSleep: false,
+    wakeTime: '09:00',
+    sleepTime: '23:30',
+  });
+
   const bannerRef = useRef<HTMLInputElement>(null);
 
   const [logoUp, setLogoUp] = useState({ uploading: false, progress: 0 });
@@ -213,6 +219,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
           if (data.vatSettings) setVatSettings({ ...vatSettings, ...data.vatSettings });
           if (data.storeHours) setStoreHours(data.storeHours);
           if (data.holidays) setHolidays(data.holidays);
+          if (data.kioskSettings) setKioskSettings(data.kioskSettings);
 
 
           const savedBranding = data.branding || {};
@@ -374,6 +381,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
         },
         storeHours,
         holidays,
+        kioskSettings,
         branding: {
           storeLogo: branding.storeLogo,
           receiptLogo: branding.receiptLogo,
@@ -708,6 +716,54 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
            </div>
         )}        {activeTab === 'kiosk' && (
            <div className="space-y-8">
+              {/* ── Operating Hours ─────────────────────────────────────── */}
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-heading font-black text-slate-900">Kiosk Operating Schedule</h2>
+                    <p className="text-sm text-slate-500 font-medium">Set when all kiosks should automatically wake up and go to sleep.</p>
+                  </div>
+                </div>
+                
+                <div className="p-6 md:p-8">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
+                    <div>
+                      <div className="font-bold text-slate-900 text-base">Automatic Sleep Mode</div>
+                      <div className="text-sm text-slate-500 max-w-md">When enabled, kiosks will display an "out of service" screen outside of these hours.</div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input type="checkbox" checked={kioskSettings.autoSleep} onChange={e => setKioskSettings(s => ({...s, autoSleep: e.target.checked}))} className="sr-only peer" />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                      <span className="ml-3 text-sm font-bold text-slate-700">{kioskSettings.autoSleep ? 'Enabled' : 'Disabled'}</span>
+                    </label>
+                  </div>
+
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 gap-6 transition-opacity ${!kioskSettings.autoSleep ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Wake Up Time</label>
+                      <input 
+                        type="time" 
+                        value={kioskSettings.wakeTime} 
+                        onChange={e => setKioskSettings(s => ({...s, wakeTime: e.target.value}))}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-amber-500 outline-none transition-colors font-mono" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Sleep Time</label>
+                      <input 
+                        type="time" 
+                        value={kioskSettings.sleepTime} 
+                        onChange={e => setKioskSettings(s => ({...s, sleepTime: e.target.value}))}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-amber-500 outline-none transition-colors font-mono" 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Branding / Visual Assets */}
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
