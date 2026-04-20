@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
+import { computeSavingsRange } from '@/lib/combo-pricing';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ type Combo = {
   description: string;
   price: number;
   isActive: boolean;
+  displaySavings: boolean;  // show 🎉 savings badge on kiosk
   image?: string | null;
   slots: ComboSlot[];
   // Legacy compat: keep "items" for the menu page reader
@@ -99,6 +101,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
     description: '',
     price: 0,
     isActive: true,
+    displaySavings: true,
     image: '',
     slots: [newSlot()],
   });
@@ -267,6 +270,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
       description: formData.description || '',
       price: Number(formData.price),
       isActive: formData.isActive ?? true,
+      displaySavings: formData.displaySavings ?? true,
       image: imagePreview || null,
       slots,
       items: legacyItems, // legacy compat
@@ -291,8 +295,36 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
   // ── Slot Editor component (inline) ─────────────────────────────────────
 
   const [expandedSlot, setExpandedSlot] = useState<string | null>(null);
-  const [slotPicker, setSlotPicker] = useState<string | null>(null); // slot id with picker open
+  const [slotPicker, setSlotPicker] = useState<string | null>(null);
   const [pickerSearch, setPickerSearch] = useState('');
+
+  // ── Live savings preview ───────────────────────────────────────────────
+  // Derives min / max basket totals from all slot options currently in formData.
+  const savingsPreview = (() => {
+    const slots = formData.slots || [];
+    const price = Number(formData.price) || 0;
+    if (price <= 0 || slots.length === 0) return null;
+
+    let minBasket = 0;
+    let maxBasket = 0;
+    let allHavePrices = true;
+
+    for (const slot of slots) {
+      if (slot.options.length === 0) { allHavePrices = false; break; }
+      const prices = slot.options.map(opt => {
+        const mi = menuItems.find(m => m.id === opt.menuItemId);
+        return mi ? mi.price : 0;
+      });
+      if (prices.some(p => p === 0)) { allHavePrices = false; break; }
+      const slotMin = Math.min(...prices) * slot.quantity;
+      const slotMax = Math.max(...prices) * slot.quantity;
+      minBasket += slotMin;
+      maxBasket += slotMax;
+    }
+
+    if (!allHavePrices || minBasket <= 0) return null;
+    return { ...computeSavingsRange(minBasket, maxBasket, price), minBasket, maxBasket };
+  })();
 
   const SlotEditor = ({ slot }: { slot: ComboSlot }) => {
     const isExpanded = expandedSlot === slot.id;
@@ -739,7 +771,109 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
                 </div>
 
                   </div>{/* end right column */}
-                </div>{/* end flex row */}
+
+                  {/* ── Bottom: Savings Preview (full width) ── */}
+                  </div>{/* end flex row */}
+
+                  {/* Savings Preview Panel */}
+                  <div className="px-6 pb-6">
+
+                    {/* displaySavings toggle */}
+                    <div className="flex items-center justify-between px-4 py-3 rounded-2xl border border-slate-200 bg-white mb-3">
+                      <div>
+                        <p className="text-sm font-bold text-slate-700">Show savings badge on kiosk</p>
+                        <p className="text-xs text-slate-400">Displays 🎉 &quot;You save €X&quot; when customer builds this combo</p>
+                      </div>
+                      <label className="flex items-center cursor-pointer ml-4">
+                        <div className="relative">
+                          <input type="checkbox" className="sr-only"
+                            checked={formData.displaySavings ?? true}
+                            onChange={e => setFormData({ ...formData, displaySavings: e.target.checked })} />
+                          <div className={`block w-10 h-6 rounded-full transition-colors ${formData.displaySavings ?? true ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                          <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${formData.displaySavings ?? true ? 'translate-x-4' : ''}`} />
+                        </div>
+                      </label>
+                    </div>
+
+                    {/* Live savings calculator */}
+                    {savingsPreview ? (
+                      <div className={`rounded-2xl border-2 p-4 ${
+                        savingsPreview.isPriceTooHigh
+                          ? 'border-rose-300 bg-rose-50'
+                          : savingsPreview.isGoodDeal
+                            ? 'border-emerald-300 bg-emerald-50'
+                            : 'border-amber-300 bg-amber-50'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-base">
+                            {savingsPreview.isPriceTooHigh ? '⚠️' : savingsPreview.isGoodDeal ? '✅' : '💡'}
+                          </span>
+                          <p className={`text-xs font-black uppercase tracking-widest ${
+                            savingsPreview.isPriceTooHigh ? 'text-rose-700' : savingsPreview.isGoodDeal ? 'text-emerald-700' : 'text-amber-700'
+                          }`}>
+                            {savingsPreview.isPriceTooHigh
+                              ? 'Warning: Combo price exceeds basket!'
+                              : 'Automatic Savings Preview'}
+                          </p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {/* Min basket row */}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600 font-medium">Cheapest combination</span>
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono text-slate-500">€{savingsPreview.minBasket.toFixed(2)}</span>
+                              <span className="text-slate-400">→</span>
+                              {savingsPreview.minSavings > 0 ? (
+                                <span className="font-black text-emerald-700">
+                                  save €{savingsPreview.minSavings.toFixed(2)}
+                                  <span className="font-normal text-slate-500 ml-1">({savingsPreview.minSavingsPct.toFixed(0)}%)</span>
+                                </span>
+                              ) : (
+                                <span className="text-rose-600 font-bold">no saving</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Max basket row — only show if different from min */}
+                          {savingsPreview.maxBasket !== savingsPreview.minBasket && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-slate-600 font-medium">Most expensive combination</span>
+                              <div className="flex items-center gap-3">
+                                <span className="font-mono text-slate-500">€{savingsPreview.maxBasket.toFixed(2)}</span>
+                                <span className="text-slate-400">→</span>
+                                <span className="font-black text-emerald-700">
+                                  save €{savingsPreview.maxSavings.toFixed(2)}
+                                  <span className="font-normal text-slate-500 ml-1">({savingsPreview.maxSavingsPct.toFixed(0)}%)</span>
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Advice text */}
+                        <p className={`text-[11px] mt-3 leading-relaxed ${
+                          savingsPreview.isPriceTooHigh
+                            ? 'text-rose-600'
+                            : savingsPreview.isGoodDeal
+                              ? 'text-emerald-600'
+                              : 'text-amber-700'
+                        }`}>
+                          {savingsPreview.isPriceTooHigh
+                            ? 'Lower the combo price below the cheapest basket to create a real saving.'
+                            : savingsPreview.isGoodDeal
+                              ? 'Great deal! Customers save 10%+ — recommend enabling the savings badge.'
+                              : 'Savings under 10%. Consider reducing the combo price for a stronger deal.'}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
+                        <p className="text-xs text-slate-400">
+                          💡 Add items to all slots and set a combo price to see automatic savings preview
+                        </p>
+                      </div>
+                    )}
+                  </div>
               </div>
 
               {/* Modal Footer */}
