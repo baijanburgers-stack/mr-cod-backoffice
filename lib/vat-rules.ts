@@ -6,9 +6,17 @@
  * Firestore sub-collection: stores/{storeId}/vatCategories/{id}
  *
  * Sources (verified April 2026):
- *  - Belgium: SPF Finances / FPS Finance — food dine-in 12%, food takeaway 6%,
- *    ALL beverages (alcoholic & non-alcoholic) 21%, per Royal Decree March 2026
- *    (proposed soft-drink reduction to 12% was WITHDRAWN).
+ *  - Belgium: SPF Finances — EFFECTIVE 01/03/2026 (March 1, 2026).
+ *    Harmonised HORECA rates (sources: vatupdate.com, twobirds.com, EY, PwC):
+ *      A (21%): Alcoholic beverages (beer >0.5% ABV, spirits >1.2% ABV).
+ *      B (12%): All food & non-alcoholic drinks — dine-in AND takeaway/delivery.
+ *               Non-alcoholic drinks DECREASED from 21% → 12% in restaurants.
+ *               Takeaway food INCREASED from 6% → 12% (prepared meals, shelf
+ *               life ≤ 2 days, intended for immediate consumption).
+ *      C  (6%): Basic / unprepared food products (not "prepared meals").
+ *               This rate still applies to raw/packaged food sold as groceries.
+ *      D  (0%): Exempt / zero-rated items.
+ *    GKS codes A/B/C/D are mandated by SPF Finances for white cash registers.
  *  - Netherlands: Belastingdienst — food & non-alcoholic drinks 9% (dine-in AND
  *    takeaway, no distinction), alcoholic drinks 21%.
  */
@@ -48,37 +56,49 @@ export type VatCategory = {
   isDefault: boolean;
 };
 
-// ─── Belgium seed data (verified April 2026) ─────────────────────────────────
+// ─── Belgium seed data (effective 01/03/2026) ────────────────────────────────
+// GKS fiscal codes are mandated by SPF Finances: A=21%, B=12%, C=6%, D=0%.
+// Since dine-in and takeaway are now the SAME rate for food & non-alcoholic
+// drinks (both 12%), they share a single GKS-B category.
 
 const BE_CATEGORIES: VatCategory[] = [
   {
-    id: 'be-a-beverages-21',
+    // GKS code A — standard rate, unchanged.
+    id: 'be-a-alcohol-21',
     code: 'A',
-    label: 'All Beverages (Alcoholic & Non-Alcoholic)',
+    label: 'Alcoholic Beverages (beer >0.5%, spirits >1.2%)',
     rate: 21,
     serviceTypes: ['dine-in', 'takeaway', 'delivery'],
     color: 'red',
     isDefault: false,
   },
   {
-    id: 'be-b-food-dine-in-12',
+    // GKS code B — harmonised 12% for ALL prepared food & non-alcoholic drinks,
+    // both dine-in and takeaway/delivery (law effective 01/03/2026).
+    // Non-alcoholic drinks decreased from 21% → 12% in HORECA contexts.
+    // Takeaway prepared meals increased from 6% → 12%.
+    id: 'be-b-food-drinks-12',
     code: 'B',
-    label: 'Food — Dine-In / Restaurant Service',
+    label: 'Food & Non-Alcoholic Drinks (Dine-In & Takeaway)',
     rate: 12,
-    serviceTypes: ['dine-in'],
+    serviceTypes: ['dine-in', 'takeaway', 'delivery'],
     color: 'orange',
-    isDefault: false,
-  },
-  {
-    id: 'be-c-food-takeaway-6',
-    code: 'C',
-    label: 'Food — Takeaway & Delivery',
-    rate: 6,
-    serviceTypes: ['takeaway', 'delivery'],
-    color: 'amber',
     isDefault: true,
   },
   {
+    // GKS code C — 6% retained for basic / unprepared food products only.
+    // Applies when selling raw or packaged food not classified as a
+    // "prepared meal" (e.g. sealed grocery items sold at a shop counter).
+    id: 'be-c-basic-food-6',
+    code: 'C',
+    label: 'Basic / Unprepared Food Products (not prepared meals)',
+    rate: 6,
+    serviceTypes: ['takeaway', 'delivery'],
+    color: 'amber',
+    isDefault: false,
+  },
+  {
+    // GKS code D — zero-rated / exempt, unchanged.
     id: 'be-d-exempt-0',
     code: 'D',
     label: 'Exempt / Zero-Rated',

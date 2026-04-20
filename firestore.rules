@@ -154,6 +154,17 @@ service cloud.firestore {
         allow read:  if true;
         allow write: if true;
       }
+
+      // ── VAT Categories ────────────────────────────────────────────────────
+      // Fiscal rate buckets managed in Settings → VAT & Tax.
+      // Read: any authenticated user (kiosk & POS need rates at order time).
+      // Write: admin or store admin only (fiscal data must be protected).
+      match /vatCategories/{catId} {
+        allow read:   if isAuthenticated();
+        allow create: if isAdmin() || isStoreAdmin(storeId);
+        allow update: if isAdmin() || isStoreAdmin(storeId);
+        allow delete: if isAdmin() || isStoreAdmin(storeId);
+      }
     }
 
     match /menuItems/{menuItemId} {
