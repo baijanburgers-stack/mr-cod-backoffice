@@ -9,7 +9,7 @@ import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, o
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
 import CurrencyInput from '@/components/ui/CurrencyInput';
-import { type VatCategory } from '@/lib/vat-rules';
+import { type VatCategory, type ItemType, ITEM_TYPE_LABELS } from '@/lib/vat-rules';
 
 type LocalizedString = {
   en: string;
@@ -29,10 +29,10 @@ type MenuItem = {
   name: string;
   description: LocalizedString;
   price: number;
-  vatCategoryDineIn?: string;   // vatCategory ID
-  vatCategoryTakeaway?: string; // vatCategory ID
+  itemType?: ItemType;           // nature of item — drives VAT auto-resolution
+  vatCategoryDineIn?: string;   // legacy — kept for old data compatibility
+  vatCategoryTakeaway?: string; // legacy — kept for old data compatibility
   vatRate?: number;             // legacy — kept for old data compatibility
-  itemType?: string;            // legacy — kept for old data compatibility
   category: string;
   isAvailable: boolean;
   image: string | null;
@@ -147,13 +147,17 @@ function MenuItemRow({
         </p>
         <div className="flex items-center gap-4">
           <span className="font-black text-xl text-slate-900">€{item.price.toFixed(2)}</span>
-          {item.vatCategoryDineIn || item.vatCategoryTakeaway ? (
+          {item.itemType ? (
             <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5 uppercase tracking-wider">
-              VAT Assigned
+              {ITEM_TYPE_LABELS[item.itemType]?.emoji} {ITEM_TYPE_LABELS[item.itemType]?.label}
+            </span>
+          ) : item.vatCategoryDineIn || item.vatCategoryTakeaway ? (
+            <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-0.5 uppercase tracking-wider">
+              VAT (legacy)
             </span>
           ) : (
             <span className="text-[10px] font-bold text-rose-500 bg-rose-50 border border-rose-100 rounded-lg px-2 py-0.5 uppercase tracking-wider">
-              No VAT set
+              No type set
             </span>
           )}
         </div>
@@ -224,8 +228,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
   const [modifiers, setModifiers] = useState<Modifier[]>([]);
   const [selectedModifierIds, setSelectedModifierIds] = useState<Set<string>>(new Set());
   const [vatCategories, setVatCategories] = useState<VatCategory[]>([]);
-  const [selectedVatDineIn, setSelectedVatDineIn] = useState<string>('');
-  const [selectedVatTakeaway, setSelectedVatTakeaway] = useState<string>('');
+  const [selectedItemType, setSelectedItemType] = useState<ItemType>('food');
 
   useEffect(() => {
     if (!user) return;
@@ -390,9 +393,8 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     // Pre-select modifiers already associated with this item
     const preSelected = new Set(modifiers.filter(m => m.itemIds?.includes(item.id)).map(m => m.id));
     setSelectedModifierIds(preSelected);
-    // Pre-select VAT categories
-    setSelectedVatDineIn(item.vatCategoryDineIn || '');
-    setSelectedVatTakeaway(item.vatCategoryTakeaway || '');
+    // Set item type (prefer new field; fall back from legacy modifier itemType)
+    setSelectedItemType(item.itemType || 'food');
     setIsModalOpen(true);
   };
 
@@ -401,10 +403,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     setImagePreview(null);
     setEditingVariations([]);
     setSelectedModifierIds(new Set());
-    // Default VAT to the store's default category
-    const defaultCat = vatCategories.find(c => c.isDefault);
-    setSelectedVatDineIn(defaultCat?.id || '');
-    setSelectedVatTakeaway(defaultCat?.id || '');
+    setSelectedItemType('food');
     setIsModalOpen(true);
   };
 
@@ -467,15 +466,11 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       return { ...v, priceAdjustment: parseFloat(v.priceAdjustment as any) || 0 };
     });
 
-    const vatCategoryDineIn = formData.get('vatCategoryDineIn') as string || selectedVatDineIn || '';
-    const vatCategoryTakeaway = formData.get('vatCategoryTakeaway') as string || selectedVatTakeaway || '';
-
     const itemData = {
       storeId,
       name,
       price,
-      vatCategoryDineIn,
-      vatCategoryTakeaway,
+      itemType: selectedItemType,
       category,
       description,
       image: imagePreview,
@@ -824,7 +819,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                     {/* — Section: Pricing & Classification — */}
                     <div>
                       <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Pricing &amp; Classification</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-bold text-slate-700 mb-1.5">Base Price</label>
                           <CurrencyInput
@@ -833,34 +828,6 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                             defaultValue={editingItem?.price || 0}
                             className="w-full py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
                           />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-bold text-slate-700 mb-1.5">VAT Category — Dine-In</label>
-                          <select
-                            name="vatCategoryDineIn"
-                            value={selectedVatDineIn}
-                            onChange={e => setSelectedVatDineIn(e.target.value)}
-                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all bg-white text-sm font-medium"
-                          >
-                            <option value="">— Not set —</option>
-                            {vatCategories.map(cat => (
-                              <option key={cat.id} value={cat.id}>[{cat.code}] {cat.label} ({cat.rate}%)</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-bold text-slate-700 mb-1.5">VAT Category — Takeaway</label>
-                          <select
-                            name="vatCategoryTakeaway"
-                            value={selectedVatTakeaway}
-                            onChange={e => setSelectedVatTakeaway(e.target.value)}
-                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all bg-white text-sm font-medium"
-                          >
-                            <option value="">— Not set —</option>
-                            {vatCategories.map(cat => (
-                              <option key={cat.id} value={cat.id}>[{cat.code}] {cat.label} ({cat.rate}%)</option>
-                            ))}
-                          </select>
                         </div>
                         <div>
                           <label className="block text-sm font-bold text-slate-700 mb-1.5">Category</label>
@@ -875,6 +842,47 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                             ))}
                           </select>
                         </div>
+                      </div>
+
+                      {/* Item Type — drives automatic VAT resolution at checkout */}
+                      <div className="mt-4">
+                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                          Item Type <span className="text-slate-400 font-medium text-xs">(determines VAT rate automatically)</span>
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {(Object.entries(ITEM_TYPE_LABELS) as [ItemType, typeof ITEM_TYPE_LABELS[ItemType]][]).map(([type, meta]) => {
+                            // Find the resolved category for display
+                            const resolved = vatCategories.find(c => {
+                              const eff = type === 'non-alcoholic' ? 'food' : type;
+                              return c.itemType === eff;
+                            }) ?? vatCategories.find(c => c.isDefault);
+                            return (
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => setSelectedItemType(type)}
+                                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-center transition-all ${
+                                  selectedItemType === type
+                                    ? 'border-amber-400 bg-amber-50 shadow-sm'
+                                    : 'border-slate-200 bg-white hover:border-amber-200 hover:bg-amber-50/40'
+                                }`}
+                              >
+                                <span className="text-2xl">{meta.emoji}</span>
+                                <span className={`text-xs font-black leading-tight ${
+                                  selectedItemType === type ? 'text-amber-800' : 'text-slate-700'
+                                }`}>{meta.label}</span>
+                                {resolved && (
+                                  <span className="text-[10px] font-bold text-slate-400">
+                                    [{resolved.code}] {resolved.rate}%
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                          💡 The system picks the correct GKS fiscal category based on item type + service (Dine-In / Takeaway) at order time.
+                        </p>
                       </div>
                     </div>
 

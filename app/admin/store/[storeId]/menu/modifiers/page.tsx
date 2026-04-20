@@ -34,7 +34,7 @@ type Modifier = {
   isRequired: boolean;
   allowMultiple: boolean;
   maxSelections?: number | null;
-  itemType?: 'food' | 'soft_drink' | 'alcohol';
+  itemType?: 'food' | 'non-alcoholic' | 'alcoholic';
   itemIds?: string[];
   options: ModifierOption[];
 };
@@ -199,8 +199,8 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
 
   const itemTypeDot: Record<string, string> = {
     food: 'bg-emerald-500',
-    soft_drink: 'bg-blue-500',
-    alcohol: 'bg-purple-500',
+    'non-alcoholic': 'bg-blue-500',
+    alcoholic: 'bg-purple-500',
   };
 
   return (
@@ -418,12 +418,12 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Tax / Category Type</label>
                   <select
                     value={formData.itemType || 'food'}
-                    onChange={(e) => setFormData({ ...formData, itemType: e.target.value as 'food' | 'soft_drink' | 'alcohol' })}
+                    onChange={(e) => setFormData({ ...formData, itemType: e.target.value as 'food' | 'non-alcoholic' | 'alcoholic' })}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white"
                   >
-                    <option value="food">Food</option>
-                    <option value="soft_drink">Soft Drink</option>
-                    <option value="alcohol">Alcoholic Drink</option>
+                    <option value="food">🍔 Food (prepared meal)</option>
+                    <option value="non-alcoholic">🥤 Non-Alcoholic Drink</option>
+                    <option value="alcoholic">🍺 Alcoholic Drink</option>
                   </select>
                 </div>
 

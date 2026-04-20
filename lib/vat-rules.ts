@@ -26,9 +26,20 @@
 export type ServiceType = 'dine-in' | 'takeaway' | 'delivery' | 'all';
 
 /**
+ * The nature of a menu item or modifier group.
+ * Used to automatically resolve the correct VAT category at order time
+ * without requiring the user to manually pick a VAT rate.
+ */
+export type ItemType =
+  | 'food'           // Prepared meal (burger, fries, wrap…)            → B/12%
+  | 'non-alcoholic'  // Soft drink, water, juice, coffee in HORECA       → B/12%
+  | 'alcoholic'      // Beer >0.5%, wine, spirits >1.2%                  → A/21%
+  | 'basic-food';    // Raw / unprepared / packaged food                  → C/6%
+
+/**
  * A single VAT category stored in Firestore.
  * One category represents one fiscal rate bucket that can be assigned to
- * menu items (separately for dine-in and takeaway contexts).
+ * menu items. The `itemType` field links this category to the auto-resolver.
  */
 export type VatCategory = {
   /** Stable ID used as the Firestore document ID. */
@@ -54,6 +65,12 @@ export type VatCategory = {
    * Only one category per country should be set as default.
    */
   isDefault: boolean;
+  /**
+   * Links this VAT bucket to an ItemType for automatic resolution.
+   * resolveVatCategory() uses this field to find the right bucket
+   * given an item's nature and the order's service type.
+   */
+  itemType?: ItemType;
 };
 
 // ─── Belgium seed data (effective 01/03/2026) ────────────────────────────────
@@ -63,7 +80,6 @@ export type VatCategory = {
 
 const BE_CATEGORIES: VatCategory[] = [
   {
-    // GKS code A — standard rate, unchanged.
     id: 'be-a-alcohol-21',
     code: 'A',
     label: 'Alcoholic Beverages (beer >0.5%, spirits >1.2%)',
@@ -71,12 +87,9 @@ const BE_CATEGORIES: VatCategory[] = [
     serviceTypes: ['dine-in', 'takeaway', 'delivery'],
     color: 'red',
     isDefault: false,
+    itemType: 'alcoholic',
   },
   {
-    // GKS code B — harmonised 12% for ALL prepared food & non-alcoholic drinks,
-    // both dine-in and takeaway/delivery (law effective 01/03/2026).
-    // Non-alcoholic drinks decreased from 21% → 12% in HORECA contexts.
-    // Takeaway prepared meals increased from 6% → 12%.
     id: 'be-b-food-drinks-12',
     code: 'B',
     label: 'Food & Non-Alcoholic Drinks (Dine-In & Takeaway)',
@@ -84,11 +97,9 @@ const BE_CATEGORIES: VatCategory[] = [
     serviceTypes: ['dine-in', 'takeaway', 'delivery'],
     color: 'orange',
     isDefault: true,
+    itemType: 'food',
   },
   {
-    // GKS code C — 6% retained for basic / unprepared food products only.
-    // Applies when selling raw or packaged food not classified as a
-    // "prepared meal" (e.g. sealed grocery items sold at a shop counter).
     id: 'be-c-basic-food-6',
     code: 'C',
     label: 'Basic / Unprepared Food Products (not prepared meals)',
@@ -96,9 +107,9 @@ const BE_CATEGORIES: VatCategory[] = [
     serviceTypes: ['takeaway', 'delivery'],
     color: 'amber',
     isDefault: false,
+    itemType: 'basic-food',
   },
   {
-    // GKS code D — zero-rated / exempt, unchanged.
     id: 'be-d-exempt-0',
     code: 'D',
     label: 'Exempt / Zero-Rated',
@@ -120,6 +131,7 @@ const NL_CATEGORIES: VatCategory[] = [
     serviceTypes: ['dine-in', 'takeaway', 'delivery'],
     color: 'red',
     isDefault: false,
+    itemType: 'alcoholic',
   },
   {
     id: 'nl-l-food-nonalcohol-9',
@@ -129,6 +141,7 @@ const NL_CATEGORIES: VatCategory[] = [
     serviceTypes: ['dine-in', 'takeaway', 'delivery'],
     color: 'amber',
     isDefault: true,
+    itemType: 'food',
   },
   {
     id: 'nl-v-exempt-0',
@@ -152,6 +165,7 @@ const DEFAULT_CATEGORIES: VatCategory[] = [
     serviceTypes: ['dine-in', 'takeaway', 'delivery'],
     color: 'slate',
     isDefault: true,
+    itemType: 'food',
   },
 ];
 
@@ -187,3 +201,61 @@ export function getCountryLabel(countryCode: string): string {
   };
   return labels[countryCode] ?? countryCode;
 }
+
+/**
+ * Automatically resolves the correct VAT category for an item given:
+ * - the store's configured VAT categories (from Firestore)
+ * - the item's nature (food / non-alcoholic / alcoholic / basic-food)
+ * - the order's service type (dine-in / takeaway / delivery)
+ *
+ * Resolution priority:
+ * 1. Exact match on itemType + serviceType
+ * 2. Match on itemType that covers 'all' service types
+ * 3. The store's default category (isDefault: true)
+ * 4. undefined — caller should fall back to a hardcoded rate
+ *
+ * NOTE: 'non-alcoholic' items resolve to the same bucket as 'food'
+ * (both B/12% in Belgium), so this function merges them during lookup.
+ */
+export function resolveVatCategory(
+  categories: VatCategory[],
+  itemType: ItemType,
+  serviceType: ServiceType,
+): VatCategory | undefined {
+  // non-alcoholic drinks share the same VAT bucket as food in BE/NL
+  const effectiveType: ItemType =
+    itemType === 'non-alcoholic' ? 'food' : itemType;
+
+  // 1. Exact match: itemType + serviceType
+  const exact = categories.find(
+    (c) =>
+      c.itemType === effectiveType &&
+      (c.serviceTypes as string[]).includes(serviceType),
+  );
+  if (exact) return exact;
+
+  // 2. Match on itemType that explicitly covers 'all'
+  const allServices = categories.find(
+    (c) =>
+      c.itemType === effectiveType &&
+      (c.serviceTypes as string[]).includes('all'),
+  );
+  if (allServices) return allServices;
+
+  // 3. Fall back to store default
+  return categories.find((c) => c.isDefault);
+}
+
+/**
+ * UI metadata for each ItemType — labels, emoji and description for forms.
+ */
+export const ITEM_TYPE_LABELS: Record<
+  ItemType,
+  { label: string; emoji: string; description: string }
+> = {
+  'food':          { label: 'Food',                emoji: '🍔', description: 'Prepared meals — burgers, wraps, fries…' },
+  'non-alcoholic': { label: 'Non-Alcoholic Drink', emoji: '🥤', description: 'Soft drinks, juices, water, coffee…' },
+  'alcoholic':     { label: 'Alcoholic Drink',     emoji: '🍺', description: 'Beer, wine, spirits…' },
+  'basic-food':    { label: 'Basic Food Product',  emoji: '🛒', description: 'Raw / unprepared / packaged groceries' },
+};
+
