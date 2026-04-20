@@ -9,6 +9,7 @@ import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, o
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
 import CurrencyInput from '@/components/ui/CurrencyInput';
+import { type VatCategory } from '@/lib/vat-rules';
 
 type LocalizedString = {
   en: string;
@@ -28,8 +29,10 @@ type MenuItem = {
   name: string;
   description: LocalizedString;
   price: number;
-  itemType?: 'food' | 'soft_drink' | 'alcohol';
-  vatRate?: number; // legacy support
+  vatCategoryDineIn?: string;   // vatCategory ID
+  vatCategoryTakeaway?: string; // vatCategory ID
+  vatRate?: number;             // legacy — kept for old data compatibility
+  itemType?: string;            // legacy — kept for old data compatibility
   category: string;
   isAvailable: boolean;
   image: string | null;
@@ -144,7 +147,15 @@ function MenuItemRow({
         </p>
         <div className="flex items-center gap-4">
           <span className="font-black text-xl text-slate-900">€{item.price.toFixed(2)}</span>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VAT: {item.vatRate}%</span>
+          {item.vatCategoryDineIn || item.vatCategoryTakeaway ? (
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5 uppercase tracking-wider">
+              VAT Assigned
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold text-rose-500 bg-rose-50 border border-rose-100 rounded-lg px-2 py-0.5 uppercase tracking-wider">
+              No VAT set
+            </span>
+          )}
         </div>
       </div>
       
@@ -212,6 +223,9 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [modifiers, setModifiers] = useState<Modifier[]>([]);
   const [selectedModifierIds, setSelectedModifierIds] = useState<Set<string>>(new Set());
+  const [vatCategories, setVatCategories] = useState<VatCategory[]>([]);
+  const [selectedVatDineIn, setSelectedVatDineIn] = useState<string>('');
+  const [selectedVatTakeaway, setSelectedVatTakeaway] = useState<string>('');
 
   useEffect(() => {
     if (!user) return;
@@ -264,6 +278,14 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       mods.sort((a, b) => getModName(a.name).localeCompare(getModName(b.name)));
       setModifiers(mods);
     });
+
+    // Fetch VAT categories for this store
+    getDocs(collection(db, 'stores', storeId, 'vatCategories')).then(snap => {
+      const cats: VatCategory[] = [];
+      snap.forEach(d => cats.push({ id: d.id, ...d.data() } as VatCategory));
+      cats.sort((a, b) => b.rate - a.rate);
+      setVatCategories(cats);
+    }).catch(console.error);
 
     return () => {
       unsubscribeCategories();
@@ -368,6 +390,9 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     // Pre-select modifiers already associated with this item
     const preSelected = new Set(modifiers.filter(m => m.itemIds?.includes(item.id)).map(m => m.id));
     setSelectedModifierIds(preSelected);
+    // Pre-select VAT categories
+    setSelectedVatDineIn(item.vatCategoryDineIn || '');
+    setSelectedVatTakeaway(item.vatCategoryTakeaway || '');
     setIsModalOpen(true);
   };
 
@@ -376,6 +401,10 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     setImagePreview(null);
     setEditingVariations([]);
     setSelectedModifierIds(new Set());
+    // Default VAT to the store's default category
+    const defaultCat = vatCategories.find(c => c.isDefault);
+    setSelectedVatDineIn(defaultCat?.id || '');
+    setSelectedVatTakeaway(defaultCat?.id || '');
     setIsModalOpen(true);
   };
 
@@ -420,7 +449,6 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string;
-    const itemType = formData.get('itemType') as 'food' | 'soft_drink' | 'alcohol';
     const category = formData.get('category') as string;
     const descEn = formData.get('description_en') as string;
     const descFr = formData.get('description_fr') as string;
@@ -439,11 +467,15 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       return { ...v, priceAdjustment: parseFloat(v.priceAdjustment as any) || 0 };
     });
 
+    const vatCategoryDineIn = formData.get('vatCategoryDineIn') as string || selectedVatDineIn || '';
+    const vatCategoryTakeaway = formData.get('vatCategoryTakeaway') as string || selectedVatTakeaway || '';
+
     const itemData = {
       storeId,
       name,
       price,
-      itemType,
+      vatCategoryDineIn,
+      vatCategoryTakeaway,
       category,
       description,
       image: imagePreview,
@@ -803,16 +835,31 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-bold text-slate-700 mb-1.5">Item Type</label>
+                          <label className="block text-sm font-bold text-slate-700 mb-1.5">VAT Category — Dine-In</label>
                           <select
-                            name="itemType"
-                            required
-                            defaultValue={editingItem?.itemType || 'food'}
+                            name="vatCategoryDineIn"
+                            value={selectedVatDineIn}
+                            onChange={e => setSelectedVatDineIn(e.target.value)}
                             className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all bg-white text-sm font-medium"
                           >
-                            <option value="food">🍔 Food</option>
-                            <option value="soft_drink">🥤 Soft Drink</option>
-                            <option value="alcohol">🍺 Alcoholic Drink</option>
+                            <option value="">— Not set —</option>
+                            {vatCategories.map(cat => (
+                              <option key={cat.id} value={cat.id}>[{cat.code}] {cat.label} ({cat.rate}%)</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-1.5">VAT Category — Takeaway</label>
+                          <select
+                            name="vatCategoryTakeaway"
+                            value={selectedVatTakeaway}
+                            onChange={e => setSelectedVatTakeaway(e.target.value)}
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all bg-white text-sm font-medium"
+                          >
+                            <option value="">— Not set —</option>
+                            {vatCategories.map(cat => (
+                              <option key={cat.id} value={cat.id}>[{cat.code}] {cat.label} ({cat.rate}%)</option>
+                            ))}
                           </select>
                         </div>
                         <div>

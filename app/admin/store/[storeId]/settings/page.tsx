@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, use, useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
-import { Save, Check, Percent, FileText, Settings, Clock, Phone, Mail, MapPin, CalendarOff, Plus, Trash2, Copy, Image as ImageIcon, Volume2, CreditCard, Eye, EyeOff, Wifi, WifiOff, Tablet, X, Upload, Store, Palette, Type, Video, Utensils, Coffee, Wine, Truck, Lock, Unlock, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Save, Check, Percent, Settings, Clock, Phone, Mail, MapPin, CalendarOff, Plus, Trash2, Copy, Image as ImageIcon, Volume2, Tablet, X, Upload, Store, Palette, Video, AlertTriangle, ShieldCheck, Globe, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import { db, storage } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, collection, getDocs, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
 import CcvTransactionViewer from '@/components/settings/CcvTransactionViewer';
+import { type VatCategory, getDefaultVatCategories, getCountryLabel } from '@/lib/vat-rules';
 
 function UploadZone({ 
   accept, 
@@ -85,10 +86,18 @@ function UploadZone({
 
 const TABS = [
   { id: 'general', label: 'General Settings', icon: Settings },
-  { id: 'store', label: 'Online Ordering', icon: Store },
-  { id: 'kiosk', label: 'Kiosk Settings',  icon: Tablet },
-  { id: 'vat',   label: 'VAT Settings',    icon: Percent },
+  { id: 'store',   label: 'Online Ordering',  icon: Store },
+  { id: 'kiosk',   label: 'Kiosk Settings',   icon: Tablet },
+  { id: 'vat',     label: 'VAT & Tax',        icon: ShieldCheck },
 ];
+
+const VAT_COLOR_MAP: Record<string, { bg: string; text: string; border: string; badge: string }> = {
+  red:     { bg: 'bg-red-50',     text: 'text-red-700',     border: 'border-red-200',     badge: 'bg-red-500' },
+  orange:  { bg: 'bg-orange-50',  text: 'text-orange-700',  border: 'border-orange-200',  badge: 'bg-orange-500' },
+  amber:   { bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   badge: 'bg-amber-500' },
+  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', badge: 'bg-emerald-500' },
+  slate:   { bg: 'bg-slate-50',   text: 'text-slate-700',   border: 'border-slate-200',   badge: 'bg-slate-400' },
+};
 
 export default function StoreSettingsPage({ params }: { params: Promise<{ storeId: string }> }) {
   const resolvedParams = use(params);
@@ -143,17 +152,12 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
   });
 
   // VAT Settings State
-  const [isVatUnlocked, setIsVatUnlocked] = useState(false);
-  const [vatSettings, setVatSettings] = useState({
-    vatNumber: '',
-    foodTakeawayRate: 6,
-    foodDineInRate: 12,
-    softDrinkTakeawayRate: 6,
-    softDrinkDineInRate: 21,
-    alcoholTakeawayRate: 21,
-    alcoholDineInRate: 21,
-    deliveryVatRate: 21,
-  });
+  const [vatNumber, setVatNumber] = useState('');
+  const [vatCategories, setVatCategories] = useState<VatCategory[]>([]);
+  const [vatCatLoading, setVatCatLoading] = useState(true);
+  const [vatCatSaving, setVatCatSaving] = useState(false);
+  const [seedCountry, setSeedCountry] = useState('BE');
+  const [showSeedConfirm, setShowSeedConfirm] = useState(false);
 
 
 
@@ -217,7 +221,8 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
             customNotificationSound: data.customNotificationSound || ''
           });
           if (data.services) setStoreServices(data.services);
-          if (data.vatSettings) setVatSettings({ ...vatSettings, ...data.vatSettings });
+          if (data.vatSettings?.vatNumber) setVatNumber(data.vatSettings.vatNumber);
+          else if (data.vatNumber) setVatNumber(data.vatNumber);
           if (data.storeHours) setStoreHours(data.storeHours);
           if (data.holidays) setHolidays(data.holidays);
           if (data.kioskSettings) setKioskSettings(data.kioskSettings);
@@ -241,7 +246,23 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
       }
     };
 
+    const fetchVatCategories = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'stores', storeId, 'vatCategories'));
+        const cats: VatCategory[] = [];
+        snap.forEach(d => cats.push({ id: d.id, ...d.data() } as VatCategory));
+        // Sort: by rate descending so highest rate is first
+        cats.sort((a, b) => b.rate - a.rate);
+        setVatCategories(cats);
+      } catch (error) {
+        console.error('Error fetching VAT categories:', error);
+      } finally {
+        setVatCatLoading(false);
+      }
+    };
+
     fetchStoreData();
+    fetchVatCategories();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeId, user]);
 
@@ -370,16 +391,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
         notificationSound: generalSettings.notificationSound,
         customNotificationSound: generalSettings.customNotificationSound || '',
         services: storeServices,
-        vatSettings: {
-          vatNumber: vatSettings.vatNumber || '',
-          foodTakeawayRate: vatSettings.foodTakeawayRate ?? 6,
-          foodDineInRate: vatSettings.foodDineInRate ?? 12,
-          softDrinkTakeawayRate: vatSettings.softDrinkTakeawayRate ?? 6,
-          softDrinkDineInRate: vatSettings.softDrinkDineInRate ?? 21,
-          alcoholTakeawayRate: vatSettings.alcoholTakeawayRate ?? 21,
-          alcoholDineInRate: vatSettings.alcoholDineInRate ?? 21,
-          deliveryVatRate: vatSettings.deliveryVatRate ?? 21,
-        },
+        'vatSettings.vatNumber': vatNumber || '',
         storeHours,
         holidays,
         kioskSettings,
@@ -409,6 +421,390 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
   };
 
 
+
+// ─── VAT Category Manager Component ──────────────────────────────────────────
+
+type VatCategoryManagerProps = {
+  storeId: string;
+  vatNumber: string;
+  onVatNumberChange: (v: string) => void;
+  categories: VatCategory[];
+  onCategoriesChange: (cats: VatCategory[]) => void;
+  isLoading: boolean;
+  isSaving: boolean;
+  onSavingChange: (v: boolean) => void;
+  seedCountry: string;
+  onSeedCountryChange: (v: string) => void;
+  showSeedConfirm: boolean;
+  onShowSeedConfirmChange: (v: boolean) => void;
+};
+
+const SERVICE_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'dine-in',  label: '🍽 Dine-In' },
+  { value: 'takeaway', label: '🥡 Takeaway' },
+  { value: 'delivery', label: '🚗 Delivery' },
+];
+
+function VatCategoryManager({
+  storeId, vatNumber, onVatNumberChange,
+  categories, onCategoriesChange,
+  isLoading, isSaving, onSavingChange,
+  seedCountry, onSeedCountryChange,
+  showSeedConfirm, onShowSeedConfirmChange,
+}: VatCategoryManagerProps) {
+  const [localCats, setLocalCats] = useState<VatCategory[]>(categories);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Sync from parent when data first loads
+  useEffect(() => { setLocalCats(categories); }, [categories]);
+
+  const updateCat = (id: string, field: keyof VatCategory, value: any) => {
+    setLocalCats(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+  };
+
+  const toggleServiceType = (id: string, type: string) => {
+    setLocalCats(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      const types = c.serviceTypes as string[];
+      return {
+        ...c,
+        serviceTypes: types.includes(type)
+          ? types.filter(t => t !== type)
+          : [...types, type],
+      } as VatCategory;
+    }));
+  };
+
+  const addCategory = () => {
+    const newCat: VatCategory = {
+      id: `custom-${Date.now()}`,
+      code: 'X',
+      label: 'New Category',
+      rate: 0,
+      serviceTypes: ['dine-in', 'takeaway', 'delivery'],
+      color: 'slate',
+      isDefault: false,
+    };
+    setLocalCats(prev => [...prev, newCat]);
+  };
+
+  const removeCategory = (id: string) => {
+    setLocalCats(prev => prev.filter(c => c.id !== id));
+  };
+
+  const setDefault = (id: string) => {
+    setLocalCats(prev => prev.map(c => ({ ...c, isDefault: c.id === id })));
+  };
+
+  const handleSeedDefaults = async () => {
+    const seeds = getDefaultVatCategories(seedCountry);
+    onShowSeedConfirmChange(false);
+    onSavingChange(true);
+    try {
+      const batch = writeBatch(db);
+      // Delete existing
+      const snap = await getDocs(collection(db, 'stores', storeId, 'vatCategories'));
+      snap.forEach(d => batch.delete(d.ref));
+      // Write seeds
+      seeds.forEach(cat => {
+        batch.set(
+          doc(db, 'stores', storeId, 'vatCategories', cat.id),
+          cat
+        );
+      });
+      await batch.commit();
+      const sorted = [...seeds].sort((a, b) => b.rate - a.rate);
+      setLocalCats(sorted);
+      onCategoriesChange(sorted);
+    } catch (e) {
+      console.error('Seed error:', e);
+    } finally {
+      onSavingChange(false);
+    }
+  };
+
+  const handleSave = async () => {
+    onSavingChange(true);
+    try {
+      const batch = writeBatch(db);
+      // Delete all existing
+      const snap = await getDocs(collection(db, 'stores', storeId, 'vatCategories'));
+      snap.forEach(d => batch.delete(d.ref));
+      // Write current local state
+      localCats.forEach(cat => {
+        batch.set(
+          doc(db, 'stores', storeId, 'vatCategories', cat.id),
+          cat
+        );
+      });
+      // Also update vatNumber on store doc
+      batch.update(doc(db, 'stores', storeId), { 'vatSettings.vatNumber': vatNumber || '' });
+      await batch.commit();
+      onCategoriesChange(localCats);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (e) {
+      console.error('VAT save error:', e);
+      alert('Failed to save VAT categories. Please try again.');
+    } finally {
+      onSavingChange(false);
+    }
+  };
+
+  const colorMap = VAT_COLOR_MAP;
+
+  return (
+    <div className="space-y-6">
+      {/* Header Card */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="px-8 py-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-amber-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-200">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-heading font-black text-slate-900">VAT Category Manager</h2>
+              <p className="text-sm text-slate-500 font-medium">Define fiscal rate buckets — assign them to menu items</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-slate-900 rounded-xl font-bold hover:bg-amber-400 transition-all disabled:opacity-60 shadow-sm min-w-[130px] justify-center"
+          >
+            {isSaving ? (
+              <div className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" />
+            ) : saveSuccess ? (
+              <><Check className="w-4 h-4" /> Saved!</>
+            ) : (
+              <><Save className="w-4 h-4" /> Save Categories</>
+            )}
+          </button>
+        </div>
+
+        {/* VAT Number */}
+        <div className="px-8 py-6 border-b border-slate-100">
+          <label className="block text-sm font-bold text-slate-700 mb-2">Company VAT Number (shown on receipts)</label>
+          <div className="relative max-w-xs">
+            <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={vatNumber}
+              onChange={e => onVatNumberChange(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all text-sm font-mono"
+              placeholder="e.g. BE 0123.456.789"
+            />
+          </div>
+        </div>
+
+        {/* Seed Defaults */}
+        <div className="px-8 py-5 bg-slate-50/50 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+            <Globe className="w-4 h-4 text-slate-400" />
+            Apply official defaults for:
+            <div className="relative">
+              <select
+                value={seedCountry}
+                onChange={e => onSeedCountryChange(e.target.value)}
+                className="appearance-none pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-bold text-slate-700 focus:border-amber-500 outline-none cursor-pointer"
+              >
+                <option value="BE">🇧🇪 Belgium</option>
+                <option value="NL">🇳🇱 Netherlands</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+          {!showSeedConfirm ? (
+            <button
+              type="button"
+              onClick={() => onShowSeedConfirmChange(true)}
+              className="px-4 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 font-bold text-sm hover:bg-amber-100 transition-colors flex items-center gap-2"
+            >
+              <Globe className="w-4 h-4" /> Apply {getCountryLabel(seedCountry)} Defaults
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2">
+              <span className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-1.5 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" /> This will replace all current categories!
+              </span>
+              <button type="button" onClick={handleSeedDefaults} disabled={isSaving} className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold hover:bg-rose-700 transition-colors">Confirm</button>
+              <button type="button" onClick={() => onShowSeedConfirmChange(false)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Category List */}
+      {isLoading ? (
+        <div className="flex justify-center py-16">
+          <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <AnimatePresence mode="popLayout">
+            {localCats.map((cat, idx) => {
+              const colors = colorMap[cat.color] ?? colorMap.slate;
+              return (
+                <motion.div
+                  key={cat.id}
+                  layout
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.2, delay: idx * 0.04 }}
+                  className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
+                >
+                  {/* Category header strip */}
+                  <div className={`px-5 py-3 ${colors.bg} ${colors.border} border-b flex items-center justify-between gap-4`}>
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {/* GKS Code badge */}
+                      <div className={`w-10 h-10 rounded-xl ${colors.badge} flex items-center justify-center shrink-0`}>
+                        <span className="text-lg font-black text-white">{cat.code}</span>
+                      </div>
+                      {/* Label */}
+                      <input
+                        type="text"
+                        value={cat.label}
+                        onChange={e => updateCat(cat.id, 'label', e.target.value)}
+                        className={`flex-1 min-w-0 bg-transparent font-bold text-slate-900 text-sm border-b-2 border-transparent focus:border-amber-400 outline-none pb-0.5 truncate`}
+                        placeholder="Category label"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {/* Rate */}
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={cat.rate}
+                          onChange={e => updateCat(cat.id, 'rate', parseFloat(e.target.value) || 0)}
+                          className="w-20 pl-3 pr-7 py-1.5 rounded-lg border border-slate-200 bg-white font-mono text-sm font-bold text-slate-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 outline-none"
+                        />
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold pointer-events-none">%</span>
+                      </div>
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        onClick={() => removeCategory(cat.id)}
+                        className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Delete category"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Category body */}
+                  <div className="px-5 py-4 flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
+                    {/* Code + Color */}
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Fiscal Code</label>
+                        <input
+                          type="text"
+                          maxLength={2}
+                          value={cat.code}
+                          onChange={e => updateCat(cat.id, 'code', e.target.value.toUpperCase())}
+                          className="w-14 text-center px-2 py-1.5 rounded-lg border border-slate-200 font-mono font-black text-lg text-slate-900 focus:border-amber-500 outline-none uppercase"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Badge Color</label>
+                        <select
+                          value={cat.color}
+                          onChange={e => updateCat(cat.id, 'color', e.target.value)}
+                          className="px-2 py-1.5 rounded-lg border border-slate-200 text-sm font-bold text-slate-700 bg-white focus:border-amber-500 outline-none"
+                        >
+                          <option value="red">Red (21%)</option>
+                          <option value="orange">Orange (12%)</option>
+                          <option value="amber">Amber (6%)</option>
+                          <option value="emerald">Emerald (0%)</option>
+                          <option value="slate">Slate (Custom)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Service Types */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Applies to</label>
+                      <div className="flex flex-wrap gap-2">
+                        {SERVICE_TYPE_OPTIONS.map(opt => {
+                          const active = (cat.serviceTypes as string[]).includes(opt.value);
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => toggleServiceType(cat.id, opt.value)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                                active
+                                  ? 'bg-slate-900 text-white border-slate-900'
+                                  : 'bg-white text-slate-400 border-slate-200 hover:border-slate-400 hover:text-slate-700'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Default toggle */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Default for new items</label>
+                      <button
+                        type="button"
+                        onClick={() => setDefault(cat.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                          cat.isDefault
+                            ? 'bg-amber-500 text-white border-amber-500'
+                            : 'bg-white text-slate-400 border-slate-200 hover:border-amber-300 hover:text-amber-600'
+                        }`}
+                      >
+                        {cat.isDefault ? '⭐ Default' : 'Set as Default'}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+
+          {localCats.length === 0 && (
+            <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+              <ShieldCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+              <p className="font-bold text-slate-500">No VAT categories yet</p>
+              <p className="text-sm text-slate-400 mt-1">Add a category below or apply country defaults above.</p>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={addCategory}
+            className="w-full py-4 rounded-2xl border-2 border-dashed border-slate-200 text-slate-500 font-bold text-sm hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/40 transition-all flex items-center justify-center gap-2"
+          >
+            <Plus className="w-5 h-5" /> Add Custom Category
+          </button>
+        </div>
+      )}
+
+      {/* Info Banner */}
+      <div className="bg-slate-900 rounded-3xl border border-slate-700 p-6 flex gap-4">
+        <ShieldCheck className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="font-bold text-white text-sm mb-1">How this works</p>
+          <p className="text-slate-400 text-xs leading-relaxed">
+            Each category defined here becomes a selectable option on every menu item (one for Dine-In, one for Takeaway).
+            When an order is placed, the assigned VAT rate is <strong className="text-slate-300">frozen permanently</strong> on each order line for fiscal compliance.
+            The receipt will show the full breakdown per rate code.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
   if (isLoading) {
     return (
@@ -879,206 +1275,20 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
         )}
 
         {activeTab === 'vat' && (
-           <div className="space-y-8 max-w-2xl bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-              <div className="flex items-start justify-between mb-8 pb-6 border-b border-slate-100">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20"><Percent className="w-7 h-7"/></div>
-                  <div>
-                    <h3 className="font-heading font-black text-slate-900 text-2xl">Tax Categories</h3>
-                    <p className="text-sm text-slate-500 font-medium">Configure VAT percentage by service</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsVatUnlocked(!isVatUnlocked)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border ${
-                    isVatUnlocked 
-                      ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100' 
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 shadow-sm'
-                  }`}
-                >
-                  {isVatUnlocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4 text-emerald-600" />}
-                  {isVatUnlocked ? 'Lock Fields' : 'Unlock to Edit'}
-                </button>
-              </div>
-
-              {isVatUnlocked && (
-                <div className="mb-6 p-4 bg-rose-50 border border-rose-200/60 rounded-xl flex items-start gap-3 text-rose-800 animate-in fade-in slide-in-from-top-2">
-                  <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-                  <div className="text-sm">
-                    <strong>Critical Warning:</strong> Modifying VAT rates directly alters tax calculations on all future orders. 
-                    Be careful of stray mouse scrolls or accidental clicks.
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* ── FOOD ── */}
-                <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
-                  <div className="px-5 py-3.5 border-b border-slate-200/60 bg-white/50 flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-                      <Utensils className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm tracking-wide">Food VAT</h4>
-                      <p className="text-[11px] text-slate-500">Standard meals and snacks</p>
-                    </div>
-                  </div>
-                  <div className="p-5 grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Takeaway</label>
-                      <div className="relative">
-                        <input type="number" min="0" max="100" value={vatSettings.foodTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, foodTakeawayRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
-                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Dine-In</label>
-                      <div className="relative">
-                        <input type="number" min="0" max="100" value={vatSettings.foodDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, foodDineInRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
-                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── SOFT DRINKS ── */}
-                <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
-                  <div className="px-5 py-3.5 border-b border-slate-200/60 bg-white/50 flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                      <Coffee className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm tracking-wide">Soft Drinks VAT</h4>
-                      <p className="text-[11px] text-slate-500">Non-alcoholic beverages</p>
-                    </div>
-                  </div>
-                  <div className="p-5 grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Takeaway</label>
-                      <div className="relative">
-                        <input type="number" min="0" max="100" value={vatSettings.softDrinkTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, softDrinkTakeawayRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
-                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Dine-In</label>
-                      <div className="relative">
-                        <input type="number" min="0" max="100" value={vatSettings.softDrinkDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, softDrinkDineInRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
-                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── ALCOHOLIC DRINKS ── */}
-                <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
-                  <div className="px-5 py-3.5 border-b border-slate-200/60 bg-white/50 flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center shrink-0">
-                      <Wine className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm tracking-wide">Alcoholic Drinks VAT</h4>
-                      <p className="text-[11px] text-slate-500">Beer, wine, and spirits</p>
-                    </div>
-                  </div>
-                  <div className="p-5 grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Takeaway</label>
-                      <div className="relative">
-                        <input type="number" min="0" max="100" value={vatSettings.alcoholTakeawayRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, alcoholTakeawayRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
-                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-2">Dine-In</label>
-                      <div className="relative">
-                        <input type="number" min="0" max="100" value={vatSettings.alcoholDineInRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, alcoholDineInRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
-                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── SERVICE FEES ── */}
-                <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
-                  <div className="px-5 py-3.5 border-b border-slate-200/60 bg-white/50 flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
-                      <Truck className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm tracking-wide">Service Fees</h4>
-                      <p className="text-[11px] text-slate-500">Delivery and processing</p>
-                    </div>
-                  </div>
-                  <div className="p-5">
-                    <label className="block text-xs font-bold text-slate-700 mb-2">Delivery Service VAT (%)</label>
-                    <div className="relative">
-                      <input type="number" min="0" max="100" value={vatSettings.deliveryVatRate ?? ''} onChange={(e) => setVatSettings({ ...vatSettings, deliveryVatRate: parseFloat(e.target.value) || 0 })} disabled={!isVatUnlocked} className="w-full pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50" />
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Belgian GKS VAT Letter Codes */}
-              <div className="bg-slate-900 p-6 md:p-8 rounded-3xl border border-slate-700 shadow-sm mt-8">
-                <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-700">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center text-blue-400">
-                    <FileText className="w-6 h-6"/>
-                  </div>
-                  <div>
-                    <h3 className="font-heading font-black text-white text-xl">Belgian GKS VAT Letter Codes</h3>
-                    <p className="text-sm text-slate-400 font-medium">Fixed codes mandated by SPF</p>
-                  </div>
-                </div>
-
-                {(() => {
-                  const rateToItems: Record<number, string[]> = {};
-                  const add = (rate: number, label: string) => {
-                    if (!rateToItems[rate]) rateToItems[rate] = [];
-                    rateToItems[rate].push(label);
-                  };
-                  add(vatSettings.foodTakeawayRate,      'Food Takeaway');
-                  add(vatSettings.foodDineInRate,         'Food Dine-In');
-                  add(vatSettings.softDrinkTakeawayRate,  'Soft Drinks Takeaway');
-                  add(vatSettings.softDrinkDineInRate,    'Soft Drinks Dine-In');
-                  add(vatSettings.alcoholTakeawayRate,    'Alcohol Takeaway');
-                  add(vatSettings.alcoholDineInRate,      'Alcohol Dine-In');
-                  add(vatSettings.deliveryVatRate,        'Delivery Service');
-
-                  const codes = [
-                    { code: 'A', rate: 21, bg: 'bg-red-500' },
-                    { code: 'B', rate: 12, bg: 'bg-orange-500' },
-                    { code: 'C', rate: 6,  bg: 'bg-amber-500' },
-                    { code: 'D', rate: 0,  bg: 'bg-green-500' },
-                  ];
-
-                  return (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                      {codes.map(({ code, rate, bg }) => {
-                        const items = rateToItems[rate] ?? [];
-                        return (
-                          <div key={code} className="rounded-2xl bg-slate-800 border border-slate-700 p-4 flex flex-col items-center gap-2">
-                            <div className={`w-12 h-12 ${bg} rounded-xl flex items-center justify-center`}>
-                              <span className="text-2xl font-black text-white">{code}</span>
-                            </div>
-                            <span className="text-xl font-black text-white">{rate}%</span>
-                            <div className="w-full mt-1 space-y-1">
-                              {items.length > 0 ? items.map(item => (
-                                <div key={item} className="text-xs text-center text-slate-400 font-medium bg-slate-700 rounded-lg px-2 py-1">{item}</div>
-                              )) : (
-                                <div className="text-xs text-center text-slate-600 font-medium">Not used</div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-              </div>
-           </div>
+          <VatCategoryManager
+            storeId={storeId}
+            vatNumber={vatNumber}
+            onVatNumberChange={setVatNumber}
+            categories={vatCategories}
+            onCategoriesChange={setVatCategories}
+            isLoading={vatCatLoading}
+            isSaving={vatCatSaving}
+            onSavingChange={setVatCatSaving}
+            seedCountry={seedCountry}
+            onSeedCountryChange={setSeedCountry}
+            showSeedConfirm={showSeedConfirm}
+            onShowSeedConfirmChange={setShowSeedConfirm}
+          />
         )}
       </motion.div>
     </div>

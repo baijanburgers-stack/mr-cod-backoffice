@@ -6,12 +6,12 @@ import { Search, Plus, MapPin, Phone, Mail, Edit, Trash2, ExternalLink, X, Alert
 import Link from 'next/link';
 import Image from 'next/image';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, setDoc, writeBatch } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { resizeImage } from '@/lib/image-utils';
 import { useLoadScript } from '@react-google-maps/api';
 import usePlacesAutocomplete, { getGeocode } from 'use-places-autocomplete';
-import { getVatRulesByCountry } from '@/lib/vat-rules';
+import { getDefaultVatCategories } from '@/lib/vat-rules';
 
 type AddressDetails = {
   street: string;
@@ -324,12 +324,7 @@ export default function SuperAdminStores() {
         isOpen: formData.status === 'Active'
       };
       
-      // When creating a new store, apply VAT rules globally based on country
-      if (!editingStore) {
-        storeData.vatSettings = getVatRulesByCountry(formData.countryCode);
-      }
-      
-        // Store Save Logic
+      // Store Save Logic
       let storeId = '';
       if (editingStore) {
         storeId = editingStore.id;
@@ -337,6 +332,17 @@ export default function SuperAdminStores() {
       } else {
         const docRef = await addDoc(collection(db, 'stores'), storeData);
         storeId = docRef.id;
+
+        // Auto-seed VAT categories for new stores based on country
+        const vatSeeds = getDefaultVatCategories(formData.countryCode);
+        const vatBatch = writeBatch(db);
+        vatSeeds.forEach(cat => {
+          vatBatch.set(
+            doc(db, 'stores', storeId, 'vatCategories', cat.id),
+            cat
+          );
+        });
+        await vatBatch.commit();
       }
 
       // Auto-provision Manager User Account

@@ -2,7 +2,7 @@
 
 import { useState, use, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Save, Check, Image as ImageIcon, Video, Palette, Type, X, Upload } from 'lucide-react';
+import { Save, Check, Image as ImageIcon, Video, Palette, Type, X, Upload, GripVertical, Play, ChevronUp, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import { db, storage } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -92,13 +92,15 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
   const [showSuccess, setShowSuccess] = useState(false);
 
   // Consolidated Branding State
+  type BannerItem = { url: string; type: 'image' | 'video' };
   const [branding, setBranding] = useState({
     storeLogo: '',
     heroImage: '', // The bg for kiosk / website
     splashVideo: '', // Idle video
     accentColor: '#DC2626',
     tagline: '',
-    promoBanners: [] as string[],
+    kioskBanners: [] as BannerItem[],   // NEW canonical field for kiosk carousel
+    promoBanners: [] as string[],        // Legacy string array preserved
     receiptLogo: '',
     kioskFooterBanner: '' // Full-width image shown at the bottom of the kiosk idle screen
   });
@@ -129,6 +131,16 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
             splashVideo: savedBranding.splashVideo || savedBranding.idleVideoUrl || '',
             accentColor: savedBranding.accentColor || '#DC2626',
             tagline: savedBranding.tagline || '',
+            kioskBanners: (() => {
+              // Load from new kioskBanners array first, fallback to legacy promoBanners (string[]) 
+              const raw = savedBranding.kioskBanners ?? savedBranding.promoBanners ?? data.promoBanners ?? data.banners ?? [];
+              if (!Array.isArray(raw)) return [];
+              return raw.map((item: unknown) => {
+                if (typeof item === 'string') return { url: item, type: 'image' as const };
+                if (item && typeof item === 'object' && 'url' in item) return item as BannerItem;
+                return null;
+              }).filter(Boolean) as BannerItem[];
+            })(),
             promoBanners: Array.isArray(savedBranding.promoBanners) ? savedBranding.promoBanners : (Array.isArray(data.promoBanners) ? data.promoBanners : []),
             receiptLogo: savedBranding.receiptLogo || '',
             kioskFooterBanner: savedBranding.kioskFooterBanner || ''
@@ -196,6 +208,8 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
       const docRef = doc(db, 'stores', storeId);
       
       // Update the main branding object and mirror to legacy fields to ensure backwards compatibility
+      // Build string-only URL array for legacy compatibility
+      const bannerUrls = branding.kioskBanners.map(b => b.url);
       await updateDoc(docRef, {
         branding: {
           storeLogo: branding.storeLogo,
@@ -204,13 +218,18 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
           splashVideo: branding.splashVideo,
           accentColor: branding.accentColor,
           tagline: branding.tagline,
-          promoBanners: branding.promoBanners,
+          // NEW: rich array with url + type, read by kiosk PromoCarousel
+          kioskBanners: branding.kioskBanners,
+          // Legacy flat array fallback
+          promoBanners: bannerUrls,
           kioskFooterBanner: branding.kioskFooterBanner
         },
         storeLogo: branding.storeLogo,
         image: branding.heroImage, // Legacy website hero
         kioskBg: branding.heroImage, // Legacy kiosk bg fallback
-        promoBanners: branding.promoBanners,
+        // Legacy top-level banners key
+        banners: bannerUrls,
+        promoBanners: bannerUrls,
         kioskSyncAt: serverTimestamp() // triggers global kiosk reloads immediately
       });
       
@@ -227,12 +246,18 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     setBannerUploading(true);
-    const results: string[] = [];
+    const results: BannerItem[] = [];
     for (const file of files) {
-      if (file.size > 5 * 1024 * 1024) { alert(`${file.name} is too large (max 5 MB)`); continue; }
+      const maxSize = file.type.startsWith('video/') ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        alert(`${file.name} is too large (max ${file.type.startsWith('video/') ? '50 MB for videos' : '10 MB for images'})`);
+        continue;
+      }
       try {
+        const isVideo = file.type.startsWith('video/');
+        const folder = isVideo ? 'banners/videos' : 'banners/images';
         const filename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-        const fileRef = ref(storage, `stores/${storeId}/branding/banners/${filename}`);
+        const fileRef = ref(storage, `stores/${storeId}/branding/${folder}/${filename}`);
         const uploadTask = uploadBytesResumable(fileRef, file);
         const url = await new Promise<string>((resolve, reject) => {
           uploadTask.on(
@@ -242,15 +267,32 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
             async () => resolve(await getDownloadURL(uploadTask.snapshot.ref))
           );
         });
-        results.push(url);
+        results.push({ url, type: isVideo ? 'video' : 'image' });
       } catch (err) {
         console.error('Banner upload failed:', err);
         alert(`Failed to upload ${file.name}. Please try again.`);
       }
     }
-    setBranding(b => ({ ...b, promoBanners: [...b.promoBanners, ...results] }));
+    setBranding(b => ({ ...b, kioskBanners: [...b.kioskBanners, ...results] }));
     setBannerUploading(false);
     e.target.value = '';
+  };
+
+  const moveBanner = (from: number, to: number) => {
+    setBranding(b => {
+      const arr = [...b.kioskBanners];
+      const [item] = arr.splice(from, 1);
+      arr.splice(to, 0, item);
+      return { ...b, kioskBanners: arr };
+    });
+  };
+
+  const deleteBanner = async (i: number) => {
+    const item = branding.kioskBanners[i];
+    if (item.url.includes('firebasestorage.googleapis.com')) {
+      await deleteObject(ref(storage, item.url)).catch(() => {});
+    }
+    setBranding(b => ({ ...b, kioskBanners: b.kioskBanners.filter((_, idx) => idx !== i) }));
   };
 
   if (isLoading) {
@@ -418,54 +460,101 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
           </div>
         </div>
 
-        {/* Promo Carousel */}
+        {/* Promo Carousel — Kiosk Footer Slideshow */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden md:col-span-2">
-          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+          <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center"><ImageIcon className="w-5 h-5" /></div>
+              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-600/20">
+                <Play className="w-5 h-5" />
+              </div>
               <div>
-                <h2 className="font-bold text-slate-900 text-lg">Shared Promo Carousel <span className="text-sm font-normal text-slate-400">({branding.promoBanners.length})</span></h2>
-                <p className="text-xs text-slate-500">Images shown on top of the Kiosk and Web menus.</p>
+                <h2 className="font-bold text-slate-900 text-lg">
+                  Kiosk Promo Carousel&nbsp;
+                  <span className="text-sm font-normal text-slate-400">({branding.kioskBanners.length} slide{branding.kioskBanners.length !== 1 ? 's' : ''})</span>
+                </h2>
+                <p className="text-xs text-slate-500">Images &amp; videos shown in the bottom 30% footer on ALL kiosk screens. Drag to reorder.</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => bannerRef.current?.click()}
-              disabled={bannerUploading}
-              className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            <label
+              className={`px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm cursor-pointer flex items-center gap-2 transition-all active:scale-95 ${bannerUploading ? 'opacity-60 pointer-events-none' : ''}`}
             >
               {bannerUploading ? (
-                <><div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> Uploading…</>
-              ) : '+ Add Promos'}
-            </button>
-            <input ref={bannerRef} type="file" multiple accept="image/*" className="hidden" onChange={handleBannerUpload} />
+                <><div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Uploading…</>
+              ) : (
+                <><Upload className="w-3.5 h-3.5" /> Add Images &amp; Videos</>
+              )}
+              <input ref={bannerRef} type="file" multiple accept="image/*,video/mp4,video/webm" className="hidden" onChange={handleBannerUpload} />
+            </label>
           </div>
-          
+
           <div className="p-6">
-            {branding.promoBanners.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {branding.promoBanners.map((url, i) => (
-                  <div key={i} className="group relative aspect-video rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
-                    <Image src={url} alt={`Promo ${i+1}`} fill className="object-cover" />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <button type="button" onClick={async () => {
-                        if (url.includes('firebasestorage.googleapis.com')) {
-                          await deleteObject(ref(storage, url)).catch(() => {});
-                        }
-                        setBranding(b => ({ ...b, promoBanners: b.promoBanners.filter((_, idx) => idx !== i) }));
-                      }} className="px-3 py-1.5 bg-rose-500 text-white rounded-lg text-xs font-bold shadow-sm hover:scale-105 transition-transform">
-                        Delete
+            {branding.kioskBanners.length > 0 ? (
+              <div className="space-y-3">
+                {branding.kioskBanners.map((item, i) => (
+                  <div key={`${item.url}-${i}`} className="group flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-3 hover:border-blue-300 hover:bg-blue-50/30 transition-all">
+                    {/* Drag handle / Order controls */}
+                    <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                      <button type="button" disabled={i === 0} onClick={() => moveBanner(i, i - 1)}
+                        className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-blue-600 hover:bg-blue-100 disabled:opacity-20 disabled:cursor-not-allowed transition-all">
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <GripVertical className="w-4 h-4 text-slate-300" />
+                      <button type="button" disabled={i === branding.kioskBanners.length - 1} onClick={() => moveBanner(i, i + 1)}
+                        className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-blue-600 hover:bg-blue-100 disabled:opacity-20 disabled:cursor-not-allowed transition-all">
+                        <ChevronDown className="w-4 h-4" />
                       </button>
                     </div>
+
+                    {/* Thumbnail */}
+                    <div className="relative w-28 h-16 rounded-xl overflow-hidden bg-slate-900 flex-shrink-0 border border-slate-200">
+                      {item.type === 'video' ? (
+                        <video src={item.url} muted loop autoPlay playsInline className="w-full h-full object-cover" />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.url} alt={`Slide ${i+1}`} className="w-full h-full object-cover" />
+                      )}
+                      <div className="absolute top-1 left-1">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black ${
+                          item.type === 'video' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
+                        }`}>
+                          {item.type === 'video' ? <Video className="w-2.5 h-2.5" /> : <ImageIcon className="w-2.5 h-2.5" />}
+                          {item.type.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-700">Slide {i + 1}</p>
+                      <p className="text-[11px] text-slate-400 truncate max-w-xs font-mono">{item.url.split('/').pop()?.split('?')[0]}</p>
+                    </div>
+
+                    {/* Delete */}
+                    <button type="button" onClick={() => deleteBanner(i)}
+                      className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all flex-shrink-0">
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 ))}
+
+                {/* Drop zone for adding more */}
+                <label className="flex items-center justify-center gap-2 border-2 border-dashed border-blue-200 rounded-2xl py-4 text-sm text-blue-600 font-bold cursor-pointer hover:bg-blue-50 transition-colors">
+                  <Upload className="w-4 h-4" /> Add more slides
+                  <input type="file" multiple accept="image/*,video/mp4,video/webm" className="hidden" onChange={handleBannerUpload} />
+                </label>
               </div>
             ) : (
-              <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400">
-                <ImageIcon className="w-10 h-10 mb-2 opacity-50" />
-                <p className="font-bold text-sm">No promo banners</p>
-                <p className="text-xs mt-1">Upload images to display special offers</p>
-              </div>
+              <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-slate-200 rounded-2xl py-14 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all group">
+                <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                  <Play className="w-8 h-8 text-blue-500" />
+                </div>
+                <div className="text-center">
+                  <p className="font-black text-slate-700 text-base">Add your first promo slide</p>
+                  <p className="text-sm text-slate-400 mt-1">Supports images (JPG/PNG/WEBP) and videos (MP4/WebM) · max 50 MB per video</p>
+                </div>
+                <span className="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold">Browse Files</span>
+                <input type="file" multiple accept="image/*,video/mp4,video/webm" className="hidden" onChange={handleBannerUpload} />
+              </label>
             )}
           </div>
         </div>
