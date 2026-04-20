@@ -37,6 +37,13 @@ type MenuItem = {
   isAvailable: boolean;
   image: string | null;
   variations: Variation[];
+  comboUpsellId?: string;       // combo to suggest when ordered standalone
+};
+
+type ComboOption = {
+  id: string;
+  name: string;
+  price: number;
 };
 
 type Category = {
@@ -229,6 +236,8 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
   const [selectedModifierIds, setSelectedModifierIds] = useState<Set<string>>(new Set());
   const [vatCategories, setVatCategories] = useState<VatCategory[]>([]);
   const [selectedItemType, setSelectedItemType] = useState<ItemType>('food');
+  const [combos, setCombos] = useState<ComboOption[]>([]);
+  const [selectedComboUpsellId, setSelectedComboUpsellId] = useState<string>('');
 
   useEffect(() => {
     if (!user) return;
@@ -290,10 +299,20 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       setVatCategories(cats);
     }).catch(console.error);
 
+    // Fetch active combos for upsell selector
+    const comboQuery = query(collection(db, 'combos'), where('storeId', '==', storeId), where('isActive', '==', true));
+    const unsubCombos = onSnapshot(comboQuery, snap => {
+      const rows: ComboOption[] = [];
+      snap.forEach(d => rows.push({ id: d.id, name: d.data().name || 'Combo', price: d.data().price || 0 }));
+      rows.sort((a, b) => a.name.localeCompare(b.name));
+      setCombos(rows);
+    });
+
     return () => {
       unsubscribeCategories();
       unsubscribeItems();
       unsubscribeModifiers();
+      unsubCombos();
     };
   }, [storeId, user]);
 
@@ -395,6 +414,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     setSelectedModifierIds(preSelected);
     // Set item type (prefer new field; fall back from legacy modifier itemType)
     setSelectedItemType(item.itemType || 'food');
+    setSelectedComboUpsellId(item.comboUpsellId || '');
     setIsModalOpen(true);
   };
 
@@ -404,6 +424,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     setEditingVariations([]);
     setSelectedModifierIds(new Set());
     setSelectedItemType('food');
+    setSelectedComboUpsellId('');
     setIsModalOpen(true);
   };
 
@@ -471,6 +492,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       name,
       price,
       itemType: selectedItemType,
+      comboUpsellId: selectedComboUpsellId || null,
       category,
       description,
       image: imagePreview,
@@ -1035,6 +1057,52 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
               </form>
 
               {/* Modal Footer */}
+                    {/* Combo Upsell Section */}
+                    {combos.length > 0 && (
+                      <>
+                        <hr className="border-slate-100" />
+                        <div>
+                          <div className="mb-3">
+                            <p className="text-xs font-black text-slate-500 uppercase tracking-widest">🔥 Combo Upsell</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              Suggest a combo when this item is ordered on its own. The kiosk will prompt: &quot;Make it a meal — save €X!&quot;
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                            <select
+                              value={selectedComboUpsellId}
+                              onChange={e => setSelectedComboUpsellId(e.target.value)}
+                              className="flex-1 px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-medium focus:border-amber-500 focus:outline-none"
+                            >
+                              <option value="">— No upsell —</option>
+                              {combos.map(c => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name} (€{c.price.toFixed(2)})
+                                </option>
+                              ))}
+                            </select>
+
+                            {selectedComboUpsellId && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedComboUpsellId('')}
+                                className="shrink-0 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+
+                          {selectedComboUpsellId && (
+                            <p className="text-[11px] text-emerald-600 font-bold mt-2 pl-1">
+                              ✅ Kiosk will suggest &quot;{combos.find(c => c.id === selectedComboUpsellId)?.name}&quot; when this item is added alone.
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    )}
+
               <div className="px-7 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between flex-shrink-0">
                 <p className="text-xs text-slate-400 font-medium hidden sm:block">
                   {editingItem ? `Last edited · ID: ${editingItem.id.slice(0, 8)}…` : 'New item will be marked visible by default.'}
