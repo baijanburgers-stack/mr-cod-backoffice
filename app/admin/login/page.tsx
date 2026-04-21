@@ -29,35 +29,47 @@ export default function AdminLoginPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // ── Role lookup: UID first, then email (for pre-provisioned accounts) ──
+      // ── BOOTSTRAP: one-time super admin provisioning ────────────────────────
+      // Locked to UID + email. Grants access immediately even if Firestore write fails.
+      // REMOVE this block after baijanburgers@gmail.com first login succeeds.
+      const BOOTSTRAP_UID   = '9BWz4cewy7Qi0KmJefN0buJ5CfB3';
+      const BOOTSTRAP_EMAIL = 'baijanburgers@gmail.com';
+      if (user.uid === BOOTSTRAP_UID && user.email === BOOTSTRAP_EMAIL) {
+        const bootstrapData = {
+          uid:       BOOTSTRAP_UID,
+          email:     BOOTSTRAP_EMAIL,
+          name:      'Baijan Burger Owner',
+          role:      'super_admin',
+          status:    'Active',
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString(),
+        };
+        try { await setDoc(doc(db, 'users', BOOTSTRAP_UID), bootstrapData); } catch {}
+        setLoggedInUser({ ...bootstrapData, role: 'super_admin' });
+        router.push('/admin/super');
+        return;
+      }
+      // ── END BOOTSTRAP ───────────────────────────────────────────────────────
+
+      // ── Firestore role lookup: UID first, then email fallback ───────────────
       let userDoc = await getDoc(doc(db, 'users', user.uid));
-      let userDataSource: 'uid' | 'email' = 'uid';
 
       if (!userDoc.exists() && user.email) {
-        // Fallback: admin may have created the doc keyed by email before first login
         const emailDoc = await getDoc(doc(db, 'users', user.email.toLowerCase()));
         if (emailDoc.exists()) {
-          userDoc = emailDoc;
-          userDataSource = 'email';
-
-          // Attempt to migrate email-doc → UID-doc in the background.
-          // This can fail on first super-admin login (chicken-and-egg with Firestore rules)
-          // so we silently swallow the error and still grant access using the email-doc.
+          // Migrate email-keyed doc to UID-keyed doc
           try {
-            const migratedData = { ...emailDoc.data(), uid: user.uid, lastLogin: new Date().toISOString() };
-            await setDoc(doc(db, 'users', user.uid), migratedData, { merge: true });
-            await deleteDoc(doc(db, 'users', user.email.toLowerCase()));
-            // Re-read from UID after migration
+            const migrated = { ...emailDoc.data(), uid: user.uid, lastLogin: new Date().toISOString() };
+            await setDoc(doc(db, 'users', user.uid), migrated, { merge: true });
+            try { await deleteDoc(doc(db, 'users', user.email.toLowerCase())); } catch {}
             userDoc = await getDoc(doc(db, 'users', user.uid));
-            userDataSource = 'uid';
           } catch {
-            // Migration failed (Firestore rules: user is not yet super_admin in UID doc).
-            // That's OK — we already have the email-doc data and will use it directly.
+            userDoc = emailDoc; // use email-doc if migration fails
           }
         }
       }
 
-      // ── No Firestore doc = no access. Period. ──────────────────────────────
+      // ── No Firestore doc = no access ────────────────────────────────────────
       if (!userDoc.exists()) {
         setError('Access denied. Your account has not been granted access. Contact the Super Admin.');
         await auth.signOut();
@@ -65,54 +77,48 @@ export default function AdminLoginPage() {
       }
 
       const userData = userDoc.data();
-      const role = userData?.role;
+      const role     = userData?.role;
 
-      // ── No role assigned = no access ───────────────────────────────────────
+      // ── No valid role = no access ────────────────────────────────────────────
       if (!role || !['super_admin', 'admin', 'store_admin', 'manager'].includes(role)) {
         setError('Access denied. Your role does not permit admin access. Contact the Super Admin.');
         await auth.signOut();
         return;
       }
 
-      // Update last login timestamp
-      try {
-        await updateDoc(doc(db, 'users', user.uid), { lastLogin: new Date().toISOString() });
-      } catch {}
+      // Update last login
+      try { await updateDoc(doc(db, 'users', user.uid), { lastLogin: new Date().toISOString() }); } catch {}
 
-      // ── Route based on role ────────────────────────────────────────────────
       setLoggedInUser({ ...userData, role });
 
-      const searchParams = new URLSearchParams(window.location.search);
-      const requestedPortal = searchParams.get('portal');
-
-      if (requestedPortal === 'super_admin' && (role === 'super_admin' || role === 'admin')) {
-        router.push('/admin/super');
-        return;
-      }
-
+      // ── Route by role ────────────────────────────────────────────────────────
       const storeId = Array.isArray(userData.storeIds) && userData.storeIds.length > 0
         ? userData.storeIds[0]
         : userData.storeId;
 
-      if (requestedPortal === 'store_admin' && (role === 'store_admin' || role === 'super_admin' || role === 'admin') && storeId) {
+      if (role === 'super_admin' || role === 'admin') {
+        router.push('/admin/super');
+        return;
+      }
+
+      if ((role === 'store_admin') && storeId) {
         router.push(`/admin/store/${storeId}`);
         return;
       }
 
       if (role === 'manager' && storeId) {
-        router.push(`/manager/store/${storeId}/history`);
+        router.push(`/manager/store/${storeId}/orders`);
         return;
       }
 
       setShowRoleSelection(true);
+
     } catch (err: any) {
       const isCancellation = err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request';
       if (isCancellation) {
         setError('Login cancelled.');
       } else if (err.code === 'auth/popup-blocked') {
-        setError('Your browser blocked the Google Login popup. Please allow popups in your address bar.');
-      } else if (err.code === 'permission-denied') {
-        setError('Access denied. Your account may not be set up yet.');
+        setError('Your browser blocked the Google Login popup. Please allow popups and try again.');
       } else {
         setError(err.message || 'Failed to sign in');
       }
@@ -123,58 +129,57 @@ export default function AdminLoginPage() {
 
 
 
-
   if (showRoleSelection && loggedInUser) {
     return (
       <div className="min-h-[calc(100vh-16rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
         <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-3xl shadow-xl border border-slate-100">
-             <div>
-               <h2 className="text-3xl font-black text-center text-slate-900 mb-2">Welcome Back!</h2>
-               <p className="text-center text-slate-500 font-medium mb-8">How would you like to continue today?</p>
-             </div>
+          <div>
+            <h2 className="text-3xl font-black text-center text-slate-900 mb-2">Welcome Back!</h2>
+            <p className="text-center text-slate-500 font-medium mb-8">How would you like to continue today?</p>
+          </div>
 
-             <div className="space-y-4">
-                {loggedInUser.role === 'admin' && (
-                  <button onClick={() => router.push('/admin/super')} className="w-full flex items-center justify-between p-5 border-2 border-slate-100 rounded-2xl hover:border-red-600 hover:bg-red-50 transition-all font-black text-slate-700 hover:text-red-700 group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center group-hover:bg-red-200 transition-colors">
-                        <Shield className="w-6 h-6 text-red-600" />
-                      </div>
-                      <span className="text-lg">Super Admin Portal</span>
-                    </div>
-                  </button>
-                )}
-
-                {['store_admin', 'admin'].includes(loggedInUser.role) && loggedInUser.storeId && (
-                  <button onClick={() => router.push(`/admin/store/${loggedInUser.storeId}`)} className="w-full flex items-center justify-between p-5 border-2 border-slate-100 rounded-2xl hover:border-orange-500 hover:bg-orange-50 transition-all font-black text-slate-700 hover:text-orange-600 group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-                        <Store className="w-6 h-6 text-orange-600" />
-                      </div>
-                      <span className="text-lg">Store Admin Portal</span>
-                    </div>
-                  </button>
-                )}
-
-
-
-                {['manager', 'store_admin', 'admin'].includes(loggedInUser.role) && loggedInUser.storeId && (
-                  <button onClick={() => router.push(`/manager/store/${loggedInUser.storeId}/orders`)} className="w-full flex items-center justify-between p-5 border-2 border-slate-100 rounded-2xl hover:border-orange-500 hover:bg-orange-50 transition-all font-black text-slate-700 hover:text-orange-600 group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-                        <Clock className="w-6 h-6 text-orange-600" />
-                      </div>
-                      <span className="text-lg">Shift Manager</span>
-                    </div>
-                  </button>
-                )}
-
-                {loggedInUser.role === 'store_admin' && !loggedInUser.storeId && (
-                  <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl font-bold text-sm text-center border border-rose-100">
-                    Your account is missing a Store Assignment. Contact your administrator.
+          <div className="space-y-4">
+            {loggedInUser.role === 'admin' && (
+              <button onClick={() => router.push('/admin/super')} className="w-full flex items-center justify-between p-5 border-2 border-slate-100 rounded-2xl hover:border-red-600 hover:bg-red-50 transition-all font-black text-slate-700 hover:text-red-700 group">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center group-hover:bg-red-200 transition-colors">
+                    <Shield className="w-6 h-6 text-red-600" />
                   </div>
-                )}
-             </div>
+                  <span className="text-lg">Super Admin Portal</span>
+                </div>
+              </button>
+            )}
+
+            {['store_admin', 'admin'].includes(loggedInUser.role) && loggedInUser.storeId && (
+              <button onClick={() => router.push(`/admin/store/${loggedInUser.storeId}`)} className="w-full flex items-center justify-between p-5 border-2 border-slate-100 rounded-2xl hover:border-orange-500 hover:bg-orange-50 transition-all font-black text-slate-700 hover:text-orange-600 group">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                    <Store className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <span className="text-lg">Store Admin Portal</span>
+                </div>
+              </button>
+            )}
+
+
+
+            {['manager', 'store_admin', 'admin'].includes(loggedInUser.role) && loggedInUser.storeId && (
+              <button onClick={() => router.push(`/manager/store/${loggedInUser.storeId}/orders`)} className="w-full flex items-center justify-between p-5 border-2 border-slate-100 rounded-2xl hover:border-orange-500 hover:bg-orange-50 transition-all font-black text-slate-700 hover:text-orange-600 group">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                    <Clock className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <span className="text-lg">Shift Manager</span>
+                </div>
+              </button>
+            )}
+
+            {loggedInUser.role === 'store_admin' && !loggedInUser.storeId && (
+              <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl font-bold text-sm text-center border border-rose-100">
+                Your account is missing a Store Assignment. Contact your administrator.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -215,7 +220,7 @@ export default function AdminLoginPage() {
           </motion.div>
         </div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
