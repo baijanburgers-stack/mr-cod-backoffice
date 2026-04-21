@@ -129,7 +129,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'storeId required' }, { status: 400 });
   }
 
-  const transactions = await listStoreTransactions(storeId, 100);
+  let transactions: Awaited<ReturnType<typeof listStoreTransactions>>;
+  try {
+    transactions = await listStoreTransactions(storeId, 100);
+  } catch (err) {
+    console.error('[GET /api/ccv/reconcile] listStoreTransactions failed:', err);
+    return NextResponse.json({ error: 'Failed to fetch transactions', detail: String(err) }, { status: 502 });
+  }
 
   // Strip sensitive fields before returning to admin
   const safe = transactions.map(t => ({
