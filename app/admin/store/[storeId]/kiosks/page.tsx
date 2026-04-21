@@ -331,54 +331,54 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
               </div>
 
               <form onSubmit={handleSave} className="overflow-y-auto flex-1 bg-slate-50">
-                <div className="p-6 space-y-6">
+                <div className="p-6 sm:p-8 space-y-6 sm:space-y-8">
                   
                   {/* ── IDENTITY & ACCESS ── */}
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                    <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                        <User className="w-4 h-4" />
+                  <div className="bg-white rounded-3xl border border-slate-200/60 overflow-hidden shadow-sm ring-1 ring-slate-900/5">
+                    <div className="px-6 py-4 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-white flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                        <User className="w-5 h-5" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-slate-800 text-sm">Identity & Credentials</h3>
-                        <p className="text-[11px] text-slate-500">Device name and login information</p>
+                        <h3 className="font-heading font-black text-slate-800 text-sm">Identity & Credentials</h3>
+                        <p className="text-xs text-slate-500 font-medium">Device name and secure login details</p>
                       </div>
                     </div>
                     
-                    <div className="p-5 space-y-5">
+                    <div className="p-6 space-y-6">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Kiosk Name</label>
-                        <div className="relative">
-                          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <Tablet className="w-4.5 h-4.5" />
+                        <label className="block text-xs font-black text-slate-600 mb-2 uppercase tracking-widest">Kiosk Name</label>
+                        <div className="relative group">
+                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-red-500 transition-colors">
+                            <Tablet className="w-5 h-5" />
                           </div>
                           <input required value={fd.name} onChange={e => setFd(f => ({ ...f, name: e.target.value }))}
-                            className="w-full px-4 py-2.5 pl-10 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none text-slate-900 transition-all font-medium" placeholder="e.g. Front Entrance Kiosk" />
+                            className="w-full pl-12 pr-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:bg-white focus:border-red-500 outline-none text-slate-900 transition-all font-bold placeholder:font-medium placeholder:text-slate-400" placeholder="e.g. Front Entrance Kiosk" />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Login ID</label>
+                          <label className="block text-xs font-black text-slate-600 mb-2 uppercase tracking-widest">Login ID</label>
                           <input required value={fd.loginId}
                             onChange={e => { setFd(f => ({ ...f, loginId: e.target.value })); setLoginIdError(''); }}
-                            className={`w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none text-slate-900 transition-all font-mono text-sm focus:border-red-500 focus:ring-4 focus:ring-red-500/10 ${loginIdError ? 'border-rose-400 bg-rose-50' : 'bg-slate-50 focus:bg-white'}`} placeholder="e.g. kiosk_1" />
-                          {loginIdError && <p className="text-[11px] text-rose-600 font-bold mt-1.5">{loginIdError}</p>}
+                            className={`w-full px-4 py-3.5 rounded-2xl border-2 outline-none text-slate-900 transition-all font-mono font-bold text-sm ${loginIdError ? 'border-rose-400 bg-rose-50 focus:border-rose-500' : 'border-slate-100 bg-slate-50 focus:bg-white focus:border-red-500'}`} placeholder="e.g. kiosk_1" />
+                          {loginIdError && <p className="text-xs text-rose-600 font-bold mt-2">{loginIdError}</p>}
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
-                            Password {editingKiosk && <span className="text-slate-400 font-normal lowercase tracking-normal">(blank to keep)</span>}
+                          <label className="block text-xs font-black text-slate-600 mb-2 uppercase tracking-widest flex items-center gap-2">
+                            Password {editingKiosk && <span className="text-slate-400 font-medium lowercase tracking-normal">(blank to keep)</span>}
                           </label>
-                          <div className="relative">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                              <Lock className="w-4 h-4" />
+                          <div className="relative group">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-red-500 transition-colors">
+                              <Lock className="w-5 h-5" />
                             </div>
                             <input type={showPw ? 'text' : 'password'} required={!editingKiosk}
                               value={fd.password} onChange={e => setFd(f => ({ ...f, password: e.target.value }))}
-                              className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none text-slate-900 transition-all font-mono text-sm" placeholder={editingKiosk ? '••••••••' : 'Set password'} />
+                              className="w-full pl-12 pr-12 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:bg-white focus:border-red-500 outline-none text-slate-900 transition-all font-mono font-bold text-sm placeholder:font-medium placeholder:text-slate-400" placeholder={editingKiosk ? '••••••••' : 'Set password'} />
                             <button type="button" onClick={() => setShowPw(v => !v)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors">
+                              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors">
                               {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                           </div>
@@ -388,49 +388,53 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
                   </div>
 
                   {/* ── SETTINGS ── */}
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                    <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                        <Settings className="w-4 h-4" />
+                  <div className="bg-white rounded-3xl border border-slate-200/60 overflow-hidden shadow-sm ring-1 ring-slate-900/5">
+                    <div className="px-6 py-4 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-white flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100">
+                        <Settings className="w-5 h-5" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-slate-800 text-sm">Operation Settings</h3>
-                        <p className="text-[11px] text-slate-500">Ordering mode and terminal status</p>
+                        <h3 className="font-heading font-black text-slate-800 text-sm">Operation Settings</h3>
+                        <p className="text-xs text-slate-500 font-medium">Ordering mode and terminal status</p>
                       </div>
                     </div>
                     
-                    <div className="p-5 space-y-6">
+                    <div className="p-6 space-y-8">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Available Order Modes</label>
-                        <div className="relative flex items-center">
-                          <div className="absolute left-3 text-slate-400 pointer-events-none">
-                            <Layout className="w-4.5 h-4.5" />
-                          </div>
-                          <select 
-                            value={fd.orderMode} 
-                            onChange={e => setFd(f => ({ ...f, orderMode: e.target.value as 'dine_in' | 'takeaway' | 'both' }))}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none text-slate-900 transition-all font-medium appearance-none"
-                          >
-                            <option value="both">Dine In & Takeaway</option>
-                            <option value="dine_in">Dine In Only</option>
-                            <option value="takeaway">Takeaway Only</option>
-                          </select>
-                          <div className="absolute right-3 text-slate-400 pointer-events-none">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                          </div>
+                        <label className="block text-xs font-black text-slate-600 mb-3 uppercase tracking-widest flex items-center gap-2">
+                          <Layout className="w-4 h-4" /> Available Order Modes
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {[
+                            { id: 'both', label: 'Dine In & Takeaway' },
+                            { id: 'dine_in', label: 'Dine In Only' },
+                            { id: 'takeaway', label: 'Takeaway Only' }
+                          ].map((mode) => (
+                            <label key={mode.id} className={`relative flex items-center justify-center p-3 cursor-pointer rounded-2xl border-2 transition-all ${fd.orderMode === mode.id ? 'border-red-500 bg-red-50/50 text-red-700' : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200 hover:bg-slate-100'}`}>
+                              <input 
+                                type="radio" 
+                                name="orderMode" 
+                                value={mode.id} 
+                                checked={fd.orderMode === mode.id}
+                                onChange={(e) => setFd(f => ({ ...f, orderMode: e.target.value as any }))}
+                                className="sr-only"
+                              />
+                              <span className="font-bold text-sm">{mode.label}</span>
+                            </label>
+                          ))}
                         </div>
-                        <p className="text-[11px] text-slate-500 mt-1.5">Determines the options shown to the customer on the welcome screen.</p>
+                        <p className="text-xs text-slate-400 mt-3 font-medium">Determines the options shown to the customer on the welcome screen.</p>
                       </div>
 
-                      <div className="flex items-center justify-between pt-5 border-t border-slate-100">
+                      <div className="flex items-center justify-between p-5 rounded-2xl bg-slate-50 border border-slate-100">
                         <div>
-                          <div className="font-bold text-slate-900 text-sm">Active Terminal</div>
-                          <div className="text-[11px] text-slate-500 max-w-[200px] mt-0.5">Inactive kiosks will not connect to the system or process orders.</div>
+                          <div className="font-black text-slate-900 text-sm">Active Terminal</div>
+                          <div className="text-xs text-slate-500 max-w-[250px] mt-1 font-medium leading-relaxed">Inactive kiosks will not connect to the system or process orders.</div>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer shrink-0">
                           <input type="checkbox" checked={fd.isActive}
                             onChange={e => setFd(f => ({ ...f, isActive: e.target.checked }))} className="sr-only peer" />
-                          <div className="w-12 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 shadow-inner" />
+                          <div className="w-14 h-7 bg-slate-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500 shadow-inner" />
                         </label>
                       </div>
                     </div>
@@ -439,16 +443,16 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 flex-shrink-0">
+                <div className="px-6 py-5 border-t border-slate-200 bg-white flex justify-end gap-3 flex-shrink-0 mt-auto">
                   <button type="button" onClick={() => setIsModalOpen(false)}
-                    className="px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors">
+                    className="px-6 py-3 rounded-2xl font-bold text-slate-600 hover:bg-slate-100 transition-colors">
                     Cancel
                   </button>
                   <button type="submit" disabled={isSaving}
-                    className="px-5 py-2.5 rounded-xl font-bold bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60 inline-flex items-center gap-2">
+                    className="px-8 py-3 rounded-2xl font-black bg-red-600 text-white hover:bg-red-700 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2 shadow-lg shadow-red-600/30">
                     {isSaving
-                      ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      : <CheckCircle className="w-4 h-4" />}
+                      ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      : <CheckCircle className="w-5 h-5" />}
                     {editingKiosk ? 'Save Changes' : 'Create Kiosk'}
                   </button>
                 </div>
