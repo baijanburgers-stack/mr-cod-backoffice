@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Store, Users, Settings, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Store, Users, Settings, LogOut, Menu, X, ShieldAlert } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '@/lib/AuthContext';
@@ -12,20 +12,22 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { user, loading } = useAuth();
+  const { user, loading, isSuperAdmin } = useAuth();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+    // Must be logged in AND have super_admin (or legacy 'admin') role
+    if (!user || !isSuperAdmin) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, loading, isSuperAdmin, router]);
 
   const handleLogout = async () => {
     await auth.signOut();
     router.push('/login');
   };
 
-  if (loading || !user) {
+  if (loading || !user || !isSuperAdmin) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50">
         <div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
@@ -73,6 +75,17 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-900">
             <X className="w-6 h-6" />
           </button>
+        </div>
+
+        {/* Logged-in user info + role badge */}
+        <div className="px-6 mb-4">
+          <div className="bg-red-50 border border-red-100 rounded-xl p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <ShieldAlert className="w-4 h-4 text-red-600" />
+              <span className="text-xs font-black text-red-600 uppercase tracking-widest">Super Admin</span>
+            </div>
+            <p className="text-xs text-slate-500 truncate">{user.email}</p>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto py-4 px-4">

@@ -9,7 +9,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
-
 export default function StoreAdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storeId: string }> }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -20,31 +19,28 @@ export default function StoreAdminLayout({ children, params }: { children: React
     Menu: pathname.includes(`/admin/store/${storeId}/menu`),
   }));
   const [storeName, setStoreName] = useState('');
-  const { user, loading } = useAuth();
+  const { user, loading, isSuperAdmin, storeIds } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
     const fetchStoreAndCheckAuth = async () => {
       if (!user) return;
-      
-      try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          const isAssignedToThisStore = 
-            userData.storeId === storeId || 
-            (Array.isArray(userData.storeIds) && userData.storeIds.includes(storeId));
 
-          if (userData.role === 'admin' || 
-             (userData.role === 'store_admin' && isAssignedToThisStore)) {
+      try {
+        // Super admins can access ALL stores — no storeId check needed
+        if (isSuperAdmin) {
+          setIsAuthorized(true);
+        } else {
+          // Store admin: must be assigned to this specific store
+          const isAssignedToThisStore =
+            storeIds.includes(storeId);
+
+          if (isAssignedToThisStore) {
             setIsAuthorized(true);
           } else {
-             router.push('/login');
-             return;
+            router.push('/login');
+            return;
           }
-        } else {
-          router.push('/login');
-          return;
         }
 
         const storeDoc = await getDoc(doc(db, 'stores', storeId));
@@ -52,7 +48,7 @@ export default function StoreAdminLayout({ children, params }: { children: React
           setStoreName(storeDoc.data().name);
         }
       } catch (error) {
-        console.error("Error fetching store data:", error);
+        console.error('Error fetching store data:', error);
         router.push('/login');
       }
     };
@@ -64,7 +60,7 @@ export default function StoreAdminLayout({ children, params }: { children: React
         fetchStoreAndCheckAuth();
       }
     }
-  }, [storeId, user, loading, router]);
+  }, [storeId, user, loading, isSuperAdmin, storeIds, router]);
 
   useEffect(() => {
     // Auto-expand active menus
