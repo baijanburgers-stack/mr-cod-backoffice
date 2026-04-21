@@ -135,10 +135,12 @@ service cloud.firestore {
 
       // Who can CREATE a user document:
       //   - Anyone can self-register as 'customer' only.
+      //   - A user can migrate their own email-keyed doc to UID-keyed doc (first login).
       //   - Only super admins can create 'super_admin', 'admin', or 'store_admin' accounts.
       //   - Store admins can create 'delivery' or 'manager' for their own store.
       allow create: if isAuthenticated() && isValidUser(request.resource.data) && (
         (isOwner(userId) && request.resource.data.role == 'customer') ||
+        (isOwner(userId) && request.resource.data.email == request.auth.token.email) ||
         (isAdmin()) ||
         (hasRequiredFields(['storeId']) && isStoreAdmin(request.resource.data.storeId) &&
           request.resource.data.role in ['delivery', 'manager']) ||

@@ -31,16 +31,29 @@ export default function AdminLoginPage() {
 
       // ── Role lookup: UID first, then email (for pre-provisioned accounts) ──
       let userDoc = await getDoc(doc(db, 'users', user.uid));
+      let userDataSource: 'uid' | 'email' = 'uid';
 
       if (!userDoc.exists() && user.email) {
         // Fallback: admin may have created the doc keyed by email before first login
         const emailDoc = await getDoc(doc(db, 'users', user.email.toLowerCase()));
         if (emailDoc.exists()) {
-          // Migrate: copy to UID-keyed doc so all future lookups are fast
-          const migratedData = { ...emailDoc.data(), uid: user.uid, lastLogin: new Date().toISOString() };
-          await setDoc(doc(db, 'users', user.uid), migratedData, { merge: true });
-          try { await deleteDoc(doc(db, 'users', user.email.toLowerCase())); } catch {}
-          userDoc = await getDoc(doc(db, 'users', user.uid));
+          userDoc = emailDoc;
+          userDataSource = 'email';
+
+          // Attempt to migrate email-doc → UID-doc in the background.
+          // This can fail on first super-admin login (chicken-and-egg with Firestore rules)
+          // so we silently swallow the error and still grant access using the email-doc.
+          try {
+            const migratedData = { ...emailDoc.data(), uid: user.uid, lastLogin: new Date().toISOString() };
+            await setDoc(doc(db, 'users', user.uid), migratedData, { merge: true });
+            await deleteDoc(doc(db, 'users', user.email.toLowerCase()));
+            // Re-read from UID after migration
+            userDoc = await getDoc(doc(db, 'users', user.uid));
+            userDataSource = 'uid';
+          } catch {
+            // Migration failed (Firestore rules: user is not yet super_admin in UID doc).
+            // That's OK — we already have the email-doc data and will use it directly.
+          }
         }
       }
 
