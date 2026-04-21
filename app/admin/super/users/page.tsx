@@ -14,7 +14,7 @@ type UserType = {
   role: string;
   status: string;
   lastLogin: string;
-  storeId?: string;
+  storeIds?: string[];   // array of assigned storeIds (store_admin)
   phone?: string;
   vehicle?: string;
   isDeliveryDriver?: boolean;
@@ -35,7 +35,7 @@ export default function SuperAdminUsers() {
 
   // Form State
   const [formData, setFormData] = useState({
-    name: '', email: '', role: 'customer', status: 'Active', storeId: '', phone: '', vehicle: 'Bike', isDeliveryDriver: false
+    name: '', email: '', role: 'store_admin', status: 'Active', storeIds: [] as string[], phone: '', vehicle: 'Bike', isDeliveryDriver: false
   });
 
   useEffect(() => {
@@ -55,10 +55,13 @@ export default function SuperAdminUsers() {
           id: doc.id,
           name: data.name || '',
           email: data.email || '',
-          role: data.role || 'customer',
+          role: data.role || '',            // empty string = no role set
           status: data.status || 'Active',
           lastLogin: data.lastLogin || 'Never',
-          storeId: data.storeId,
+          // Normalise: support both storeId (legacy) and storeIds (new)
+          storeIds: Array.isArray(data.storeIds)
+            ? data.storeIds
+            : data.storeId ? [data.storeId] : [],
           phone: data.phone,
           vehicle: data.vehicle,
           isDeliveryDriver: data.isDeliveryDriver || false
@@ -86,13 +89,22 @@ export default function SuperAdminUsers() {
 
   const openAddModal = () => {
     setEditingUser(null);
-    setFormData({ name: '', email: '', role: 'customer', status: 'Active', storeId: '', phone: '', vehicle: 'Bike', isDeliveryDriver: false });
+    setFormData({ name: '', email: '', role: 'store_admin', status: 'Active', storeIds: [], phone: '', vehicle: 'Bike', isDeliveryDriver: false });
     setIsUserModalOpen(true);
   };
 
   const openEditModal = (user: UserType) => {
     setEditingUser(user);
-    setFormData({ name: user.name, email: user.email, role: user.role, status: user.status, storeId: user.storeId || '', phone: user.phone || '', vehicle: user.vehicle || 'Bike', isDeliveryDriver: user.isDeliveryDriver || false });
+    setFormData({
+      name: user.name,
+      email: user.email,
+      role: user.role || 'store_admin',
+      status: user.status,
+      storeIds: user.storeIds || [],
+      phone: user.phone || '',
+      vehicle: user.vehicle || 'Bike',
+      isDeliveryDriver: user.isDeliveryDriver || false
+    });
     setIsUserModalOpen(true);
   };
 
@@ -114,8 +126,8 @@ export default function SuperAdminUsers() {
     }
     
     const requiresStore = ['store_admin', 'delivery'].includes(formData.role) || formData.isDeliveryDriver;
-    if (requiresStore && !formData.storeId) {
-      setError('Please select an Assigned Store.');
+    if (requiresStore && formData.role === 'store_admin' && formData.storeIds.length === 0) {
+      setError('Please select at least one Assigned Store.');
       return;
     }
     
@@ -126,19 +138,28 @@ export default function SuperAdminUsers() {
     }
 
     try {
-      const dataToSave = { ...formData };
-      if (!['store_admin', 'delivery'].includes(dataToSave.role) && !dataToSave.isDeliveryDriver) {
-        delete (dataToSave as any).storeId;
+      const dataToSave: any = {
+        name:    formData.name,
+        email:   formData.email,
+        role:    formData.role,
+        status:  formData.status,
+      };
+
+      // Store admin: save storeIds array
+      if (formData.role === 'store_admin' || formData.isDeliveryDriver) {
+        dataToSave.storeIds = formData.storeIds;
       }
-      if (dataToSave.role !== 'delivery' && !dataToSave.isDeliveryDriver) {
-        delete (dataToSave as any).phone;
-        delete (dataToSave as any).vehicle;
+
+      // Delivery driver fields
+      if (formData.role === 'delivery' || formData.isDeliveryDriver) {
+        dataToSave.isDeliveryDriver = true;
+        dataToSave.phone   = formData.phone;
+        dataToSave.vehicle = formData.vehicle;
       }
 
       if (editingUser) {
         await updateDoc(doc(db, 'users', editingUser.id), dataToSave);
       } else {
-        // Use email as document ID for new users to allow easy lookup before they first login
         await setDoc(doc(db, 'users', formData.email), {
           ...dataToSave,
           createdAt: serverTimestamp(),
@@ -166,22 +187,29 @@ export default function SuperAdminUsers() {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'admin': return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'super_admin': return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'admin':       return 'bg-purple-100 text-purple-700 border-purple-200'; // legacy
       case 'store_admin': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'delivery': return 'bg-amber-100 text-amber-900 border-amber-200';
-      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+      case 'delivery':    return 'bg-amber-100 text-amber-900 border-amber-200';
+      case 'customer':    return 'bg-slate-100 text-slate-700 border-slate-200';
+      default:            return 'bg-rose-100 text-rose-700 border-rose-200'; // no role = red warning
     }
   };
 
   const formatRoleName = (role: string) => {
     switch (role) {
-      case 'admin': return 'Super Admin';
+      case 'super_admin': return '🛡 Super Admin';
+      case 'admin':       return '🛡 Super Admin (legacy)';
       case 'store_admin': return 'Store Admin';
-      case 'delivery': return 'Delivery Person';
-      case 'customer': return 'Customer';
-      default: return role;
+      case 'delivery':    return 'Delivery Driver';
+      case 'customer':    return 'Customer';
+      default:            return '⚠ No Role Set';
     }
   };
+
+  // Users with no role set — the key warning
+  const usersWithoutRole = users.filter(u => !u.role);
+  const usersWithNoRoleWarning = usersWithoutRole.length > 0;
 
   if (isLoading) {
     return (
@@ -207,6 +235,33 @@ export default function SuperAdminUsers() {
         </button>
       </div>
 
+      {/* ⚠ Users without role warning */}
+      {usersWithNoRoleWarning && (
+        <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-rose-600 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="font-black text-rose-700 mb-1">
+                {usersWithoutRole.length} user{usersWithoutRole.length > 1 ? 's' : ''} with no role assigned
+              </p>
+              <p className="text-sm text-rose-600 mb-2">These users cannot access any admin area. Edit them to assign a role.</p>
+              <div className="flex flex-wrap gap-2">
+                {usersWithoutRole.map(u => (
+                  <button
+                    key={u.id}
+                    onClick={() => openEditModal(u)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-rose-200 rounded-full text-xs font-bold text-rose-700 hover:bg-rose-100 transition-colors"
+                  >
+                    <User className="w-3 h-3" />
+                    {u.email || u.name || u.id}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="mb-8 flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1 max-w-md">
@@ -224,13 +279,14 @@ export default function SuperAdminUsers() {
         <div className="flex flex-wrap gap-2">
           {[
             { label: 'All', value: 'All' },
-            { label: 'Super Admin', value: 'admin' },
+            { label: '🛡 Super Admin', value: 'super_admin' },
             { label: 'Store Admin', value: 'store_admin' },
             { label: 'Delivery', value: 'delivery' },
-            { label: 'Customer', value: 'customer' }
+            { label: 'Customer', value: 'customer' },
+            { label: '⚠ No Role', value: '' },
           ].map((role) => (
             <button
-              key={role.value}
+              key={role.value || 'none'}
               onClick={() => setRoleFilter(role.value)}
               className={`px-4 py-2.5 rounded-xl font-bold transition-colors ${
                 roleFilter === role.value
@@ -391,10 +447,10 @@ export default function SuperAdminUsers() {
                       onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors bg-white"
                     >
-                      <option value="customer">Customer</option>
-                      <option value="delivery">Delivery Person</option>
+                      <option value="super_admin">🛡 Super Admin</option>
                       <option value="store_admin">Store Admin</option>
-                      <option value="admin">Super Admin</option>
+                      <option value="delivery">Delivery Driver</option>
+                      <option value="customer">Customer</option>
                     </select>
                   </div>
                   <div>
@@ -425,19 +481,35 @@ export default function SuperAdminUsers() {
                   </div>
                 )}
                 
-                {(['store_admin', 'delivery'].includes(formData.role) || formData.isDeliveryDriver) && (
+                {(['store_admin'].includes(formData.role) || formData.isDeliveryDriver) && (
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Assigned Store</label>
-                    <select
-                      value={formData.storeId}
-                      onChange={(e) => setFormData({ ...formData, storeId: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors bg-white"
-                    >
-                      <option value="">Select a store</option>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">
+                      Assigned Stores
+                      <span className="ml-1 text-xs text-slate-400 font-medium">(select one or more)</span>
+                    </label>
+                    <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3">
                       {stores.map((store) => (
-                        <option key={store.id} value={store.id}>{store.name}</option>
+                        <label key={store.id} className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 px-2 py-1 rounded-lg">
+                          <input
+                            type="checkbox"
+                            checked={formData.storeIds.includes(store.id)}
+                            onChange={(e) => {
+                              const ids = e.target.checked
+                                ? [...formData.storeIds, store.id]
+                                : formData.storeIds.filter(id => id !== store.id);
+                              setFormData({ ...formData, storeIds: ids });
+                            }}
+                            className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                          />
+                          <span className="text-sm font-medium text-slate-700">{store.name}</span>
+                        </label>
                       ))}
-                    </select>
+                    </div>
+                    {formData.storeIds.length > 0 && (
+                      <p className="text-xs text-emerald-600 font-bold mt-1">
+                        ✓ {formData.storeIds.length} store{formData.storeIds.length > 1 ? 's' : ''} selected
+                      </p>
+                    )}
                   </div>
                 )}
 

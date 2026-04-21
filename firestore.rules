@@ -2,71 +2,119 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    // ── Authentication ────────────────────────────────────────────────────────
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
+    // ── Super Admin ───────────────────────────────────────────────────────────
+    // Role must be 'super_admin' or legacy 'admin' stored in users/{uid} doc.
+    // NO hardcoded emails — access is 100% Firestore-document driven.
+    // Only a super admin can create another super admin.
     function isAdmin() {
       return isAuthenticated() && (
-        request.auth.token.email == "mrcod.belgium@gmail.com" ||
-        request.auth.token.email == "baijanburgers@gmail.com" ||
-        request.auth.token.email == "yasirmahmood158@gmail.com" ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
-        (request.auth.token.email != null && exists(/databases/$(database)/documents/users/$(request.auth.token.email)) && get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'admin')
-      );
-    }
-    
-    function isStoreAdmin(storeId) {
-      return isAuthenticated() && (
-        isAdmin() ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'store_admin' && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId) ||
-        (request.auth.token.email != null && exists(/databases/$(database)/documents/users/$(request.auth.token.email)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'store_admin' && 
-         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeId == storeId)
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['super_admin', 'admin']) ||
+        (request.auth.token.email != null &&
+          exists(/databases/$(database)/documents/users/$(request.auth.token.email)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role in ['super_admin', 'admin'])
       );
     }
 
+    // ── Store Admin ───────────────────────────────────────────────────────────
+    // Super admins have access to all stores.
+    // Store admins must be assigned via storeId (single) or storeIds (array).
+    function isStoreAdmin(storeId) {
+      return isAuthenticated() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'store_admin' &&
+          (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId ||
+            ('storeIds' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data &&
+              storeId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeIds)
+          )
+        ) ||
+        (request.auth.token.email != null &&
+          exists(/databases/$(database)/documents/users/$(request.auth.token.email)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'store_admin' &&
+          (
+            get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeId == storeId ||
+            ('storeIds' in get(/databases/$(database)/documents/users/$(request.auth.token.email)).data &&
+              storeId in get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeIds)
+          )
+        )
+      );
+    }
+
+    // ── Shift Manager ─────────────────────────────────────────────────────────
     function isManager(storeId) {
       return isAuthenticated() && (
         isStoreAdmin(storeId) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager' && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId) ||
-        (request.auth.token.email != null && exists(/databases/$(database)/documents/users/$(request.auth.token.email)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'manager' && 
-         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeId == storeId)
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager' &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId) ||
+        (request.auth.token.email != null &&
+          exists(/databases/$(database)/documents/users/$(request.auth.token.email)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'manager' &&
+          get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeId == storeId)
       );
     }
-    
+
+    // ── Delivery Driver ───────────────────────────────────────────────────────
+    function isDelivery(storeId) {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'delivery' &&
+          (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId ||
+            ('storeIds' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data &&
+              storeId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeIds)
+          )
+        ) ||
+        (request.auth.token.email != null &&
+          exists(/databases/$(database)/documents/users/$(request.auth.token.email)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'delivery' &&
+          (
+            get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeId == storeId ||
+            ('storeIds' in get(/databases/$(database)/documents/users/$(request.auth.token.email)).data &&
+              storeId in get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeIds)
+          )
+        )
+      );
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
     function isOwner(userId) {
       return isAuthenticated() && (request.auth.uid == userId || request.auth.token.email == userId);
     }
-    
+
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
     }
-    
+
     function isValidEmail(email) {
       return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
     }
-    
+
+    // Valid roles — 'super_admin' added alongside legacy 'admin'.
+    // IMPORTANT: a user cannot write their own role to 'super_admin' or 'admin'
+    // — only an existing super admin can do that (enforced in /users rules below).
     function isValidUser(data) {
       return hasRequiredFields(['email', 'role']) &&
              data.email is string && isValidEmail(data.email) &&
-             data.role in ['admin', 'store_admin', 'customer', 'delivery', 'manager'];
+             data.role in ['super_admin', 'admin', 'store_admin', 'customer', 'delivery', 'manager'];
     }
-    
+
     function isValidStore(data) {
       return hasRequiredFields(['name', 'address']);
     }
-    
+
     function isValidMenuItem(data) {
       return hasRequiredFields(['storeId', 'name', 'price', 'category']);
     }
-    
+
     function isValidOrder(data) {
       return hasRequiredFields(['storeId', 'status', 'total', 'items', 'createdAt']) && (
         ('customerName' in data) ||
@@ -75,55 +123,57 @@ service cloud.firestore {
       );
     }
 
-    function isDelivery(storeId) {
-      return isAuthenticated() && (
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'delivery' && 
-         (
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId || 
-           ('storeIds' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data && storeId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeIds)
-         )
-        ) ||
-        (request.auth.token.email != null && exists(/databases/$(database)/documents/users/$(request.auth.token.email)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'delivery' && 
-         (
-           get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeId == storeId || 
-           ('storeIds' in get(/databases/$(database)/documents/users/$(request.auth.token.email)).data && storeId in get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.storeIds)
-         )
-        )
-      );
-    }
-
+    // ── Users Collection ──────────────────────────────────────────────────────
     match /users/{userId} {
+      // A user can read their own doc; super admins can read all.
       allow get: if isAuthenticated() && (
-        request.auth.uid == userId || 
-        (request.auth.token.email != null && request.auth.token.email == userId) || 
+        request.auth.uid == userId ||
+        (request.auth.token.email != null && request.auth.token.email == userId) ||
         isAdmin()
       );
       allow list: if isAuthenticated();
+
+      // Who can CREATE a user document:
+      //   - Anyone can self-register as 'customer' only.
+      //   - Only super admins can create 'super_admin', 'admin', or 'store_admin' accounts.
+      //   - Store admins can create 'delivery' or 'manager' for their own store.
       allow create: if isAuthenticated() && isValidUser(request.resource.data) && (
-        (isOwner(userId) && request.resource.data.role == 'customer') || 
-        isAdmin() || 
-        (hasRequiredFields(['storeId']) && isStoreAdmin(request.resource.data.storeId) && request.resource.data.role in ['delivery', 'manager']) ||
-        (hasRequiredFields(['storeIds']) && request.resource.data.storeIds.size() > 0 && isStoreAdmin(request.resource.data.storeIds[0]) && request.resource.data.role in ['delivery', 'manager'])
+        (isOwner(userId) && request.resource.data.role == 'customer') ||
+        (isAdmin()) ||
+        (hasRequiredFields(['storeId']) && isStoreAdmin(request.resource.data.storeId) &&
+          request.resource.data.role in ['delivery', 'manager']) ||
+        (hasRequiredFields(['storeIds']) && request.resource.data.storeIds.size() > 0 &&
+          isStoreAdmin(request.resource.data.storeIds[0]) &&
+          request.resource.data.role in ['delivery', 'manager'])
       );
+
+      // Who can UPDATE a user document:
+      //   - Users can update their own doc but CANNOT change their own role.
+      //   - Only super admins can change any role to/from 'super_admin' or 'admin'.
+      //   - Store admins can manage 'delivery' and 'manager' roles in their store.
       allow update: if isAuthenticated() && isValidUser(request.resource.data) && (
-        (isOwner(userId) && request.resource.data.role == resource.data.role) || 
-        (resource.data.email == request.auth.token.email && request.resource.data.role == resource.data.role) || 
+        (isOwner(userId) && request.resource.data.role == resource.data.role) ||
+        (resource.data.email == request.auth.token.email && request.resource.data.role == resource.data.role) ||
         isAdmin() ||
-        (hasRequiredFields(['storeId']) && isStoreAdmin(resource.data.storeId) && request.resource.data.role in ['delivery', 'manager']) ||
-        ('storeIds' in resource.data && resource.data.storeIds.size() > 0 && isStoreAdmin(resource.data.storeIds[0]) && request.resource.data.role in ['delivery', 'manager'])
+        (hasRequiredFields(['storeId']) && isStoreAdmin(resource.data.storeId) &&
+          request.resource.data.role in ['delivery', 'manager']) ||
+        ('storeIds' in resource.data && resource.data.storeIds.size() > 0 &&
+          isStoreAdmin(resource.data.storeIds[0]) &&
+          request.resource.data.role in ['delivery', 'manager'])
       );
-      allow delete: if isAdmin() || (isStoreAdmin(resource.data.storeId) && resource.data.role in ['delivery', 'manager']);
+
+      allow delete: if isAdmin() ||
+        (isStoreAdmin(resource.data.storeId) && resource.data.role in ['delivery', 'manager']);
     }
 
+    // ── Stores Collection ─────────────────────────────────────────────────────
     match /stores/{storeId} {
-      allow read: if true;
+      allow read:   if true;
       allow create: if isAdmin();
       allow update: if isAdmin() || isStoreAdmin(storeId);
       allow delete: if isAdmin();
 
-      // ── Kiosks (logo, idle video/image, accent colour) ────────────────────
+      // ── Kiosks ───────────────────────────────────────────────────────────
       match /kiosks/{kioskId} {
         allow read:   if isAdmin() || isManager(storeId);
         allow create: if isAdmin() || isManager(storeId);
@@ -158,7 +208,7 @@ service cloud.firestore {
       // ── VAT Categories ────────────────────────────────────────────────────
       // Fiscal rate buckets managed in Settings → VAT & Tax.
       // Read: any authenticated user (kiosk & POS need rates at order time).
-      // Write: admin or store admin only (fiscal data must be protected).
+      // Write: super admin or store admin only (fiscal data must be protected).
       match /vatCategories/{catId} {
         allow read:   if isAuthenticated();
         allow create: if isAdmin() || isStoreAdmin(storeId);
@@ -167,13 +217,15 @@ service cloud.firestore {
       }
     }
 
+    // ── Menu Items ────────────────────────────────────────────────────────────
     match /menuItems/{menuItemId} {
-      allow read: if true;
+      allow read:   if true;
       allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
       allow update: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
       allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
     }
-    
+
+    // ── Orders ────────────────────────────────────────────────────────────────
     match /orders/{orderId} {
       allow read: if true;
       allow create: if (isValidOrder(request.resource.data) && (
@@ -185,46 +237,53 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Settings ──────────────────────────────────────────────────────────────
     match /settings/{document=**} {
-      allow read: if true;
+      allow read:  if true;
       allow write: if isAdmin();
     }
 
+    // ── Delivery Zones ────────────────────────────────────────────────────────
     match /deliveryZones/{zoneId} {
-      allow read: if true;
+      allow read:  if true;
       allow write: if isAdmin();
     }
 
+    // ── Categories ────────────────────────────────────────────────────────────
     match /categories/{categoryId} {
-      allow read: if true;
+      allow read:   if true;
       allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
       allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
       allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
     }
 
+    // ── Modifiers ─────────────────────────────────────────────────────────────
     match /modifiers/{modifierId} {
-      allow read: if true;
+      allow read:   if true;
       allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
       allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
       allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
     }
 
+    // ── Combos ────────────────────────────────────────────────────────────────
     match /combos/{comboId} {
-      allow read: if true;
+      allow read:   if true;
       allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
       allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
       allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
     }
 
+    // ── Drivers ───────────────────────────────────────────────────────────────
     match /drivers/{driverId} {
-      allow read: if true;
+      allow read:   if true;
       allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
       allow update: if true;
       allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
     }
 
+    // ── Terminals ─────────────────────────────────────────────────────────────
     match /terminals/{terminalId} {
-      allow read: if true;
+      allow read:   if true;
       allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
       allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
       allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
@@ -232,7 +291,7 @@ service cloud.firestore {
 
     // ── Z-Reports ─────────────────────────────────────────────────────────────
     match /z_reports/{reportId} {
-      allow read: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow read:   if isAdmin() || isStoreAdmin(resource.data.storeId);
       allow create: if true;
       allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
       allow delete: if isAdmin();
@@ -240,15 +299,15 @@ service cloud.firestore {
 
     // ── Cash Drawer Logs ──────────────────────────────────────────────────────
     match /drawer_logs/{logId} {
-      allow read: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow read:   if isAdmin() || isStoreAdmin(resource.data.storeId);
       allow create: if true;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // ── Driver GPS locations ──────────────────────────────────────────────────
+    // ── Driver GPS Locations ──────────────────────────────────────────────────
     match /driver_locations/{docId} {
-      allow read: if true;
+      allow read:  if true;
       allow write: if true;
     }
 
@@ -270,5 +329,6 @@ service cloud.firestore {
       allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
       allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
     }
+
   }
 }

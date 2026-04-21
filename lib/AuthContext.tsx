@@ -45,7 +45,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (firebaseUser) {
             try {
-              const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+              // ── Lookup strategy ─────────────────────────────────────────
+              // 1st: by Firebase Auth UID (preferred — set when user self-registers)
+              // 2nd: by email (fallback — used when Super Admin creates the doc manually)
+              let userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+
+              if (!userDoc.exists() && firebaseUser.email) {
+                userDoc = await getDoc(doc(db, 'users', firebaseUser.email));
+              }
+
               if (userDoc.exists()) {
                 const data = userDoc.data();
                 const userRole = (data.role as UserRole) || null;

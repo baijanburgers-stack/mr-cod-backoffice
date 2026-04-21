@@ -28,126 +28,78 @@ export default function AdminLoginPage() {
       provider.setCustomParameters({ prompt: 'select_account' });
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      console.log('User signed in:', user.email, user.uid);
 
-      // 1. Try to get user by UID
+      // ── Role lookup: UID first, then email (for pre-provisioned accounts) ──
       let userDoc = await getDoc(doc(db, 'users', user.uid));
-      let userData = userDoc.data();
 
-      // Check for pre-provisioned account data under email
-      const emailToCheck = user.email?.toLowerCase();
-      let preProvisionedData = null;
-      let preProvisionedDocId = null;
-
-      if (emailToCheck) {
-        const emailDoc = await getDoc(doc(db, 'users', emailToCheck));
+      if (!userDoc.exists() && user.email) {
+        // Fallback: admin may have created the doc keyed by email before first login
+        const emailDoc = await getDoc(doc(db, 'users', user.email.toLowerCase()));
         if (emailDoc.exists()) {
-          preProvisionedData = emailDoc.data();
-          preProvisionedDocId = emailToCheck;
-        } else {
-          // Check by query just in case it was saved with different ID format
-          const q = query(collection(db, 'users'), where('email', '==', user.email));
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-            preProvisionedData = querySnapshot.docs[0].data();
-            preProvisionedDocId = querySnapshot.docs[0].id;
-          }
+          // Migrate: copy to UID-keyed doc so all future lookups are fast
+          const migratedData = { ...emailDoc.data(), uid: user.uid, lastLogin: new Date().toISOString() };
+          await setDoc(doc(db, 'users', user.uid), migratedData, { merge: true });
+          try { await deleteDoc(doc(db, 'users', user.email.toLowerCase())); } catch {}
+          userDoc = await getDoc(doc(db, 'users', user.uid));
         }
       }
 
-      // Merge provisioned admin data into UID if necessary
-      if (preProvisionedData && (['admin', 'store_admin', 'manager'].includes(preProvisionedData.role))) {
-        const mergedData = { ...userData, ...preProvisionedData, uid: user.uid, lastLogin: new Date().toISOString() };
-        await setDoc(doc(db, 'users', user.uid), mergedData, { merge: true });
-        
-        // Clean up the temporary email-based doc if we're migrating it
-        if (preProvisionedDocId && preProvisionedDocId !== user.uid) {
-          try {
-            await deleteDoc(doc(db, 'users', preProvisionedDocId));
-          } catch(e) {}
-        }
-        userData = mergedData;
-      }
-
-      if (userData) {
-        // If we found them by UID natively, just update last login
-        if (!preProvisionedData) {
-          try {
-            await updateDoc(doc(db, 'users', user.uid), {
-              lastLogin: new Date().toISOString()
-            });
-          } catch (e) {
-            console.warn('Could not update lastLogin for user doc:', e);
-          }
-        }
-      } else {
-        // Auto-provision Super Admin
-        if (user.email === 'yasirmahmood158@gmail.com' || user.email === 'baijanburgers@gmail.com') {
-          console.log('Auto-provisioning Super Admin:', user.email);
-          userData = {
-            email: user.email,
-            role: 'admin',
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString()
-          };
-          try {
-            await setDoc(doc(db, 'users', user.uid), userData);
-            console.log('Super Admin provisioned successfully!');
-          } catch(e) {
-            console.error('Failed to provision super admin:', e);
-          }
-        }
-      }
-
-      // 4. Check permissions
-      console.log('Checking permissions for role:', userData?.role, 'Store ID:', userData?.storeId);
-      
-      const role = userData?.role;
-      const isAutoAdmin = user.email === 'baijanburgers@gmail.com' || user.email === 'yasirmahmood158@gmail.com';
-      const finalRole = isAutoAdmin ? 'admin' : role;
-      
-      if (['admin', 'store_admin', 'manager'].includes(finalRole)) {
-        setLoggedInUser({
-          ...userData,
-          role: finalRole
-        });
-        
-        const searchParams = new URLSearchParams(window.location.search);
-        const requestedPortal = searchParams.get('portal');
-        
-        if (requestedPortal === 'super_admin' && finalRole === 'admin') {
-          router.push('/admin/super');
-          return;
-        }
-        
-        if (requestedPortal === 'store_admin' && (finalRole === 'store_admin' || finalRole === 'admin') && userData?.storeId) {
-          router.push(`/admin/store/${userData.storeId}`);
-          return;
-        }
-
-        if (finalRole === 'manager' && userData?.storeId) {
-          router.push(`/manager/store/${userData.storeId}/history`);
-          return;
-        }
-
-        setShowRoleSelection(true);
-      } else {
-        console.log('No admin access');
-        setError('You do not have staff/admin access.');
+      // ── No Firestore doc = no access. Period. ──────────────────────────────
+      if (!userDoc.exists()) {
+        setError('Access denied. Your account has not been granted access. Contact the Super Admin.');
         await auth.signOut();
+        return;
       }
+
+      const userData = userDoc.data();
+      const role = userData?.role;
+
+      // ── No role assigned = no access ───────────────────────────────────────
+      if (!role || !['super_admin', 'admin', 'store_admin', 'manager'].includes(role)) {
+        setError('Access denied. Your role does not permit admin access. Contact the Super Admin.');
+        await auth.signOut();
+        return;
+      }
+
+      // Update last login timestamp
+      try {
+        await updateDoc(doc(db, 'users', user.uid), { lastLogin: new Date().toISOString() });
+      } catch {}
+
+      // ── Route based on role ────────────────────────────────────────────────
+      setLoggedInUser({ ...userData, role });
+
+      const searchParams = new URLSearchParams(window.location.search);
+      const requestedPortal = searchParams.get('portal');
+
+      if (requestedPortal === 'super_admin' && (role === 'super_admin' || role === 'admin')) {
+        router.push('/admin/super');
+        return;
+      }
+
+      const storeId = Array.isArray(userData.storeIds) && userData.storeIds.length > 0
+        ? userData.storeIds[0]
+        : userData.storeId;
+
+      if (requestedPortal === 'store_admin' && (role === 'store_admin' || role === 'super_admin' || role === 'admin') && storeId) {
+        router.push(`/admin/store/${storeId}`);
+        return;
+      }
+
+      if (role === 'manager' && storeId) {
+        router.push(`/manager/store/${storeId}/history`);
+        return;
+      }
+
+      setShowRoleSelection(true);
     } catch (err: any) {
       const isCancellation = err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request';
-      if (!isCancellation) {
-        console.error('Login error:', err);
-      }
-      
       if (isCancellation) {
         setError('Login cancelled.');
       } else if (err.code === 'auth/popup-blocked') {
-        setError('Your browser blocked the Google Login popup. Please click "Allow popups" in your address bar.');
+        setError('Your browser blocked the Google Login popup. Please allow popups in your address bar.');
       } else if (err.code === 'permission-denied') {
-        setError('Access denied. Your account may not be fully set up yet or you lack permissions for this store.');
+        setError('Access denied. Your account may not be set up yet.');
       } else {
         setError(err.message || 'Failed to sign in');
       }
@@ -155,6 +107,7 @@ export default function AdminLoginPage() {
       setIsLoading(false);
     }
   };
+
 
 
 
