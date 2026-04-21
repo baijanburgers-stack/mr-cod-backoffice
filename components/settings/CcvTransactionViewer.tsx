@@ -62,8 +62,9 @@ export default function CcvTransactionViewer({ storeId }: { storeId: string }) {
       const res  = await fetch(`/api/ccv/reconcile?storeId=${storeId}`, {
         headers: { 'x-id-token': idToken },
       });
-      const data = await res.json();
-      if (res.ok) setTransactions(data.transactions ?? []);
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : null;
+      if (res.ok && data) setTransactions(data.transactions ?? []);
     } finally {
       setLoading(false);
     }
