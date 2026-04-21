@@ -2,7 +2,7 @@
 
 import { useState, use, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
-import { Search, Plus, Edit2, Trash2, Image as ImageIcon, MoreVertical, Check, X, Tag, GripVertical, Settings2 } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Image as ImageIcon, MoreVertical, Check, X, Tag, GripVertical, Settings2, Copy } from 'lucide-react';
 import Image from 'next/image';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, getDoc } from 'firebase/firestore';
@@ -86,14 +86,16 @@ function MenuItemRow({
   searchQuery, 
   toggleAvailability, 
   openEditModal, 
-  handleDelete 
+  handleDelete,
+  handleDuplicate
 }: { 
   item: MenuItem, 
   idx: number, 
   searchQuery: string,
   toggleAvailability: (id: string, currentStatus: boolean) => void,
   openEditModal: (item: MenuItem) => void,
-  handleDelete: (id: string) => void
+  handleDelete: (id: string) => void,
+  handleDuplicate: (item: MenuItem) => void
 }) {
   const dragControls = useDragControls();
 
@@ -191,6 +193,13 @@ function MenuItemRow({
         </div>
 
         <div className="flex items-center gap-3">
+          <button 
+            onClick={() => handleDuplicate(item)}
+            className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100 shadow-sm hover:shadow-md"
+            title="Duplicate Item"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
           <button 
             onClick={() => openEditModal(item)}
             className="p-2.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all border border-transparent hover:border-amber-100 shadow-sm hover:shadow-md"
@@ -393,6 +402,28 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       } catch (error) {
         handleFirestoreError(error, OperationType.DELETE, `menuItems/${id}`);
       }
+    }
+  };
+
+  const handleDuplicate = async (item: MenuItem) => {
+    try {
+      const { id: _id, ...rest } = item;
+      const newDoc = await addDoc(collection(db, 'menuItems'), {
+        ...rest,
+        name: `${item.name} (Copy)`,
+        isAvailable: false,
+      });
+      // Clone modifier associations to the new item
+      const attachedModifiers = modifiers.filter(m => m.itemIds?.includes(item.id));
+      await Promise.all(
+        attachedModifiers.map(m =>
+          updateDoc(doc(db, 'modifiers', m.id), {
+            itemIds: [...(m.itemIds || []), newDoc.id],
+          })
+        )
+      );
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'menuItems');
     }
   };
 
@@ -677,6 +708,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                     toggleAvailability={toggleAvailability}
                     openEditModal={openEditModal}
                     handleDelete={handleDelete}
+                    handleDuplicate={handleDuplicate}
                   />
                 ))}
               </AnimatePresence>
