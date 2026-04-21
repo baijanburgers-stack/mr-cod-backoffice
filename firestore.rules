@@ -192,8 +192,10 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       // ── Kiosks ───────────────────────────────────────────────────────────
+      // Read is public: kiosk device has no Auth session during login flow.
+      // Write is protected: only admins/store admins/managers can manage kiosks.
       match /kiosks/{kioskId} {
-        allow read:   if isAdmin() || isStoreAdmin(storeId) || isManager(storeId);
+        allow read:   if true;
         allow create: if isAdmin() || isStoreAdmin(storeId) || isManager(storeId);
         allow update: if isAdmin() || isStoreAdmin(storeId) || isManager(storeId);
         allow delete: if isAdmin() || isStoreAdmin(storeId) || isManager(storeId);
