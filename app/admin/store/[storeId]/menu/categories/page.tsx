@@ -287,7 +287,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
   }
 
   return (
-    <div className="p-6 lg:p-10 max-w-5xl mx-auto min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto min-h-screen">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-black text-slate-900">Menu Categories</h1>
@@ -359,7 +359,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.2, delay: idx * 0.04 }}
                       key={category.id}
-                      className={`flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-slate-50 transition-colors group bg-white ${!category.isActive ? 'opacity-75' : ''} ${isSubCat ? 'pl-8 border-l-4 border-amber-200' : ''} p-4 sm:p-5`}
+                      className={`flex flex-col gap-3 hover:bg-slate-50 transition-colors group bg-white ${!category.isActive ? 'opacity-75' : ''} ${isSubCat ? 'pl-6 sm:pl-8 border-l-4 border-amber-200' : ''} p-4 sm:p-5`}
                     >
                       {/* Drag Handle & Image */}
                       <div className="flex items-center gap-4">
@@ -396,7 +396,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                       </div>
 
                       {/* Stats & Actions */}
-                      <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-8 mt-2 sm:mt-0">
+                       <div className="flex items-center justify-between gap-4">
                         <div className="text-center">
                           <span className="block text-xl font-black text-slate-900">{category.itemCount}</span>
                           <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Items</span>
@@ -429,7 +429,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
       {/* Add/Edit Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -438,11 +438,11 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
               className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 24, scale: 0.96 }}
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
               transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              className="relative w-full max-w-md sm:max-w-xl lg:max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+              className="relative w-full sm:max-w-xl lg:max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -457,8 +457,8 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                 </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-6 overflow-y-auto">
-                <div className="flex flex-col lg:flex-row gap-6">
+              <form onSubmit={handleSave} className="p-4 sm:p-6 overflow-y-auto flex-1">
+                <div className="flex flex-col lg:flex-row gap-5 lg:gap-6">
 
                   {/* ── Left column: fields ── */}
                   <div className="flex-1 space-y-5">
@@ -655,19 +655,19 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                 </div>{/* end flex row */}
 
                 {/* Actions */}
-                <div className="pt-4 mt-2 border-t border-slate-100 flex justify-end gap-3">
+                <div className="pt-4 mt-2 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                   <button
                     type="button"
                     onClick={closeModal}
                     disabled={isSaving}
-                    className="px-6 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors shadow-sm disabled:opacity-50"
+                    className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors shadow-sm disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSaving || isUploading || !((categoryName as LocalizedString)?.en || '').trim()}
-                    className="px-6 py-2.5 bg-amber-500 text-slate-900 font-bold rounded-xl hover:bg-amber-400 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-amber-500 text-slate-900 font-bold rounded-xl hover:bg-amber-400 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isSaving ? (
                       <>
@@ -688,7 +688,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {categoryToDelete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -697,10 +697,10 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col p-6 text-center"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              className="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col p-6 text-center"
             >
               <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="w-8 h-8" />

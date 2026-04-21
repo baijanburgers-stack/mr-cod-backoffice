@@ -204,7 +204,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
   };
 
   return (
-    <div className="p-6 lg:p-10 max-w-5xl mx-auto min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto min-h-screen">
 
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -264,75 +264,71 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2, delay: idx * 0.04 }}
-                    className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-slate-50/70 transition-colors group bg-white"
+                    className="p-4 sm:p-5 flex flex-col gap-3 hover:bg-slate-50/70 transition-colors group bg-white"
                   >
-                    {/* Icon */}
-                    <div className="w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center bg-blue-50 text-blue-500">
-                      <Settings2 className="w-6 h-6" />
+                    {/* Info + Actions row */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <h4 className="text-base font-bold text-slate-900 truncate">{getModName(modifier.name)}</h4>
+                          {modifier.isRequired
+                            ? <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100">Required</span>
+                            : <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-bold border border-slate-200">Optional</span>
+                          }
+                          {modifier.allowMultiple && (
+                            <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-xs font-bold border border-indigo-100">Multiple</span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 font-medium">
+                          <span className="flex items-center gap-1">
+                            <span className={`w-1.5 h-1.5 rounded-full ${itemTypeDot[modifier.itemType || 'food']}`} />
+                            {modifier.itemType?.replace('_', ' ') || 'food'}
+                          </span>
+                          <span>·</span>
+                          <span>{totalOpts} option{totalOpts !== 1 ? 's' : ''}</span>
+                          {withImages > 0 && (
+                            <>
+                              <span>·</span>
+                              <span className="flex items-center gap-1 text-amber-600">
+                                <ImageIcon className="w-3.5 h-3.5" />
+                                {withImages} with image{withImages !== 1 ? 's' : ''}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {/* Icon + controls on right */}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button onClick={() => handleDuplicate(modifier)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" title="Duplicate">
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => openEditModal(modifier)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors" title="Edit group">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setModifierToDelete(modifier.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Delete">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <h4 className="text-base font-bold text-slate-900 truncate">{getModName(modifier.name)}</h4>
-                        {modifier.isRequired
-                          ? <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100">Required</span>
-                          : <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-bold border border-slate-200">Optional</span>
-                        }
-                        {modifier.allowMultiple && (
-                          <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-xs font-bold border border-indigo-100">Multiple</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-slate-400 font-medium">
-                        <span className="flex items-center gap-1">
-                          <span className={`w-1.5 h-1.5 rounded-full ${itemTypeDot[modifier.itemType || 'food']}`} />
-                          {modifier.itemType?.replace('_', ' ') || 'food'}
-                        </span>
-                        <span>·</span>
-                        <span>{totalOpts} option{totalOpts !== 1 ? 's' : ''}</span>
-                        {withImages > 0 && (
-                          <>
-                            <span>·</span>
-                            <span className="flex items-center gap-1 text-amber-600">
-                              <ImageIcon className="w-3.5 h-3.5" />
-                              {withImages} with image{withImages !== 1 ? 's' : ''}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {/* Assign Items */}
+                    {/* Bottom action row */}
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         onClick={() => openAssignModal(modifier)}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-bold transition-colors"
                       >
                         <PlusCircle className="w-3.5 h-3.5" />
-                        Assign
+                        Assign Items
                         {(modifier.itemIds?.length || 0) > 0 && (
                           <span className="bg-indigo-500 text-white px-1.5 py-0.5 rounded text-[10px]">{modifier.itemIds!.length}</span>
                         )}
                       </button>
-
-                      {/* Manage Options → */}
                       <button
                         onClick={() => router.push(`/admin/store/${storeId}/menu/modifiers/${modifier.id}`)}
                         className="flex items-center gap-1.5 px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg text-xs font-bold transition-colors"
                       >
-                        Options
+                        Manage Options
                         <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-
-                      <button onClick={() => handleDuplicate(modifier)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" title="Duplicate">
-                        <Copy className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => openEditModal(modifier)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors" title="Edit group">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setModifierToDelete(modifier.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Delete">
-                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </motion.div>
@@ -346,16 +342,16 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
       {/* ── Create/Edit Group Modal ─────────────────────────────────────────── */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              className="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               {/* Modal header */}
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -372,7 +368,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                 </button>
               </div>
 
-              <div className="p-6 space-y-5">
+              <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
                 {/* Names */}
                 <div className="space-y-3">
                   <div>
@@ -389,7 +385,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                       autoFocus
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1.5">Name (FR)</label>
                       <input
@@ -456,7 +452,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                 </div>
               </div>
 
-              <div className="px-6 pb-6 flex justify-end gap-3">
+              <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-2 border-t border-slate-100 flex justify-end gap-3 flex-shrink-0 bg-white">
                 <button
                   onClick={() => setIsModalOpen(false)}
                   className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors"
@@ -479,16 +475,16 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
       {/* ── Delete Confirmation ─────────────────────────────────────────────── */}
       <AnimatePresence>
         {modifierToDelete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setModifierToDelete(null)}
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              className="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 text-center"
             >
               <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="w-8 h-8" />
@@ -515,16 +511,16 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
       {/* ── Assign to Items Modal ───────────────────────────────────────────── */}
       <AnimatePresence>
         {assigningModifier && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setAssigningModifier(null)}
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="relative w-full max-w-lg max-h-[85vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              className="relative w-full sm:max-w-lg max-h-[90vh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col"
             >
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 flex-shrink-0">
                 <div>

@@ -688,7 +688,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       {/* Add/Edit Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 sm:p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -697,11 +697,11 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
               className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 24, scale: 0.96 }}
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
               transition={{ type: 'spring', bounce: 0.18, duration: 0.45 }}
-              className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+              className="relative w-full sm:max-w-3xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
             >
               {/* Modal Header */}
               <div className="px-7 py-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-amber-50/40 flex-shrink-0">
@@ -940,7 +940,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                             const adj = parseFloat(variation.priceAdjustment as any) || 0;
                             const finalPrice = basePrice + adj;
                             return (
-                              <div key={variation.id} className="flex items-center gap-2.5 bg-slate-50 px-3.5 py-3 rounded-xl border border-slate-200">
+                              <div key={variation.id} className="flex flex-wrap items-center gap-2 bg-slate-50 px-3 py-3 rounded-xl border border-slate-200">
                                 <span className="text-[10px] font-black text-slate-400 w-4 shrink-0 text-center">{vidx + 1}</span>
                                 <input
                                   type="text"
@@ -1103,22 +1103,22 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                       </>
                     )}
 
-              <div className="px-7 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between flex-shrink-0">
+              <div className="px-4 sm:px-7 py-4 border-t border-slate-100 bg-slate-50/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 flex-shrink-0">
                 <p className="text-xs text-slate-400 font-medium hidden sm:block">
                   {editingItem ? `Last edited · ID: ${editingItem.id.slice(0, 8)}…` : 'New item will be marked visible by default.'}
                 </p>
-                <div className="flex gap-3 ml-auto">
+                <div className="flex gap-3 sm:ml-auto">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors shadow-sm text-sm"
+                    className="flex-1 sm:flex-none px-5 py-3 sm:py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors shadow-sm text-sm"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     form="item-form"
-                    className="px-6 py-2.5 bg-amber-500 text-slate-900 font-bold rounded-xl hover:bg-amber-400 active:bg-amber-600 transition-colors shadow-sm text-sm flex items-center gap-2"
+                    className="flex-1 sm:flex-none px-6 py-3 sm:py-2.5 bg-amber-500 text-slate-900 font-bold rounded-xl hover:bg-amber-400 active:bg-amber-600 transition-colors shadow-sm text-sm flex items-center justify-center gap-2"
                   >
                     <Check className="w-4 h-4" />
                     {editingItem ? 'Save Changes' : 'Create Item'}
