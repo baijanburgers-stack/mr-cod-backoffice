@@ -256,8 +256,8 @@ export default function StoreKDSPage({ params }: { params: Promise<{ storeId: st
             <X className="w-6 h-6" />
           </Link>
           <h1 className="text-2xl font-black text-white tracking-widest uppercase">
-            <span className="text-amber-500 mr-2">MRCOD</span> 
-            KDS • {storeName}
+            <span className="text-amber-500 mr-2">{storeName}</span> 
+            KDS
           </h1>
           <div className="ml-4 px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-sm font-bold tracking-widest uppercase">
             {orders.length} Active Tickets

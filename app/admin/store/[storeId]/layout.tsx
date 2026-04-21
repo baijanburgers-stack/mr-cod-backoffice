@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, X, Clock, ChevronDown, Users, Monitor, Tablet, CreditCard, Palette } from 'lucide-react';
 import { useState, use, useEffect } from 'react';
@@ -19,6 +20,7 @@ export default function StoreAdminLayout({ children, params }: { children: React
     Menu: pathname.includes(`/admin/store/${storeId}/menu`),
   }));
   const [storeName, setStoreName] = useState('');
+  const [storeLogo, setStoreLogo] = useState('');
   const { user, loading, isSuperAdmin, storeIds } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
@@ -45,7 +47,10 @@ export default function StoreAdminLayout({ children, params }: { children: React
 
         const storeDoc = await getDoc(doc(db, 'stores', storeId));
         if (storeDoc.exists()) {
-          setStoreName(storeDoc.data().name);
+          const d = storeDoc.data();
+          setStoreName(d.name || '');
+          // Fetch store's own logo from branding sub-object or legacy top-level field
+          setStoreLogo(d.branding?.storeLogo || d.storeLogo || d.logo || '');
         }
       } catch (error) {
         console.error('Error fetching store data:', error);
@@ -139,19 +144,32 @@ export default function StoreAdminLayout({ children, params }: { children: React
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
-        {/* Logo row — X button visible only on mobile */}
-        <div className="p-6 flex items-center justify-between">
-          <Link href={`/admin/store/${storeId}`} className="flex items-center gap-2">
-            <span className="font-heading font-black text-2xl tracking-tight text-slate-900">
-              MR<span className="text-red-600 font-brand">COD</span>
-            </span>
-            <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-1 rounded-md uppercase tracking-wider ml-2">
-              Store
-            </span>
+        {/* Logo row — store logo + name, X button visible only on mobile */}
+        <div className="p-5 flex items-center justify-between border-b border-slate-100">
+          <Link href={`/admin/store/${storeId}`} className="flex items-center gap-3 min-w-0">
+            {storeLogo ? (
+              <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 border border-slate-100 bg-white">
+                <Image src={storeLogo} alt={storeName} width={40} height={40} className="w-full h-full object-contain" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center font-black text-white text-sm flex-shrink-0">
+                {storeName ? storeName.substring(0, 2).toUpperCase() : '··'}
+              </div>
+            )}
+            <div className="min-w-0">
+              {storeName ? (
+                <p className="font-black text-slate-900 text-sm truncate leading-tight">{storeName}</p>
+              ) : (
+                <div className="h-4 w-24 bg-slate-200 rounded animate-pulse" />
+              )}
+              <span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                Store Portal
+              </span>
+            </div>
           </Link>
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="lg:hidden p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+            className="lg:hidden p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -160,13 +178,18 @@ export default function StoreAdminLayout({ children, params }: { children: React
         {/* Store Card */}
         <div className="px-6 mb-4">
           <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-white shadow-sm border border-slate-100 flex items-center justify-center font-bold text-red-600 uppercase">
-              {(storeName || storeId).substring(0, 2)}
+            <div className="w-10 h-10 rounded-lg bg-red-600 shadow-sm flex items-center justify-center font-black text-white uppercase text-sm flex-shrink-0">
+              {storeName ? storeName.substring(0, 2) : '··'}
             </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-bold text-slate-900 truncate">{storeName || storeId.replace('-', ' ')}</p>
-              <p className="text-xs text-emerald-500 font-bold flex items-center">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 shadow-[0_0_8px_rgba(16,185,129,0.6)]" /> Online
+            <div className="overflow-hidden flex-1">
+              {storeName ? (
+                <p className="text-sm font-black text-slate-900 truncate">{storeName}</p>
+              ) : (
+                <div className="h-4 w-28 bg-slate-200 rounded animate-pulse" />
+              )}
+              <p className="text-xs text-emerald-500 font-bold flex items-center mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                Online
               </p>
             </div>
           </div>
@@ -257,7 +280,7 @@ export default function StoreAdminLayout({ children, params }: { children: React
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header — hamburger only shown on mobile/tablet */}
         <header className="bg-white border-b border-slate-200 h-16 flex items-center px-4 sm:px-6 justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {/* Hamburger: hidden on lg+ because sidebar is always visible */}
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -266,9 +289,22 @@ export default function StoreAdminLayout({ children, params }: { children: React
             >
               <Menu className="w-5 h-5" />
             </button>
-            <span className="font-heading font-black text-xl tracking-tight text-slate-900 lg:border-l-0 border-l border-slate-200 pl-4 lg:pl-0">
-              MR<span className="text-red-600 font-brand">COD</span>
-            </span>
+            <div className="flex items-center gap-2.5 lg:border-l-0 border-l border-slate-200 pl-4 lg:pl-0">
+              {storeLogo ? (
+                <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-100 bg-white flex-shrink-0">
+                  <Image src={storeLogo} alt={storeName} width={32} height={32} className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center font-black text-white text-xs flex-shrink-0">
+                  {storeName ? storeName.substring(0, 2).toUpperCase() : '··'}
+                </div>
+              )}
+              {storeName ? (
+                <span className="font-black text-base text-slate-900 truncate max-w-[200px]">{storeName}</span>
+              ) : (
+                <div className="h-4 w-32 bg-slate-200 rounded animate-pulse" />
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <button

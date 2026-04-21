@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
-import { resizeImage } from '@/lib/image-utils';
+import { resizeImage, base64ByteSize } from '@/lib/image-utils';
 
 const TABS = [
   { id: 'general', label: 'General', icon: Globe },
@@ -20,11 +20,15 @@ export default function SuperAdminSettings() {
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [imageError, setImageError] = useState<string | null>(null);
+  // Default to URL mode since defaults are already URLs
+  const [heroInputMode, setHeroInputMode] = useState<'upload' | 'url'>('url');
+  const [logoInputMode, setLogoInputMode] = useState<'upload' | 'url'>('url');
 
   const [settings, setSettings] = useState({
     appName: 'MR COD',
     appSubtitle: 'Belgium',
-    appLogo: '',
+    appLogo: 'https://firebasestorage.googleapis.com/v0/b/mr-cod-online-ordering.firebasestorage.app/o/logo%20mr%20cod.png?alt=media&token=9ecf39cd-567f-437a-b395-6ffd949f7f1e',
     supportEmail: 'support@mrcod.be',
     hqTelephone: '+32 2 123 45 67',
     hqAddress: 'Grand Place 1, 1000 Brussels',
@@ -41,7 +45,15 @@ export default function SuperAdminSettings() {
         const docRef = doc(db, 'settings', 'global');
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setSettings(prev => ({ ...prev, ...docSnap.data() }));
+          const data = docSnap.data();
+          setSettings(prev => ({ ...prev, ...data }));
+          // Auto-detect modes based on stored values
+          if (data.heroImage) {
+            setHeroInputMode(data.heroImage.startsWith('data:') ? 'upload' : 'url');
+          }
+          if (data.appLogo) {
+            setLogoInputMode(data.appLogo.startsWith('data:') ? 'upload' : 'url');
+          }
         }
       } catch (error) {
         handleFirestoreError(error, OperationType.GET, 'settings/global');
@@ -102,13 +114,26 @@ export default function SuperAdminSettings() {
     }
 
     setIsProcessingImage(true);
+    setImageError(null);
     const reader = new FileReader();
     reader.onloadend = async () => {
       try {
         const base64 = reader.result as string;
-        // Resize to max 1920x1080 which is plenty for a hero image
-        const resized = await resizeImage(base64, 1920, 1080, 0.7);
-        setSettings({ ...settings, heroImage: resized });
+        // Hero images MUST be aggressively compressed to stay under Firestore's 1MB doc limit.
+        // Force JPEG output (PNG ignores quality and outputs uncompressed, easily blowing the limit).
+        const resized = await resizeImage(base64, 800, 450, 0.5, true);
+
+        // Guard: reject if still too large (>700KB leaves safe headroom in the doc)
+        const sizeBytes = base64ByteSize(resized);
+        if (sizeBytes > 700_000) {
+          setImageError(
+            `Image is still too large after compression (${(sizeBytes / 1024).toFixed(0)} KB). ` +
+            'Please use a smaller source image, or switch to a URL instead.'
+          );
+          return;
+        }
+
+        setSettings(prev => ({ ...prev, heroImage: resized }));
       } catch (error) {
         console.error('Error processing image:', error);
         alert('Failed to process image. Please try another one.');
@@ -121,11 +146,24 @@ export default function SuperAdminSettings() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // ── Guard: block save if heroImage base64 is too large for Firestore ─────────
+    if (settings.heroImage?.startsWith('data:')) {
+      const sizeBytes = base64ByteSize(settings.heroImage);
+      if (sizeBytes > 900_000) {
+        setImageError(
+          `Hero image is too large to save (${(sizeBytes / 1024).toFixed(0)} KB). ` +
+          'Firestore has a 1 MB document limit. Please use a URL instead, or upload a smaller image.'
+        );
+        return;
+      }
+    }
+
     setIsSaving(true);
-    
     try {
       await setDoc(doc(db, 'settings', 'global'), settings);
       setShowSuccess(true);
+      setImageError(null);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global');
@@ -249,62 +287,160 @@ export default function SuperAdminSettings() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Application Logo</label>
-                    <div 
-                      onClick={() => logoInputRef.current?.click()}
-                      className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 hover:border-amber-400 transition-colors cursor-pointer relative overflow-hidden min-h-[160px]"
-                    >
-                      {settings.appLogo ? (
-                        <div className="absolute inset-0 w-full h-full flex justify-center items-center p-4">
-                          <Image src={settings.appLogo} alt="Logo Preview" fill className="object-contain p-2" />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <span className="text-white font-bold text-sm bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm">Change Logo</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <ImageIcon className="w-8 h-8 mb-2 text-slate-400" />
-                          <span className="text-sm font-bold">Click to upload brand logo</span>
-                          <span className="text-xs mt-1">PNG, JPG up to 5MB (Square recommended)</span>
-                        </>
-                      )}
-                      <input 
-                        type="file" 
-                        ref={logoInputRef} 
-                        onChange={handleLogoUpload} 
-                        accept="image/png, image/jpeg, image/svg+xml" 
-                        className="hidden" 
-                      />
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-bold text-slate-700">Application Logo</label>
+                      <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                        <button
+                          type="button"
+                          onClick={() => setLogoInputMode('upload')}
+                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+                            logoInputMode === 'upload' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          Upload
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLogoInputMode('url')}
+                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+                            logoInputMode === 'url' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          URL
+                        </button>
+                      </div>
                     </div>
+
+                    {logoInputMode === 'url' ? (
+                      <div className="space-y-2">
+                        <input
+                          type="url"
+                          value={settings.appLogo?.startsWith('data:') ? '' : (settings.appLogo || '')}
+                          onChange={(e) => setSettings(prev => ({ ...prev, appLogo: e.target.value }))}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors font-mono text-sm"
+                          placeholder="https://example.com/logo.png"
+                        />
+                        <p className="text-xs text-slate-400">Paste a Firebase Storage or CDN URL. Recommended to avoid Firestore size limits.</p>
+                        {settings.appLogo && !settings.appLogo.startsWith('data:') && (
+                          <div className="relative w-full h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center">
+                            <Image src={settings.appLogo} alt="Logo Preview" fill className="object-contain p-3" />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => logoInputRef.current?.click()}
+                        className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 hover:border-amber-400 transition-colors cursor-pointer relative overflow-hidden min-h-[160px]"
+                      >
+                        {settings.appLogo ? (
+                          <div className="absolute inset-0 w-full h-full flex justify-center items-center p-4">
+                            <Image src={settings.appLogo} alt="Logo Preview" fill className="object-contain p-2" />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                              <span className="text-white font-bold text-sm bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm">Change Logo</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <ImageIcon className="w-8 h-8 mb-2 text-slate-400" />
+                            <span className="text-sm font-bold">Click to upload brand logo</span>
+                            <span className="text-xs mt-1 text-slate-400">PNG, JPG, SVG up to 5MB (Square recommended)</span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          ref={logoInputRef}
+                          onChange={handleLogoUpload}
+                          accept="image/png, image/jpeg, image/svg+xml"
+                          className="hidden"
+                        />
+                      </div>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Hero Image</label>
-                    <div 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 hover:border-amber-400 transition-colors cursor-pointer relative overflow-hidden min-h-[240px]"
-                    >
-                      {settings.heroImage ? (
-                        <div className="absolute inset-0 w-full h-full">
-                          <Image src={settings.heroImage} alt="Hero Preview" fill className="object-cover" />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <span className="text-white font-bold text-sm bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm">Change Image</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <ImageIcon className="w-8 h-8 mb-2 text-slate-400" />
-                          <span className="text-sm font-bold">Click to upload hero image</span>
-                          <span className="text-xs mt-1">PNG, JPG up to 5MB (1920x1080 recommended)</span>
-                        </>
-                      )}
-                      <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleImageUpload} 
-                        accept="image/png, image/jpeg" 
-                        className="hidden" 
-                      />
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-bold text-slate-700">Hero Image</label>
+                      <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                        <button
+                          type="button"
+                          onClick={() => setHeroInputMode('upload')}
+                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+                            heroInputMode === 'upload' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          Upload
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHeroInputMode('url')}
+                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+                            heroInputMode === 'url' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          URL
+                        </button>
+                      </div>
                     </div>
+
+                    {heroInputMode === 'url' ? (
+                      <div className="space-y-2">
+                        <input
+                          type="url"
+                          value={settings.heroImage?.startsWith('data:') ? '' : (settings.heroImage || '')}
+                          onChange={(e) => {
+                            setSettings(prev => ({ ...prev, heroImage: e.target.value }));
+                            setImageError(null);
+                          }}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors font-mono text-sm"
+                          placeholder="https://example.com/hero.jpg"
+                        />
+                        <p className="text-xs text-slate-400">Use an external URL to avoid Firestore size limits. Recommended for large hero images.</p>
+                        {settings.heroImage && !settings.heroImage.startsWith('data:') && (
+                          <div className="relative w-full h-32 rounded-xl overflow-hidden border border-slate-200">
+                            <Image src={settings.heroImage} alt="Hero Preview" fill className="object-cover" />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
+                          className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 hover:border-amber-400 transition-colors cursor-pointer relative overflow-hidden min-h-[240px]"
+                        >
+                          {settings.heroImage ? (
+                            <div className="absolute inset-0 w-full h-full">
+                              <Image src={settings.heroImage} alt="Hero Preview" fill className="object-cover" />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                <span className="text-white font-bold text-sm bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm">Change Image</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <ImageIcon className="w-8 h-8 mb-2 text-slate-400" />
+                              <span className="text-sm font-bold">Click to upload hero image</span>
+                              <span className="text-xs mt-1 text-center text-slate-400">PNG or JPG · Auto-compressed to JPEG 800×450 · Must be under 700 KB after compression</span>
+                            </>
+                          )}
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleImageUpload}
+                            accept="image/png, image/jpeg"
+                            className="hidden"
+                          />
+                        </div>
+                        {settings.heroImage?.startsWith('data:') && (
+                          <p className="mt-1.5 text-xs text-slate-400">
+                            Size: ~{(base64ByteSize(settings.heroImage) / 1024).toFixed(0)} KB stored in Firestore
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {imageError && (
+                      <div className="mt-2 flex items-start gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl">
+                        <span className="text-rose-500 text-sm font-semibold">{imageError}</span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">Support Email</label>

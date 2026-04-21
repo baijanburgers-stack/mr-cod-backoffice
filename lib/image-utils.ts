@@ -1,12 +1,17 @@
 /**
  * Resizes an image to a maximum width or height while maintaining aspect ratio
  * and returns it as a base64 string.
+ * 
+ * @param forceJpeg - If true, always outputs JPEG regardless of input format.
+ *   Use this for large images (hero banners) because PNG ignores the quality
+ *   parameter and produces uncompressed output that easily exceeds Firestore limits.
  */
 export const resizeImage = (
   base64Str: string,
   maxWidth: number = 1200,
   maxHeight: number = 800,
-  quality: number = 0.7
+  quality: number = 0.7,
+  forceJpeg: boolean = false
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -38,17 +43,33 @@ export const resizeImage = (
         return;
       }
 
+      // Fill white background when converting PNG→JPEG (avoids black fill on transparency)
+      if (forceJpeg) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+      }
+
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Extract the original MIME type (e.g. data:image/png;base64)
-      const mimeMatch = base64Str.match(/^data:(image\/[^;]+);/);
-      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      // Determine output MIME type
+      let mimeType = 'image/jpeg';
+      if (!forceJpeg) {
+        const mimeMatch = base64Str.match(/^data:(image\/[^;]+);/);
+        mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      }
 
-      // Convert to base64 with specified quality, using the original format
-      // so transparent PNGs and WEBP images retain their transparency.
       const resizedBase64 = canvas.toDataURL(mimeType, quality);
       resolve(resizedBase64);
     };
     img.onerror = (error) => reject(error);
   });
 };
+
+/**
+ * Returns the approximate byte size of a base64-encoded data URL string.
+ * Useful for checking against Firestore's 1,048,487 byte document limit.
+ */
+export function base64ByteSize(dataUrl: string): number {
+  const base64 = dataUrl.split(',')[1] || dataUrl;
+  return Math.floor((base64.length * 3) / 4);
+}

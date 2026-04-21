@@ -891,6 +891,24 @@ function VatCategoryManager({
                   </div>
                   <div className="px-8 pt-8 space-y-8 max-w-2xl">
                     <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">
+                        Store Name
+                      </label>
+                      <div className="relative">
+                        <Store className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+                        <input
+                          type="text"
+                          required
+                          value={generalSettings.name}
+                          onChange={(e) => setGeneralSettings({ ...generalSettings, name: e.target.value })}
+                          className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 outline-none font-bold"
+                          placeholder="e.g. Baijan Burgers Brussels"
+                        />
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1.5">Shown in the store portal header and on all screens.</p>
+                    </div>
+
+                    <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">Order Notification Sound</label>
                       <div className="flex items-center gap-3">
                         <select

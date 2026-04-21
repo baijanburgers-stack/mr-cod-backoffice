@@ -101,24 +101,30 @@ export default function StoreAdminDashboard({ params }: { params: Promise<{ stor
   // ── Data fetching ──────────────────────────────────────────────────────────
 
   useEffect(() => {
-    const storeUnsub = onSnapshot(doc(db, 'stores', storeId), (snap) => {
-      if (snap.exists()) {
-        const d = snap.data();
-        setStoreName(d.name || '');
-        if (!schedulesLoaded) {
-          if (d.weeklySchedule) setSchedule({ ...DEFAULT_SCHEDULE, ...d.weeklySchedule });
-          if (d.onlineOrderingSchedule) setOnlineSchedule({ ...DEFAULT_SCHEDULE, ...d.onlineOrderingSchedule });
-          setSchedulesLoaded(true);
+    if (!user) return; // wait for auth before opening Firestore listeners
+    const storeUnsub = onSnapshot(
+      doc(db, 'stores', storeId),
+      (snap) => {
+        if (snap.exists()) {
+          const d = snap.data();
+          setStoreName(d.name || '');
+          if (!schedulesLoaded) {
+            if (d.weeklySchedule) setSchedule({ ...DEFAULT_SCHEDULE, ...d.weeklySchedule });
+            if (d.onlineOrderingSchedule) setOnlineSchedule({ ...DEFAULT_SCHEDULE, ...d.onlineOrderingSchedule });
+            setSchedulesLoaded(true);
+          }
         }
-      }
-    });
+      },
+      (err) => console.error('Store snapshot error:', err.code, err.message)
+    );
     const menuUnsub = onSnapshot(
       query(collection(db, 'menuItems'), where('storeId', '==', storeId)),
-      (snap) => setActiveMenuCount(snap.size)
+      (snap) => setActiveMenuCount(snap.size),
+      (err) => console.error('Menu snapshot error:', err.code)
     );
     return () => { storeUnsub(); menuUnsub(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeId]);
+  }, [storeId, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -250,7 +256,9 @@ export default function StoreAdminDashboard({ params }: { params: Promise<{ stor
               <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-600/30">
                 <Store className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">{storeName || storeId}</h1>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+                {storeName || storeId}
+              </h1>
             </div>
             <p className="text-sm font-medium text-slate-500 ml-[52px]">Store management — real-time analytics</p>
           </div>

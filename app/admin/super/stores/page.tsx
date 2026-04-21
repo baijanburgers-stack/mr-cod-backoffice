@@ -1,16 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, MapPin, Phone, Mail, Edit, Trash2, ExternalLink, X, AlertTriangle, Image as ImageIcon, Store } from 'lucide-react';
+import { Search, Plus, MapPin, Phone, Mail, Edit, Trash2, ExternalLink, X, AlertTriangle, Image as ImageIcon, Store, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, setDoc, writeBatch } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { resizeImage } from '@/lib/image-utils';
-import { useLoadScript } from '@react-google-maps/api';
-import usePlacesAutocomplete, { getGeocode } from 'use-places-autocomplete';
 import { getDefaultVatCategories } from '@/lib/vat-rules';
 
 type AddressDetails = {
@@ -26,111 +24,95 @@ type AddressAutocompleteProps = {
   onChange: (val: string, details: AddressDetails | null) => void;
 };
 
-const libraries: any = ["places"];
+// ── Singleton Google Maps script loader ────────────────────────────────────
+let gmapsLoadPromise: Promise<void> | null = null;
 
+function loadGoogleMapsScript(): Promise<void> {
+  if (gmapsLoadPromise) return gmapsLoadPromise;
+  // Already loaded by a previous render
+  if (typeof window !== 'undefined' && (window as any).google?.maps?.places) {
+    gmapsLoadPromise = Promise.resolve();
+    return gmapsLoadPromise;
+  }
+  gmapsLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Google Maps script'));
+    document.head.appendChild(script);
+  });
+  return gmapsLoadPromise;
+}
+
+// ── Address Autocomplete using native google.maps.places.Autocomplete ──────
 function AddressAutocomplete({ value, onChange }: AddressAutocompleteProps) {
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string,
-    libraries,
-  });
+  const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const [inputValue, setInputValue] = useState(value || '');
 
-  const {
-    ready,
-    value: inputValue,
-    suggestions: { status, data },
-    setValue,
-    clearSuggestions,
-    init,
-  } = usePlacesAutocomplete({
-    initOnMount: false,
-    requestOptions: {
-      /* basic config */
-    },
-    debounce: 300,
-  });
-
-  useEffect(() => {
-    if (isLoaded) {
-      init();
-    }
-  }, [isLoaded, init]);
-
-  // Sync external value when editing existing store
+  // Sync external value (e.g. when editing an existing store)
   useEffect(() => {
     if (value && inputValue === '') {
-      setValue(value, false);
+      setInputValue(value);
     }
-  }, [value, inputValue, setValue]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
-  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue(e.target.value);
-    onChange(e.target.value, null); // Default until they pick a suggestion
-  };
+  const initAutocomplete = useCallback(() => {
+    if (!inputRef.current || autocompleteRef.current) return;
+    const ac = new google.maps.places.Autocomplete(inputRef.current, {
+      types: ['address'],
+      fields: ['address_components', 'formatted_address'],
+    });
+    autocompleteRef.current = ac;
 
-  const handleSelect = async (address: string) => {
-    setValue(address, false);
-    clearSuggestions();
-    try {
-      const results = await getGeocode({ address });
-      const components = results[0]?.address_components || [];
-      
-      let streetName = '';
-      let streetNumber = '';
-      let city = '';
-      let postalCode = '';
-      let countryCode = 'DEFAULT';
+    ac.addListener('place_changed', () => {
+      const place = ac.getPlace();
+      const formatted = place.formatted_address || '';
+      setInputValue(formatted);
 
-      components.forEach(c => {
-        if (c.types.includes('route')) streetName = c.long_name;
-        if (c.types.includes('street_number')) streetNumber = c.long_name;
-        if (c.types.includes('locality')) city = c.long_name;
-        if (c.types.includes('postal_code')) postalCode = c.long_name;
-        if (c.types.includes('country')) countryCode = c.short_name;
+      const components = place.address_components || [];
+      let streetName = '', streetNumber = '', city = '', postalCode = '', countryCode = 'BE';
+      components.forEach((c: google.maps.GeocoderAddressComponent) => {
+        if (c.types.includes('route'))          streetName   = c.long_name;
+        if (c.types.includes('street_number'))  streetNumber = c.long_name;
+        if (c.types.includes('locality'))       city         = c.long_name;
+        if (c.types.includes('postal_code'))    postalCode   = c.long_name;
+        if (c.types.includes('country'))        countryCode  = c.short_name;
       });
+      onChange(formatted, { street: streetName, streetNumber, city, postalCode, countryCode });
+    });
 
-      onChange(address, { street: streetName, streetNumber, city, postalCode, countryCode });
-    } catch (error) {
-      console.error('Error getting geocode:', error);
-      onChange(address, null);
-    }
-  };
+    setIsReady(true);
+  }, [onChange]);
 
-  if (!isLoaded) {
-    return (
-      <input
-        required
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value, null)}
-        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
-        placeholder="Loading Map Services..."
-      />
-    );
-  }
+  useEffect(() => {
+    loadGoogleMapsScript()
+      .then(initAutocomplete)
+      .catch((err) => console.error('Google Maps load error:', err));
+  }, [initAutocomplete]);
 
   return (
     <div className="relative w-full">
       <input
+        ref={inputRef}
         required
         type="text"
         value={inputValue}
-        onChange={handleInput}
-        disabled={!ready}
-        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
-        placeholder="Search for an address..."
+        onChange={(e) => {
+          setInputValue(e.target.value);
+          onChange(e.target.value, null);
+        }}
+        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors"
+        placeholder={isReady ? 'Search for an address...' : 'Loading map services...'}
       />
-      {status === "OK" && (
-        <ul className="absolute z-50 w-full bg-white mt-1 border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-auto">
-          {data.map(({ place_id, description }) => (
-            <li
-              key={place_id}
-              onClick={() => handleSelect(description)}
-              className="px-4 py-3 hover:bg-slate-50 cursor-pointer text-sm text-slate-700 border-b border-slate-50 last:border-0"
-            >
-              {description}
-            </li>
-          ))}
-        </ul>
+      {!isReady && (
+        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+          <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+        </div>
       )}
     </div>
   );
@@ -175,9 +157,11 @@ export default function SuperAdminStores() {
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isProcessingLogo, setIsProcessingLogo] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editingStore, setEditingStore] = useState<Store | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [storeToDelete, setStoreToDelete] = useState<Store | null>(null);
+  const [duplicateErrors, setDuplicateErrors] = useState<{ name?: string; email?: string; vatNumber?: string }>({});
 
   // Form State
   const [formData, setFormData] = useState({
@@ -236,12 +220,14 @@ export default function SuperAdminStores() {
 
   const openAddModal = () => {
     setEditingStore(null);
+    setDuplicateErrors({});
     setFormData({ name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', ccvBackendUrl: 'https://app.mrcod.be' });
     setIsStoreModalOpen(true);
   };
 
   const openEditModal = (store: Store) => {
     setEditingStore(store);
+    setDuplicateErrors({});
     setFormData({ name: store.name, address: store.address, street: store.street || '', streetNumber: store.streetNumber || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'DEFAULT', manager: store.manager, phone: store.phone, email: store.email, companyName: store.companyName, vatNumber: store.vatNumber, status: store.status, image: store.image || '', logo: store.logo || '', maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', ccvBackendUrl: store.ccvBackendUrl || 'https://app.mrcod.be' });
     setIsStoreModalOpen(true);
   };
@@ -273,7 +259,8 @@ export default function SuperAdminStores() {
         const base64 = reader.result as string;
         // Resize to max 1200x800 which is plenty for a store banner
         const resized = await resizeImage(base64, 1200, 800, 0.7);
-        setFormData({ ...formData, image: resized });
+        // Use functional updater to avoid stale closure over formData
+        setFormData(prev => ({ ...prev, image: resized }));
       } catch (error) {
         console.error('Error processing image:', error);
         alert('Failed to process image. Please try another one.');
@@ -305,7 +292,8 @@ export default function SuperAdminStores() {
         const base64 = reader.result as string;
         // Resize to max 400x400 for a logo
         const resized = await resizeImage(base64, 400, 400, 0.8);
-        setFormData({ ...formData, logo: resized });
+        // Use functional updater to avoid stale closure over formData
+        setFormData(prev => ({ ...prev, logo: resized }));
       } catch (error) {
         console.error('Error processing logo:', error);
         alert('Failed to process logo. Please try another one.');
@@ -318,6 +306,37 @@ export default function SuperAdminStores() {
 
   const handleSaveStore = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
+
+    // ── Duplicate check (uses already-loaded stores list) ─────────────────
+    const otherStores = editingStore
+      ? stores.filter(s => s.id !== editingStore.id)
+      : stores;
+
+    const errors: { name?: string; email?: string; vatNumber?: string } = {};
+
+    const nameTaken = otherStores.some(
+      s => s.name.trim().toLowerCase() === formData.name.trim().toLowerCase()
+    );
+    if (nameTaken) errors.name = `A store named "${formData.name}" already exists.`;
+
+    const emailTaken = formData.email && otherStores.some(
+      s => s.email.trim().toLowerCase() === formData.email.trim().toLowerCase()
+    );
+    if (emailTaken) errors.email = `This email is already used by another store.`;
+
+    const vatTaken = formData.vatNumber && otherStores.some(
+      s => s.vatNumber.trim().toLowerCase() === formData.vatNumber.trim().toLowerCase()
+    );
+    if (vatTaken) errors.vatNumber = `This VAT number is already registered to another store.`;
+
+    if (Object.keys(errors).length > 0) {
+      setDuplicateErrors(errors);
+      return; // Stop — show errors inline, don't write to Firestore
+    }
+
+    setDuplicateErrors({});
+    setIsSaving(true);
     try {
       const storeData: any = {
         ...formData,
@@ -360,9 +379,12 @@ export default function SuperAdminStores() {
         }, { merge: true }); // Merge true ensures we don't accidentally wipe existing user history if they already exist
       }
 
+      // ✅ Always close the modal after a successful save
       setIsStoreModalOpen(false);
     } catch (error) {
       handleFirestoreError(error, editingStore ? OperationType.UPDATE : OperationType.CREATE, 'stores');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -548,22 +570,34 @@ export default function SuperAdminStores() {
       {/* Add/Edit Store Modal */}
       <AnimatePresence>
         {isStoreModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-slate-900/60 backdrop-blur-sm"
+            onClick={(e) => { if (e.target === e.currentTarget) setIsStoreModalOpen(false); }}
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-2xl flex flex-col max-h-[92dvh] sm:max-h-[85vh]"
             >
-              <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              {/* Drag handle for mobile */}
+              <div className="flex sm:hidden justify-center pt-3 pb-1">
+                <div className="w-10 h-1.5 rounded-full bg-slate-200" />
+              </div>
+              <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-3xl shrink-0">
                 <h2 className="text-xl font-heading font-black text-slate-900">
                   {editingStore ? 'Edit Store' : 'Add New Store'}
                 </h2>
-                <button onClick={() => setIsStoreModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                  <X className="w-6 h-6" />
+                <button
+                  type="button"
+                  onClick={() => setIsStoreModalOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-              <form onSubmit={handleSaveStore} className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+              <form onSubmit={handleSaveStore} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1">Store Banner</label>
@@ -633,10 +667,22 @@ export default function SuperAdminStores() {
                     required
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (duplicateErrors.name) setDuplicateErrors(prev => ({ ...prev, name: undefined }));
+                    }}
+                    className={`w-full px-4 py-2.5 rounded-xl border outline-none transition-colors ${
+                      duplicateErrors.name
+                        ? 'border-rose-400 focus:border-rose-500 bg-rose-50'
+                        : 'border-slate-200 focus:border-amber-500'
+                    }`}
                     placeholder="e.g. Brussels Center"
                   />
+                  {duplicateErrors.name && (
+                    <p className="mt-1.5 text-xs font-semibold text-rose-500 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 shrink-0" />{duplicateErrors.name}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">Company Name</label>
@@ -655,10 +701,22 @@ export default function SuperAdminStores() {
                     required
                     type="text"
                     value={formData.vatNumber}
-                    onChange={(e) => setFormData({ ...formData, vatNumber: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
+                    onChange={(e) => {
+                      setFormData({ ...formData, vatNumber: e.target.value });
+                      if (duplicateErrors.vatNumber) setDuplicateErrors(prev => ({ ...prev, vatNumber: undefined }));
+                    }}
+                    className={`w-full px-4 py-2.5 rounded-xl border outline-none transition-colors ${
+                      duplicateErrors.vatNumber
+                        ? 'border-rose-400 focus:border-rose-500 bg-rose-50'
+                        : 'border-slate-200 focus:border-amber-500'
+                    }`}
                     placeholder="e.g. BE 0123.456.789"
                   />
+                  {duplicateErrors.vatNumber && (
+                    <p className="mt-1.5 text-xs font-semibold text-rose-500 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 shrink-0" />{duplicateErrors.vatNumber}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">Address Search</label>
@@ -747,10 +805,22 @@ export default function SuperAdminStores() {
                       required
                       type="email"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
+                      onChange={(e) => {
+                        setFormData({ ...formData, email: e.target.value });
+                        if (duplicateErrors.email) setDuplicateErrors(prev => ({ ...prev, email: undefined }));
+                      }}
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none transition-colors ${
+                        duplicateErrors.email
+                          ? 'border-rose-400 focus:border-rose-500 bg-rose-50'
+                          : 'border-slate-200 focus:border-amber-500'
+                      }`}
                       placeholder="e.g. store@mrcod.com"
                     />
+                    {duplicateErrors.email && (
+                      <p className="mt-1.5 text-xs font-semibold text-rose-500 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 shrink-0" />{duplicateErrors.email}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1">Phone</label>
@@ -880,20 +950,23 @@ export default function SuperAdminStores() {
                     </div>
                   </div>
                 </div>
-                <div className="pt-4 flex justify-end gap-3">
+                <div className="pt-4 pb-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setIsStoreModalOpen(false)}
-                    className="px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                    className="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors border border-slate-200"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={isProcessingImage || isProcessingLogo}
-                    className="px-5 py-2.5 rounded-xl font-bold bg-amber-500 text-slate-900 hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isProcessingImage || isProcessingLogo || isSaving}
+                    className="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-bold bg-amber-500 text-slate-900 hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {(isProcessingImage || isProcessingLogo) ? 'Processing...' : (editingStore ? 'Save Changes' : 'Create Store')}
+                    {isSaving && (
+                      <span className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" />
+                    )}
+                    {isSaving ? 'Saving...' : (isProcessingImage || isProcessingLogo) ? 'Processing...' : (editingStore ? 'Save Changes' : 'Create Store')}
                   </button>
                 </div>
               </form>
