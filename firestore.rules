@@ -193,10 +193,10 @@ service cloud.firestore {
 
       // ── Kiosks ───────────────────────────────────────────────────────────
       match /kiosks/{kioskId} {
-        allow read:   if isAdmin() || isManager(storeId);
-        allow create: if isAdmin() || isManager(storeId);
-        allow update: if isAdmin() || isManager(storeId);
-        allow delete: if isAdmin() || isManager(storeId);
+        allow read:   if isAdmin() || isStoreAdmin(storeId) || isManager(storeId);
+        allow create: if isAdmin() || isStoreAdmin(storeId) || isManager(storeId);
+        allow update: if isAdmin() || isStoreAdmin(storeId) || isManager(storeId);
+        allow delete: if isAdmin() || isStoreAdmin(storeId) || isManager(storeId);
       }
 
       // ── POS Terminals ─────────────────────────────────────────────────────
