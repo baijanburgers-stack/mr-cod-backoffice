@@ -138,6 +138,7 @@ service cloud.firestore {
       //   - A user can migrate their own email-keyed doc to UID-keyed doc (first login).
       //   - Only super admins can create 'super_admin', 'admin', or 'store_admin' accounts.
       //   - Store admins can create 'delivery' or 'manager' for their own store.
+      //   - BOOTSTRAP: allow creating the first super admin document by UID (remove after setup).
       allow create: if isAuthenticated() && isValidUser(request.resource.data) && (
         (isOwner(userId) && request.resource.data.role == 'customer') ||
         (isOwner(userId) && request.resource.data.email == request.auth.token.email) ||
@@ -147,7 +148,11 @@ service cloud.firestore {
         (hasRequiredFields(['storeIds']) && request.resource.data.storeIds.size() > 0 &&
           isStoreAdmin(request.resource.data.storeIds[0]) &&
           request.resource.data.role in ['delivery', 'manager'])
-      );
+      ) ||
+      // BOOTSTRAP RULE — remove after first super admin is created
+      (userId == 'PeXghivZSYSkd0B4YbHmnRl7ZRm1' &&
+        request.resource.data.role == 'super_admin' &&
+        request.resource.data.email == 'baijanburger@gmail.com');
 
       // Who can UPDATE a user document:
       //   - Users can update their own doc but CANNOT change their own role.
