@@ -80,6 +80,20 @@ function getCategoryName(name: Category['name']): string {
   return name.en || '';
 }
 
+/** Capitalize the first letter of each word in a string */
+function autoCapWords(val: string): string {
+  return val.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** onInput handler for uncontrolled inputs — capitalizes words in-place */
+function onInputCap(e: React.FormEvent<HTMLInputElement>) {
+  const input = e.currentTarget;
+  const start = input.selectionStart;
+  const end = input.selectionEnd;
+  input.value = autoCapWords(input.value);
+  input.setSelectionRange(start, end);
+}
+
 function MenuItemRow({ 
   item, 
   idx, 
@@ -824,6 +838,8 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                             required
                             defaultValue={editingItem?.name}
                             placeholder="e.g. Spicy Cod Bites"
+                            autoCapitalize="words"
+                            onInput={onInputCap}
                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all text-sm font-medium placeholder:text-slate-300"
                           />
                         </div>
@@ -977,8 +993,9 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                                 <input
                                   type="text"
                                   value={variation.name}
-                                  onChange={(e) => handleUpdateVariation(variation.id, 'name', e.target.value)}
+                                  onChange={(e) => handleUpdateVariation(variation.id, 'name', autoCapWords(e.target.value))}
                                   placeholder="e.g. Large, With Cheese…"
+                                  autoCapitalize="words"
                                   className="flex-1 px-3 py-2 rounded-lg border border-slate-200 focus:border-amber-500 focus:outline-none text-sm font-bold bg-white min-w-0"
                                 />
                                 <div className="flex items-center gap-1 shrink-0 bg-white border border-slate-200 rounded-lg px-2 py-1.5">
@@ -1201,6 +1218,8 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                         required
                         defaultValue={getCategoryName(editingCategory?.name ?? '') || ''}
                         placeholder="e.g. Burgers"
+                        autoCapitalize="words"
+                        onInput={onInputCap}
                         className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
                       />
                     </div>

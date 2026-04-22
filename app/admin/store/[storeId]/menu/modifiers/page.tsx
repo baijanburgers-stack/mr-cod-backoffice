@@ -50,6 +50,8 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
     return name.en || '';
   };
 
+  const autoCapWords = (val: string) => val.replace(/\b\w/g, (c) => c.toUpperCase());
+
   const [modifiers, setModifiers] = useState<Modifier[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -379,8 +381,9 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                     <input
                       type="text"
                       value={(formData.name as LocalizedString)?.en || ''}
-                      onChange={(e) => setFormData({ ...formData, name: { ...(formData.name as LocalizedString), en: e.target.value } })}
+                      onChange={(e) => setFormData({ ...formData, name: { ...(formData.name as LocalizedString), en: autoCapWords(e.target.value) } })}
                       placeholder="e.g. Burger Add-ons"
+                      autoCapitalize="words"
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
                       autoFocus
                     />
@@ -391,8 +394,9 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                       <input
                         type="text"
                         value={(formData.name as LocalizedString)?.fr || ''}
-                        onChange={(e) => setFormData({ ...formData, name: { ...(formData.name as LocalizedString), fr: e.target.value } })}
+                        onChange={(e) => setFormData({ ...formData, name: { ...(formData.name as LocalizedString), fr: autoCapWords(e.target.value) } })}
                         placeholder="e.g. Suppléments"
+                        autoCapitalize="words"
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
                       />
                     </div>
@@ -401,8 +405,9 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                       <input
                         type="text"
                         value={(formData.name as LocalizedString)?.nl || ''}
-                        onChange={(e) => setFormData({ ...formData, name: { ...(formData.name as LocalizedString), nl: e.target.value } })}
+                        onChange={(e) => setFormData({ ...formData, name: { ...(formData.name as LocalizedString), nl: autoCapWords(e.target.value) } })}
                         placeholder="e.g. Toevoegingen"
+                        autoCapitalize="words"
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
                       />
                     </div>
