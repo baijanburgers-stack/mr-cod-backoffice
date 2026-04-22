@@ -37,7 +37,7 @@ function mapStatus(
 // ── Build returnUrl / webhookUrl with reference substitution ─────────────────
 
 function buildUrls(reference?: string) {
-  const base       = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.mrcod.be';
+  const base       = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://mr-cod-backoffice--mr-cod-online-ordering.europe-west4.hosted.app';
   const ref        = reference ?? '{reference}';
   const returnUrl  = `${base}/ccv/return?reference=${ref}`;
   const webhookUrl = `${base}/api/ccv/webhook`;

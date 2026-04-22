@@ -448,7 +448,7 @@ function SettingsTab({ storeId, idToken }: { storeId: string; idToken: string | 
           <h2 className="text-sm font-black text-white">Webhook Endpoint</h2>
         </div>
         <div className="p-3 rounded-xl bg-[#0B0D11] border border-[#2A2D36] font-mono text-xs text-green-400 break-all">
-          POST {process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.mrcod.be'}/api/ccv/webhook
+          POST {process.env.NEXT_PUBLIC_BASE_URL ?? 'https://mr-cod-backoffice--mr-cod-online-ordering.europe-west4.hosted.app'}/api/ccv/webhook
         </div>
         <p className="text-xs text-gray-500">
           Register this URL in your CCV merchant portal as the webhook endpoint.
