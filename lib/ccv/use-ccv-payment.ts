@@ -26,6 +26,7 @@ export interface CashierPaymentState {
   phase:                    CashierPaymentPhase;
   reference?:               string;
   transactionId?:           string;
+  payUrl?:                  string;
   amount?:                  string;
   currency:                 'EUR';
   failureCode?:             string;
@@ -218,9 +219,10 @@ export function useCcvPayment(options: UseCcvPaymentOptions) {
 
       reference     = data.reference;
       transactionId = data.transactionId;
+      const payUrl  = data.payUrl;
       referenceRef.current = reference;
 
-      setState(s => ({ ...s, reference, transactionId }));
+      setState(s => ({ ...s, reference, transactionId, payUrl }));
 
       // If already resolved (shouldn't happen in ATTENDED mode)
       if (data.status === 'success') {

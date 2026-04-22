@@ -56,6 +56,7 @@ export async function initiateSale(
     amountCents, terminalId, managementSystemId,
     environment, apiKey,
     language = 'eng',
+    isKiosk = false,
   } = params;
 
   const idempotencyRef  = randomUUID();
@@ -70,11 +71,11 @@ export async function initiateSale(
     returnUrl,
     webhookUrl,
     details: {
-      operatingEnvironment: 'ATTENDED',
-      merchantLanguage:     language.toUpperCase() as 'ENG',
+      operatingEnvironment: isKiosk ? 'SEMI_UNATTENDED' : 'ATTENDED',
       managementSystemId,
       terminalId,
       accessProtocol:       'OPI_NL',
+      ...(isKiosk ? {} : { merchantLanguage: language.toUpperCase() as any }),
     },
   };
 
@@ -162,6 +163,7 @@ export async function initiateRefund(
     amountCents, originalCcvReference,
     terminalId, managementSystemId,
     environment, apiKey,
+    isKiosk = false,
   } = params;
 
   const idempotencyRef  = randomUUID();
@@ -174,11 +176,11 @@ export async function initiateRefund(
     returnUrl,
     webhookUrl,
     details: {
-      operatingEnvironment: 'ATTENDED',
-      merchantLanguage:     'ENG',
+      operatingEnvironment: isKiosk ? 'SEMI_UNATTENDED' : 'ATTENDED',
       managementSystemId,
       terminalId,
       accessProtocol:       'OPI_NL',
+      ...(isKiosk ? {} : { merchantLanguage: 'ENG' }),
     },
   };
 

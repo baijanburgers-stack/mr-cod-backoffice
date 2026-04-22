@@ -1,4 +1,4 @@
-﻿runtime: nodejs20
+runtime: nodejs20
 
 env:
   - variable: NEXT_PUBLIC_VAPID_KEY
@@ -19,6 +19,12 @@ env:
 
   - variable: FIREBASE_PROJECT_ID
     secret: FIREBASE_PROJECT_ID
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_BASE_URL
+    value: "https://mr-cod-backoffice--mr-cod-online-ordering.europe-west4.hosted.app"
     availability:
       - BUILD
       - RUNTIME

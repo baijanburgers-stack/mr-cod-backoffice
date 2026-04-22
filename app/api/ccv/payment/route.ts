@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
     amountCents:  number;
     language?:    string;
     posScreenId?: string;
+    isKiosk?:     boolean;
   };
 
   try {
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { storeId, orderId, terminalId, amountCents, language, posScreenId } = body;
+  const { storeId, orderId, terminalId, amountCents, language, posScreenId, isKiosk } = body;
 
   if (!storeId || !orderId || !terminalId || !amountCents) {
     return NextResponse.json(
@@ -92,6 +93,7 @@ export async function POST(req: NextRequest) {
       managementSystemId: storeConfig.managementSystemId,
       environment:        storeConfig.environment,
       apiKey:             storeConfig.apiKey,
+      isKiosk:            isKiosk === true,
     });
 
     // IMPORTANT: Return only safe fields — never return the API key

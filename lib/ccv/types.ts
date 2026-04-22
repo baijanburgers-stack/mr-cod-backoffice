@@ -37,7 +37,7 @@ export type CcvTransactionStatus =
 
 // ── Operating Environment ────────────────────────────────────────────────────
 
-export type CcvOperatingEnvironment = 'ATTENDED';   // only attended for POS
+export type CcvOperatingEnvironment = 'ATTENDED' | 'SEMI_UNATTENDED';
 
 // ── Access Protocol ──────────────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ export type CcvTransactionType = 'sale' | 'refund';
 
 export interface CcvPaymentDetails {
   operatingEnvironment: CcvOperatingEnvironment;
-  merchantLanguage:     CcvMerchantLanguage;
+  merchantLanguage?:    CcvMerchantLanguage;
   managementSystemId:   CcvManagementSystemId;
   terminalId:           string;
   accessProtocol:       CcvAccessProtocol;
@@ -237,6 +237,7 @@ export interface InitiateSaleParams {
   managementSystemId: CcvManagementSystemId;
   environment:        CcvEnvironment;
   apiKey:             string;
+  isKiosk?:           boolean;
 }
 
 export interface InitiateRefundParams {
@@ -249,6 +250,7 @@ export interface InitiateRefundParams {
   managementSystemId:    CcvManagementSystemId;
   environment:           CcvEnvironment;
   apiKey:                string;
+  isKiosk?:              boolean;
 }
 
 export interface TransactionResult {

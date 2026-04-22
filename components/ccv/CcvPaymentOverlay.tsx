@@ -111,7 +111,7 @@ export default function CcvPaymentOverlay({
   // ── Payment phase screens ─────────────────────────────────────────────────
   return (
     <Overlay>
-      {state.phase === 'pending' && (
+      {state.phase === 'pending' && !state.payUrl && (
         <PhaseScreen
           icon={
             <div className="relative">
@@ -137,6 +137,24 @@ export default function CcvPaymentOverlay({
           onCancel={onCancel}
           cancelLabel="Annuleren"
         />
+      )}
+
+      {state.phase === 'pending' && state.payUrl && (
+        <div className="w-full max-w-lg mx-4 rounded-3xl bg-white overflow-hidden shadow-2xl relative">
+          {/* Header to allow cancellation if iframe hangs */}
+          <div className="flex items-center justify-between p-4 bg-gray-100 border-b">
+             <div className="flex items-center gap-2 text-gray-600 font-bold text-sm">
+                <Loader2 size={16} className="animate-spin" />
+                Betaalterminal Instructies
+             </div>
+             <button onClick={onCancel} className="text-red-500 text-sm font-bold">Annuleren</button>
+          </div>
+          <iframe 
+            src={state.payUrl} 
+            className="w-full h-[500px] border-none"
+            title="CCV Cashier Display"
+          />
+        </div>
       )}
 
       {state.phase === 'waiting_confirmation' && (
