@@ -229,10 +229,12 @@ export default function AdminLoginPage() {
               {isLoading ? (
                 <span className="w-5 h-5 border-2 border-slate-300 border-t-[#CC0000] rounded-full animate-spin" />
               ) : (
-                <img
+                <Image
                   src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                   alt="Google"
-                  className="w-5 h-5"
+                  width={20}
+                  height={20}
+                  unoptimized
                 />
               )}
               {isLoading ? 'Authenticating...' : 'Sign in with Google'}

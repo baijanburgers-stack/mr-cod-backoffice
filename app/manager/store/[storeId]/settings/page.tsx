@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
+import Image from 'next/image';
 
 export default function ManagerSettingsPage({ params }: { params: Promise<{ storeId: string }> }) {
   const resolvedParams = use(params);
@@ -336,7 +337,7 @@ export default function ManagerSettingsPage({ params }: { params: Promise<{ stor
               <div className="shrink-0 p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-inner">
                 {/* Visualizing 80mm thermal paper approx 250px width */}
                 <div className="bg-white p-4 border border-dashed border-slate-300 shadow-sm flex items-center justify-center min-h-[100px] min-w-[250px]">
-                  <img src={logoUrl} alt="Store Logo Preview" className="max-w-[250px] mix-blend-multiply" />
+                  <Image src={logoUrl} alt="Store Logo Preview" width={250} height={100} className="object-contain mix-blend-multiply" unoptimized />
                 </div>
                 <p className="text-center text-xs text-slate-500 font-bold mt-3 uppercase tracking-wider">Thermal Preview</p>
               </div>

@@ -498,7 +498,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
       <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex gap-3">
         <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
         <p className="text-sm text-blue-800 font-medium">
-          Each combo is made of <strong>slots</strong> (e.g. "Main", "Side", "Drink"). Each slot can have <strong>multiple options</strong> the customer chooses from. If a slot has only one option it's fixed.
+          Each combo is made of <strong>slots</strong> (e.g. &quot;Main&quot;, &quot;Side&quot;, &quot;Drink&quot;). Each slot can have <strong>multiple options</strong> the customer chooses from. If a slot has only one option it&apos;s fixed.
         </p>
       </div>
 

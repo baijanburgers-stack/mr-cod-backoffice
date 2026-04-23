@@ -8,6 +8,7 @@ import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, o
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
+import Image from 'next/image';
 
 type LocalizedString = {
   en: string;
@@ -368,7 +369,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                         </div>
                         <div className={`w-14 h-14 rounded-2xl flex-shrink-0 overflow-hidden border-2 ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'}`}>
                           {category.imageUrl ? (
-                            <img src={category.imageUrl} alt={getCategoryName(category.name)} className="w-full h-full object-cover" />
+                            <Image src={category.imageUrl} alt={getCategoryName(category.name)} fill className="object-cover" unoptimized />
                           ) : (
                             <div className={`w-full h-full flex items-center justify-center ${isSubCat ? 'bg-amber-50/50 text-amber-300' : category.isActive ? 'bg-amber-50 text-amber-400' : 'bg-slate-100 text-slate-400'}`}>
                               <ImageIcon className="w-6 h-6" />
@@ -524,7 +525,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                   </select>
                   {selectedParentId && (
                     <p className="mt-1.5 text-xs text-amber-600 font-medium">
-                      ✦ This will appear as a sub-category inside "{getCategoryName(categories.find(c => c.id === selectedParentId)?.name)}"
+                      ✦ This will appear as a sub-category inside &quot;{getCategoryName(categories.find(c => c.id === selectedParentId)?.name)}&quot;
                     </p>
                   )}
                 </div>
@@ -543,11 +544,13 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
 
                   {imagePreview ? (
                     /* Image Preview */
-                    <div className="relative rounded-2xl overflow-hidden border-2 border-amber-300 bg-slate-100">
-                      <img
+                    <div className="relative h-48 rounded-2xl overflow-hidden border-2 border-amber-300 bg-slate-100">
+                      <Image
                         src={imagePreview}
                         alt="Preview"
-                        className="w-full h-48 object-cover"
+                        fill
+                        className="object-cover"
+                        unoptimized
                       />
                       {/* Upload progress overlay */}
                       <AnimatePresence>

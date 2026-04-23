@@ -496,7 +496,7 @@ export default function OrderHistoryDashboard({ storeId }: { storeId: string }) 
                       <AlertCircle className="w-4 h-4" /> Customer Note
                     </div>
                     <div className="font-medium text-amber-900 italic">
-                      "{selectedOrder.notes}"
+                      &quot;{selectedOrder.notes}&quot;
                     </div>
                   </div>
                 )}

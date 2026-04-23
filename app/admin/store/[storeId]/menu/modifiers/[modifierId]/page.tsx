@@ -10,6 +10,7 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
 import CurrencyInput from '@/components/ui/CurrencyInput';
+import Image from 'next/image';
 
 type LocalizedString = { en: string; fr: string; nl: string };
 
@@ -87,6 +88,7 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
       setIsLoading(false);
     });
     return () => unsub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modifierId, user]);
 
   const initImageStates = (opts: ModifierOption[]) => {
@@ -338,10 +340,12 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
                     <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0 border-2 border-slate-200 group-hover:border-amber-200 transition-colors">
                       {imgState.preview ? (
                         <>
-                          <img
+                          <Image
                             src={imgState.preview}
                             alt="option"
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
+                            unoptimized
                           />
                           {/* Upload progress overlay */}
                           <AnimatePresence>
