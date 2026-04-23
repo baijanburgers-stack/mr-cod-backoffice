@@ -248,11 +248,12 @@ service cloud.firestore {
     // ── Orders ────────────────────────────────────────────────────────────────
     match /orders/{orderId} {
       allow read: if true;
-      allow create: if (isValidOrder(request.resource.data) && (
-        request.resource.data.userId == 'anonymous' ||
-        (isAuthenticated() && isOwner(request.resource.data.userId)) ||
-        request.resource.data.source == 'kiosk'
-      )) || (request.resource.data.terminalId != null && request.resource.data.customerName == 'POS Walk-in');
+      // Allow kiosk (source=kiosk), POS tablet (terminalId set), or authenticated users
+      allow create: if isValidOrder(request.resource.data) && (
+        request.resource.data.source == 'kiosk' ||
+        request.resource.data.terminalId != null ||
+        isAuthenticated()
+      );
       allow update: if isAdmin() || true;
       allow delete: if isAdmin();
     }
