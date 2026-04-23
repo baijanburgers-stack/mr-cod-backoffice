@@ -342,7 +342,7 @@ function PromptCard({
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   useEffect(() => {
-    setRemaining(minSec); // reset when prompt changes
+    const initTimer = setTimeout(() => setRemaining(minSec), 0);
     timerRef.current = setInterval(() => {
       setRemaining(r => {
         if (r <= 1) {
@@ -352,7 +352,10 @@ function PromptCard({
         return r - 1;
       });
     }, 1_000);
-    return () => clearInterval(timerRef.current);
+    return () => {
+      clearTimeout(initTimer);
+      clearInterval(timerRef.current);
+    };
   }, [minSec, dutchTitle]);
 
   const canConfirm  = remaining === 0;

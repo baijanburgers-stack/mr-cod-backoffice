@@ -12,7 +12,7 @@ export default function NetworkStatusBanner() {
     if (typeof window === 'undefined') return;
 
     // Set initial state
-    setIsOffline(!navigator.onLine);
+    const t = setTimeout(() => setIsOffline(!navigator.onLine), 0);
 
     // Event listeners for connection changes
     const handleOnline = () => setIsOffline(false);
@@ -24,6 +24,7 @@ export default function NetworkStatusBanner() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      clearTimeout(t);
     };
   }, []);
 

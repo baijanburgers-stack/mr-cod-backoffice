@@ -41,9 +41,12 @@ export default function CurrencyInput({
     const currentNum = rawDigits ? parseInt(rawDigits, 10) / 100 : 0;
     
     if (currentNum !== defaultValue) {
-      setStrValue(defaultValue === 0 ? '' : defaultValue.toFixed(2).replace('.', ','));
+      const t = setTimeout(() => {
+        setStrValue(defaultValue === 0 ? '' : defaultValue.toFixed(2).replace('.', ','));
+      }, 0);
+      return () => clearTimeout(t);
     }
-  }, [defaultValue]);
+  }, [defaultValue, strValue]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;

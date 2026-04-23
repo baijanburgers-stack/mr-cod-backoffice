@@ -265,7 +265,6 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
 
     fetchStoreData();
     fetchVatCategories();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeId, user]);
 
   const handleUpdateHour = (dayIndex: number, field: string, value: string | boolean) => {
@@ -1163,7 +1162,7 @@ function VatCategoryManager({
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
                     <div>
                       <div className="font-bold text-slate-900 text-base">Automatic Sleep Mode</div>
-                      <div className="text-sm text-slate-500 max-w-md">When enabled, kiosks will display an "out of service" screen outside of these hours.</div>
+                      <div className="text-sm text-slate-500 max-w-md">When enabled, kiosks will display an &quot;out of service&quot; screen outside of these hours.</div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer shrink-0">
                       <input type="checkbox" checked={kioskSettings.autoSleep} onChange={e => setKioskSettings(s => ({...s, autoSleep: e.target.checked}))} className="sr-only peer" />

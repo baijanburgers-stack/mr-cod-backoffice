@@ -18,8 +18,8 @@ export function LiveTrackingMap({
   useEffect(() => {
     // Inject the Google Maps script
     if (document.querySelector('#google-maps-script') || (window as any).google?.maps) {
-      setIsScriptLoaded(true);
-      return;
+      const t = setTimeout(() => setIsScriptLoaded(true), 0);
+      return () => clearTimeout(t);
     }
 
     const apiKey = "AIzaSyDzrdK6kOwUuDQ-1XPizCrTf5DHW5dAJuI";

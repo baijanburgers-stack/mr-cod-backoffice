@@ -62,7 +62,10 @@ export default function CcvCertificationPage({
     setIsLoading(false);
   }, [storeId]);
 
-  useEffect(() => { loadEvidence(); }, [loadEvidence]);
+  useEffect(() => {
+    const t = setTimeout(() => loadEvidence(), 0);
+    return () => clearTimeout(t);
+  }, [loadEvidence]);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
 

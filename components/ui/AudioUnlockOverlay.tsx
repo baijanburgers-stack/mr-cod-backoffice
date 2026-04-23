@@ -10,8 +10,8 @@ export default function AudioUnlockOverlay() {
   useEffect(() => {
     // If we've already stored interaction state in this session
     if (sessionStorage.getItem('audio_unlocked')) {
-      setHasInteracted(true);
-      return;
+      const t = setTimeout(() => setHasInteracted(true), 0);
+      return () => clearTimeout(t);
     }
 
     const handleInteraction = () => {

@@ -7,6 +7,8 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 
+const getSnoozeTime = (hours: number) => new Date(Date.now() + hours * 3600000).toISOString();
+
 type InventoryItem = {
   id: string;
   name: string;
@@ -99,9 +101,9 @@ export default function ManagerInventoryPage({ params }: { params: Promise<{ sto
     try {
       const ref = doc(db, item.collectionName, item.id);
       if (item.type === 'combo') {
-        await updateDoc(ref, { isActive: false, snoozedUntil: new Date(Date.now() + hours * 3600000).toISOString() });
+        await updateDoc(ref, { isActive: false, snoozedUntil: getSnoozeTime(hours) });
       } else {
-        await updateDoc(ref, { isAvailable: false, snoozedUntil: new Date(Date.now() + hours * 3600000).toISOString() });
+        await updateDoc(ref, { isAvailable: false, snoozedUntil: getSnoozeTime(hours) });
       }
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, item.collectionName);
