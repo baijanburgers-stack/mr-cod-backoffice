@@ -329,6 +329,29 @@ export default function TerminalsPage({ params }: { params: Promise<{ storeId: s
                       </div>
                     </div>
 
+                    {/* POS ID */}
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
+                        <Monitor className="w-3.5 h-3.5" />
+                        POS BIND ID
+                      </p>
+                      <div className="flex items-center justify-between gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200">
+                        <span className="font-mono text-sm font-bold text-slate-700 select-all">
+                          {terminal.id}
+                        </span>
+                        <button
+                          onClick={() => copyPin(terminal.id, `id_${terminal.id}`)}
+                          className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-all"
+                          title="Copy POS ID"
+                        >
+                          {copiedPin === `id_${terminal.id}`
+                            ? <Check className="w-3.5 h-3.5 text-emerald-500" />
+                            : <Copy className="w-3.5 h-3.5" />
+                          }
+                        </button>
+                      </div>
+                    </div>
+
                     {/* CCV Terminal ID */}
                     <div>
                       <p className="text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1.5">
