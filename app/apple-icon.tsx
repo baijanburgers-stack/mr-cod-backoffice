@@ -39,6 +39,7 @@ export default async function Icon() {
         }}
       >
         {appLogo ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img src={appLogo} alt="Logo" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
         ) : (
           'MC'
