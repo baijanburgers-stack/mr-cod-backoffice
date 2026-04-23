@@ -127,10 +127,11 @@ service cloud.firestore {
     }
 
     function isValidOrder(data) {
-      return hasRequiredFields(['storeId', 'status', 'total', 'items', 'createdAt']) && (
+      // Note: createdAt is a server timestamp — not validated client-side
+      return hasRequiredFields(['storeId', 'status', 'total', 'items']) && (
         ('customerName' in data) ||
         data.source == 'kiosk' ||
-        data.terminalId != null
+        ('terminalId' in data)
       );
     }
 
@@ -227,10 +228,10 @@ service cloud.firestore {
 
       // ── VAT Categories ────────────────────────────────────────────────────
       // Fiscal rate buckets managed in Settings → VAT & Tax.
-      // Read: any authenticated user (kiosk & POS need rates at order time).
+      // Read: public — kiosk & POS tablet need rates at order time (no auth).
       // Write: super admin or store admin only (fiscal data must be protected).
       match /vatCategories/{catId} {
-        allow read:   if isAuthenticated();
+        allow read:   if true;
         allow create: if isAdmin() || isStoreAdmin(storeId);
         allow update: if isAdmin() || isStoreAdmin(storeId);
         allow delete: if isAdmin() || isStoreAdmin(storeId);
