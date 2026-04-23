@@ -6,7 +6,7 @@ import { Monitor, Plus, Trash2, KeyRound, ShieldCheck, CreditCard, AlertTriangle
 import { db } from '@/lib/firebase';
 import {
   collection, query, where, onSnapshot, addDoc,
-  serverTimestamp, deleteDoc, doc, getDoc, updateDoc
+  serverTimestamp, deleteDoc, doc, getDoc, updateDoc, getDocs
 } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
@@ -90,7 +90,19 @@ export default function TerminalsPage({ params }: { params: Promise<{ storeId: s
 
     setIsCreating(true);
     try {
-      const pin = Math.floor(100000 + Math.random() * 900000).toString();
+      let pin = '';
+      let isUnique = false;
+      
+      // Ensure the generated PIN is globally unique
+      while (!isUnique) {
+        pin = Math.floor(100000 + Math.random() * 900000).toString();
+        const pinQuery = query(collection(db, 'terminals'), where('pin', '==', pin));
+        const pinSnap = await getDocs(pinQuery);
+        if (pinSnap.empty) {
+          isUnique = true;
+        }
+      }
+
       await addDoc(collection(db, 'terminals'), {
         storeId,
         name: newTerminalName.trim(),
