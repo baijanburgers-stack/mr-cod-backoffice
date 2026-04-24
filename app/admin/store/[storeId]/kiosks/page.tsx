@@ -135,7 +135,14 @@ export default function KiosksPage({ params }: { params: Promise<{ storeId: stri
         })));
         setIsLoading(false);
       },
-      err => { handleFirestoreError(err, OperationType.GET, 'kiosks'); setIsLoading(false); }
+      err => { 
+        setIsLoading(false);
+        try {
+          handleFirestoreError(err, OperationType.GET, 'kiosks'); 
+        } catch (e) {
+          // Error is logged by handleFirestoreError
+        }
+      }
     );
     return () => unsub();
   }, [storeId]);

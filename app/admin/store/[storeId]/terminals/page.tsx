@@ -75,8 +75,10 @@ export default function TerminalsPage({ params }: { params: Promise<{ storeId: s
         setIsLoading(false);
       },
       (err) => {
-        handleFirestoreError(err, OperationType.GET, 'terminals');
         setIsLoading(false);
+        try {
+          handleFirestoreError(err, OperationType.GET, 'terminals');
+        } catch (e) {}
       }
     );
     return () => unsub();

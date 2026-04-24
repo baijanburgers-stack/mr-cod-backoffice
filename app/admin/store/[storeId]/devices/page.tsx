@@ -67,8 +67,12 @@ export default function DevicesPage({ params }: { params: Promise<{ storeId: str
         setIsLoading(false);
       },
       (err) => {
-        handleFirestoreError(err, OperationType.GET, 'kdsDevices');
         setIsLoading(false);
+        try {
+          handleFirestoreError(err, OperationType.GET, 'kdsDevices');
+        } catch (e) {
+          // Error is already logged by handleFirestoreError
+        }
       }
     );
     return () => unsub();
