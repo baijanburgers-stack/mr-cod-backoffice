@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, MapPin, Phone, Mail, Edit, Trash2, ExternalLink, X, AlertTriangle, Image as ImageIcon, Store, Loader2 } from 'lucide-react';
+import { Search, Plus, MapPin, Phone, Mail, Edit, Trash2, ExternalLink, X, AlertTriangle, Image as ImageIcon, Store, Loader2, CreditCard, MonitorSmartphone } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { db } from '@/lib/firebase';
@@ -11,118 +11,13 @@ import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { resizeImage } from '@/lib/image-utils';
 import { getDefaultVatCategories } from '@/lib/vat-rules';
 
-type AddressDetails = {
-  street: string;
-  streetNumber: string;
-  city: string;
-  postalCode: string;
-  countryCode: string;
-};
-
-type AddressAutocompleteProps = {
-  value: string;
-  onChange: (val: string, details: AddressDetails | null) => void;
-};
-
-// ── Singleton Google Maps script loader ────────────────────────────────────
-let gmapsLoadPromise: Promise<void> | null = null;
-
-function loadGoogleMapsScript(): Promise<void> {
-  if (gmapsLoadPromise) return gmapsLoadPromise;
-  // Already loaded by a previous render
-  if (typeof window !== 'undefined' && (window as any).google?.maps?.places) {
-    gmapsLoadPromise = Promise.resolve();
-    return gmapsLoadPromise;
-  }
-  gmapsLoadPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Google Maps script'));
-    document.head.appendChild(script);
-  });
-  return gmapsLoadPromise;
-}
-
-// ── Address Autocomplete using native google.maps.places.Autocomplete ──────
-function AddressAutocomplete({ value, onChange }: AddressAutocompleteProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const [isReady, setIsReady] = useState(false);
-  const [inputValue, setInputValue] = useState(value || '');
-
-  // Sync external value (e.g. when editing an existing store)
-  useEffect(() => {
-    if (value && inputValue === '') {
-      setInputValue(value);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-
-  const initAutocomplete = useCallback(() => {
-    if (!inputRef.current || autocompleteRef.current) return;
-    const ac = new google.maps.places.Autocomplete(inputRef.current, {
-      types: ['address'],
-      fields: ['address_components', 'formatted_address'],
-    });
-    autocompleteRef.current = ac;
-
-    ac.addListener('place_changed', () => {
-      const place = ac.getPlace();
-      const formatted = place.formatted_address || '';
-      setInputValue(formatted);
-
-      const components = place.address_components || [];
-      let streetName = '', streetNumber = '', city = '', postalCode = '', countryCode = 'BE';
-      components.forEach((c: google.maps.GeocoderAddressComponent) => {
-        if (c.types.includes('route'))          streetName   = c.long_name;
-        if (c.types.includes('street_number'))  streetNumber = c.long_name;
-        if (c.types.includes('locality'))       city         = c.long_name;
-        if (c.types.includes('postal_code'))    postalCode   = c.long_name;
-        if (c.types.includes('country'))        countryCode  = c.short_name;
-      });
-      onChange(formatted, { street: streetName, streetNumber, city, postalCode, countryCode });
-    });
-
-    setIsReady(true);
-  }, [onChange]);
-
-  useEffect(() => {
-    loadGoogleMapsScript()
-      .then(initAutocomplete)
-      .catch((err) => console.error('Google Maps load error:', err));
-  }, [initAutocomplete]);
-
-  return (
-    <div className="relative w-full">
-      <input
-        ref={inputRef}
-        required
-        type="text"
-        value={inputValue}
-        onChange={(e) => {
-          setInputValue(e.target.value);
-          onChange(e.target.value, null);
-        }}
-        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors"
-        placeholder={isReady ? 'Search for an address...' : 'Loading map services...'}
-      />
-      {!isReady && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-          <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
-        </div>
-      )}
-    </div>
-  );
-}
+// Address autocomplete removed.
 
 type Store = {
   id: string;
   name: string;
   address: string;
-  manager: string;
+  manager?: string; // Optional for legacy
   phone: string;
   email: string;
   companyName: string;
@@ -144,7 +39,6 @@ type Store = {
   ccvApiKeyTest?: string;
   ccvEnvironment?: 'TEST' | 'LIVE';
   ccvManagementSystemId?: 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest';
-  ccvBackendUrl?: string;
 };
 
 export default function SuperAdminStores() {
@@ -155,8 +49,6 @@ export default function SuperAdminStores() {
 
   // Modal States
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
-  const [isProcessingImage, setIsProcessingImage] = useState(false);
-  const [isProcessingLogo, setIsProcessingLogo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingStore, setEditingStore] = useState<Store | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -165,12 +57,9 @@ export default function SuperAdminStores() {
 
   // Form State
   const [formData, setFormData] = useState({
-    name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
-    ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest', ccvBackendUrl: 'https://mr-cod-backoffice--mr-cod-online-ordering.europe-west4.hosted.app'
+    name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
+    ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest'
   });
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'stores'), (snapshot) => {
@@ -181,6 +70,11 @@ export default function SuperAdminStores() {
           id: doc.id,
           name: data.name || '',
           address: data.address || '',
+          street: data.street || '',
+          streetNumber: data.streetNumber || '',
+          city: data.city || '',
+          postalCode: data.postalCode || '',
+          countryCode: data.countryCode || 'BE',
           manager: data.manager || '',
           phone: data.phone || '',
           email: data.email || '',
@@ -198,7 +92,6 @@ export default function SuperAdminStores() {
           ccvApiKeyTest: data.ccvApiKeyTest || '',
           ccvEnvironment: data.ccvEnvironment || 'TEST',
           ccvManagementSystemId: data.ccvManagementSystemId || 'GrundmasterBE',
-          ccvBackendUrl: data.ccvBackendUrl || 'https://mr-cod-backoffice--mr-cod-online-ordering.europe-west4.hosted.app',
         });
       });
       setStores(fetchedStores);
@@ -221,14 +114,14 @@ export default function SuperAdminStores() {
   const openAddModal = () => {
     setEditingStore(null);
     setDuplicateErrors({});
-    setFormData({ name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', manager: '', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', ccvBackendUrl: 'https://mr-cod-backoffice--mr-cod-online-ordering.europe-west4.hosted.app' });
+    setFormData({ name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE' });
     setIsStoreModalOpen(true);
   };
 
   const openEditModal = (store: Store) => {
     setEditingStore(store);
     setDuplicateErrors({});
-    setFormData({ name: store.name, address: store.address, street: store.street || '', streetNumber: store.streetNumber || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'DEFAULT', manager: store.manager, phone: store.phone, email: store.email, companyName: store.companyName, vatNumber: store.vatNumber, status: store.status, image: store.image || '', logo: store.logo || '', maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', ccvBackendUrl: store.ccvBackendUrl || 'https://mr-cod-backoffice--mr-cod-online-ordering.europe-west4.hosted.app' });
+    setFormData({ name: store.name || '', address: store.address || '', street: store.street || '', streetNumber: store.streetNumber || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'BE', phone: store.phone || '', email: store.email || '', companyName: store.companyName || '', vatNumber: store.vatNumber || '', status: store.status || 'Active', image: store.image || '', logo: store.logo || '', maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE' });
     setIsStoreModalOpen(true);
   };
 
@@ -237,72 +130,7 @@ export default function SuperAdminStores() {
     setIsDeleteModalOpen(true);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      alert('Please upload a PNG or JPG file.');
-      return;
-    }
-
-    // We still check initial size, but we'll compress it anyway
-    if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB.');
-      return;
-    }
-
-    setIsProcessingImage(true);
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        const base64 = reader.result as string;
-        // Resize to max 1200x800 which is plenty for a store banner
-        const resized = await resizeImage(base64, 1200, 800, 0.7);
-        // Use functional updater to avoid stale closure over formData
-        setFormData(prev => ({ ...prev, image: resized }));
-      } catch (error) {
-        console.error('Error processing image:', error);
-        alert('Failed to process image. Please try another one.');
-      } finally {
-        setIsProcessingImage(false);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      alert('Please upload a PNG or JPG file.');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB.');
-      return;
-    }
-
-    setIsProcessingLogo(true);
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        const base64 = reader.result as string;
-        // Resize to max 400x400 for a logo
-        const resized = await resizeImage(base64, 400, 400, 0.8);
-        // Use functional updater to avoid stale closure over formData
-        setFormData(prev => ({ ...prev, logo: resized }));
-      } catch (error) {
-        console.error('Error processing logo:', error);
-        alert('Failed to process logo. Please try another one.');
-      } finally {
-        setIsProcessingLogo(false);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleSaveStore = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -338,8 +166,14 @@ export default function SuperAdminStores() {
     setDuplicateErrors({});
     setIsSaving(true);
     try {
+      const systemId = formData.countryCode === 'NL' 
+        ? (formData.ccvEnvironment === 'TEST' ? 'GrundmasterNL-ThirdPartyTest' : 'GrundmasterNL') 
+        : 'GrundmasterBE';
+
       const storeData: any = {
         ...formData,
+        ccvManagementSystemId: systemId,
+        address: `${formData.street} ${formData.streetNumber}, ${formData.postalCode} ${formData.city}, ${formData.countryCode}`.trim().replace(/^[\s,]+|[\s,]+$/g, ''),
         isOpen: formData.status === 'Active'
       };
       
@@ -364,20 +198,7 @@ export default function SuperAdminStores() {
         await vatBatch.commit();
       }
 
-      // Auto-provision Manager User Account
-      if (formData.email) {
-        const managerEmail = formData.email.toLowerCase();
-        await setDoc(doc(db, 'users', managerEmail), {
-          email: managerEmail,
-          name: formData.manager,
-          role: 'store_admin',
-          storeId: storeId,
-          status: 'Active',
-          phone: formData.phone,
-          updatedAt: new Date().toISOString(),
-          ...(!editingStore && { createdAt: new Date().toISOString() }) // Only set createdAt on new Store creations
-        }, { merge: true }); // Merge true ensures we don't accidentally wipe existing user history if they already exist
-      }
+
 
       // ✅ Always close the modal after a successful save
       setIsStoreModalOpen(false);
@@ -467,7 +288,6 @@ export default function SuperAdminStores() {
               <tr className="border-b border-slate-100 text-sm bg-slate-50/50">
                 <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider">Store Details</th>
                 <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider">Contact Info</th>
-                <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider">Manager</th>
                 <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
               </tr>
@@ -512,14 +332,7 @@ export default function SuperAdminStores() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-5">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mr-3 font-bold text-xs">
-                          {store.manager.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="text-slate-700 font-semibold">{store.manager}</span>
-                      </div>
-                    </td>
+
                     <td className="px-6 py-5">
                       <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold ${
                         store.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
@@ -579,7 +392,7 @@ export default function SuperAdminStores() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 40 }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-2xl flex flex-col max-h-[92dvh] sm:max-h-[85vh]"
+              className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-4xl flex flex-col max-h-[92dvh] sm:max-h-[85vh]"
             >
               {/* Drag handle for mobile */}
               <div className="flex sm:hidden justify-center pt-3 pb-1">
@@ -597,310 +410,257 @@ export default function SuperAdminStores() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <form onSubmit={handleSaveStore} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Store Banner</label>
-                    <div 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 hover:border-amber-400 transition-colors cursor-pointer relative overflow-hidden h-[120px]"
-                    >
-                      {formData.image ? (
-                        <div className="absolute inset-0 w-full h-full">
-                          <Image src={formData.image} alt="Banner Preview" fill className="object-cover" />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <span className="text-white font-bold text-xs bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm">Change Banner</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <ImageIcon className="w-6 h-6 mb-1 text-slate-400" />
-                          <span className="text-xs font-bold text-center">Click to upload banner</span>
-                          <span className="text-[10px] mt-0.5 text-center">PNG, JPG up to 10MB</span>
-                        </>
-                      )}
-                      <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleImageUpload} 
-                        accept="image/png, image/jpeg" 
-                        className="hidden" 
-                      />
-                    </div>
+              <form onSubmit={handleSaveStore} className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1 relative">
+                
+                {/* 1. Basic Information */}
+                <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-2 mb-4 text-slate-800 border-b border-slate-200/50 pb-3">
+                    <Store className="w-5 h-5 text-amber-500" />
+                    <h3 className="text-base font-bold">Basic Information</h3>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Store Logo</label>
-                    <div 
-                      onClick={() => logoInputRef.current?.click()}
-                      className="border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 hover:border-amber-400 transition-colors cursor-pointer relative overflow-hidden h-[120px]"
-                    >
-                      {formData.logo ? (
-                        <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-slate-50">
-                          <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-white shadow-sm">
-                            <Image src={formData.logo} alt="Logo Preview" fill className="object-cover" />
-                          </div>
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <span className="text-white font-bold text-xs bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm">Change Logo</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <Store className="w-6 h-6 mb-1 text-slate-400" />
-                          <span className="text-xs font-bold text-center">Click to upload logo</span>
-                          <span className="text-[10px] mt-0.5 text-center">Square ratio recommended</span>
-                        </>
-                      )}
-                      <input 
-                        type="file" 
-                        ref={logoInputRef} 
-                        onChange={handleLogoUpload} 
-                        accept="image/png, image/jpeg" 
-                        className="hidden" 
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Store Name</label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => {
-                      setFormData({ ...formData, name: e.target.value });
-                      if (duplicateErrors.name) setDuplicateErrors(prev => ({ ...prev, name: undefined }));
-                    }}
-                    className={`w-full px-4 py-2.5 rounded-xl border outline-none transition-colors ${
-                      duplicateErrors.name
-                        ? 'border-rose-400 focus:border-rose-500 bg-rose-50'
-                        : 'border-slate-200 focus:border-amber-500'
-                    }`}
-                    placeholder="e.g. Brussels Center"
-                  />
-                  {duplicateErrors.name && (
-                    <p className="mt-1.5 text-xs font-semibold text-rose-500 flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 shrink-0" />{duplicateErrors.name}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Company Name</label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.companyName}
-                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
-                    placeholder="e.g. MR COD Brussels BV"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">VAT Number</label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.vatNumber}
-                    onChange={(e) => {
-                      setFormData({ ...formData, vatNumber: e.target.value });
-                      if (duplicateErrors.vatNumber) setDuplicateErrors(prev => ({ ...prev, vatNumber: undefined }));
-                    }}
-                    className={`w-full px-4 py-2.5 rounded-xl border outline-none transition-colors ${
-                      duplicateErrors.vatNumber
-                        ? 'border-rose-400 focus:border-rose-500 bg-rose-50'
-                        : 'border-slate-200 focus:border-amber-500'
-                    }`}
-                    placeholder="e.g. BE 0123.456.789"
-                  />
-                  {duplicateErrors.vatNumber && (
-                    <p className="mt-1.5 text-xs font-semibold text-rose-500 flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 shrink-0" />{duplicateErrors.vatNumber}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Address Search</label>
-                  <AddressAutocomplete 
-                    value={formData.address} 
-                    onChange={(val, details) => {
-                      if (details) {
-                        setFormData(f => ({ ...f, address: val, ...details }));
-                      } else {
-                        setFormData(f => ({ ...f, address: val }));
-                      }
-                    }} 
-                  />
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-4 pt-4 border-t border-slate-100">
-                    <div className="col-span-2 sm:col-span-2">
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Street</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Store Name</label>
                       <input
+                        required
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => {
+                          setFormData({ ...formData, name: e.target.value });
+                          if (duplicateErrors.name) setDuplicateErrors(prev => ({ ...prev, name: undefined }));
+                        }}
+                        className={`w-full px-4 py-2.5 rounded-xl border outline-none transition-colors ${
+                          duplicateErrors.name ? 'border-rose-400 focus:border-rose-500 bg-rose-50' : 'border-slate-200 focus:border-amber-500 bg-white'
+                        }`}
+                        placeholder="e.g. Brussels Center"
+                      />
+                      {duplicateErrors.name && (
+                        <p className="mt-1.5 text-xs font-semibold text-rose-500 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />{duplicateErrors.name}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Company Name</label>
+                      <input
+                        required
+                        type="text"
+                        value={formData.companyName}
+                        onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white"
+                        placeholder="e.g. MR COD Brussels BV"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Status</label>
+                      <select
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white font-bold"
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Contact & Fiscal */}
+                <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-2 mb-4 text-slate-800 border-b border-slate-200/50 pb-3">
+                    <Mail className="w-5 h-5 text-amber-500" />
+                    <h3 className="text-base font-bold">Contact & Fiscal</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Email</label>
+                      <input
+                        required
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => {
+                          setFormData({ ...formData, email: e.target.value });
+                          if (duplicateErrors.email) setDuplicateErrors(prev => ({ ...prev, email: undefined }));
+                        }}
+                        className={`w-full px-4 py-2.5 rounded-xl border outline-none transition-colors ${
+                          duplicateErrors.email ? 'border-rose-400 focus:border-rose-500 bg-rose-50' : 'border-slate-200 focus:border-amber-500 bg-white'
+                        }`}
+                        placeholder="e.g. store@mrcod.com"
+                      />
+                      {duplicateErrors.email && (
+                        <p className="mt-1.5 text-xs font-semibold text-rose-500 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />{duplicateErrors.email}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Phone</label>
+                      <input
+                        required
+                        type="text"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white"
+                        placeholder="+32..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">VAT Number</label>
+                      <input
+                        required
+                        type="text"
+                        value={formData.vatNumber}
+                        onChange={(e) => {
+                          setFormData({ ...formData, vatNumber: e.target.value });
+                          if (duplicateErrors.vatNumber) setDuplicateErrors(prev => ({ ...prev, vatNumber: undefined }));
+                        }}
+                        className={`w-full px-4 py-2.5 rounded-xl border outline-none transition-colors ${
+                          duplicateErrors.vatNumber ? 'border-rose-400 focus:border-rose-500 bg-rose-50' : 'border-slate-200 focus:border-amber-500 bg-white'
+                        }`}
+                        placeholder="e.g. BE 0123.456.789"
+                      />
+                      {duplicateErrors.vatNumber && (
+                        <p className="mt-1.5 text-xs font-semibold text-rose-500 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />{duplicateErrors.vatNumber}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Location */}
+                <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-2 mb-4 text-slate-800 border-b border-slate-200/50 pb-3">
+                    <MapPin className="w-5 h-5 text-amber-500" />
+                    <h3 className="text-base font-bold">Location</h3>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                    <div className="col-span-2 sm:col-span-2">
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Street</label>
+                      <input
+                        required
                         type="text"
                         value={formData.street}
                         onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-amber-500 focus:bg-white outline-none transition-colors"
+                        className="w-full px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none transition-colors"
                         placeholder="e.g. Grand Place"
                       />
                     </div>
                     <div className="col-span-1 sm:col-span-1">
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Number</label>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Number</label>
                       <input
+                        required
                         type="text"
                         value={formData.streetNumber}
                         onChange={(e) => setFormData({ ...formData, streetNumber: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-amber-500 focus:bg-white outline-none transition-colors"
+                        className="w-full px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none transition-colors"
                         placeholder="e.g. 1"
                       />
                     </div>
                     <div className="col-span-1 sm:col-span-2">
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Post Code</label>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Post Code</label>
                       <input
+                        required
                         type="text"
                         value={formData.postalCode}
                         onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-amber-500 focus:bg-white outline-none transition-colors"
+                        className="w-full px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none transition-colors"
                         placeholder="e.g. 1000"
                       />
                     </div>
-                    <div className="col-span-1 sm:col-span-2 lg:col-span-1">
-                      <label className="block text-xs font-bold text-slate-700 mb-1">City</label>
+                    <div className="col-span-2 sm:col-span-3">
+                      <label className="block text-sm font-bold text-slate-700 mb-1">City</label>
                       <input
+                        required
                         type="text"
                         value={formData.city}
                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-amber-500 focus:bg-white outline-none transition-colors"
+                        className="w-full px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none transition-colors"
                         placeholder="e.g. Brussels"
                       />
                     </div>
-                    <div className="col-span-2 sm:col-span-2 lg:col-span-1 hidden">
-                       {/* Hidden Country field because users shouldn't change the base code manually easily or at least it doesn't need to be huge, but maybe show it */}
+                    <div className="col-span-2 sm:col-span-2">
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Country</label>
+                      <select
+                        required
+                        value={formData.countryCode}
+                        onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
+                        className="w-full px-4 py-2.5 font-bold text-sm bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none transition-colors cursor-pointer"
+                      >
+                        <option value="BE">🇧🇪 Belgium (BE)</option>
+                        <option value="NL">🇳🇱 Netherlands (NL)</option>
+                      </select>
                     </div>
-                    <div className="col-span-2 sm:col-span-2 lg:col-span-full">
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Country Code (For Tax Isolation)</label>
+                  </div>
+                </div>
+
+                {/* 4. System Limits & Hardware */}
+                <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-2 mb-4 text-slate-800 border-b border-slate-200/50 pb-3">
+                    <MonitorSmartphone className="w-5 h-5 text-amber-500" />
+                    <h3 className="text-base font-bold">System Limits & Hardware</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Max POS</label>
+                      <input
+                        required
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={formData.maxPosTerminals}
+                        onChange={(e) => setFormData({ ...formData, maxPosTerminals: parseInt(e.target.value) || 0 })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Max Kiosks</label>
+                      <input
+                        required
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={formData.maxKiosks}
+                        onChange={(e) => setFormData({ ...formData, maxKiosks: parseInt(e.target.value) || 0 })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">FDM ID (BE)</label>
                       <input
                         type="text"
-                        maxLength={2}
-                        value={formData.countryCode}
-                        onChange={(e) => setFormData({ ...formData, countryCode: e.target.value.toUpperCase() })}
-                        className="w-16 px-3 py-2.5 text-center font-bold text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-amber-500 focus:bg-white outline-none transition-colors"
-                        placeholder="BE"
+                        value={formData.fdmId}
+                        onChange={(e) => setFormData({ ...formData, fdmId: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white font-mono text-sm"
+                        placeholder="FDM-..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">VSC ID (BE)</label>
+                      <input
+                        type="text"
+                        value={formData.vscId}
+                        onChange={(e) => setFormData({ ...formData, vscId: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white font-mono text-sm"
+                        placeholder="VSC-..."
                       />
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Manager Name</label>
-                    <input
-                      required
-                      type="text"
-                      value={formData.manager}
-                      onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
-                      placeholder="e.g. John Doe"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Email</label>
-                    <input
-                      required
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => {
-                        setFormData({ ...formData, email: e.target.value });
-                        if (duplicateErrors.email) setDuplicateErrors(prev => ({ ...prev, email: undefined }));
-                      }}
-                      className={`w-full px-4 py-2.5 rounded-xl border outline-none transition-colors ${
-                        duplicateErrors.email
-                          ? 'border-rose-400 focus:border-rose-500 bg-rose-50'
-                          : 'border-slate-200 focus:border-amber-500'
-                      }`}
-                      placeholder="e.g. store@mrcod.com"
-                    />
-                    {duplicateErrors.email && (
-                      <p className="mt-1.5 text-xs font-semibold text-rose-500 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3 shrink-0" />{duplicateErrors.email}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Phone</label>
-                    <input
-                      required
-                      type="text"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
-                      placeholder="+32..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Status</label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors bg-white"
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Max POS Terminals</label>
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={formData.maxPosTerminals}
-                      onChange={(e) => setFormData({ ...formData, maxPosTerminals: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
-                      placeholder="e.g. 5"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Max Kiosks</label>
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={formData.maxKiosks}
-                      onChange={(e) => setFormData({ ...formData, maxKiosks: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
-                      placeholder="e.g. 2"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">FDM ID</label>
-                    <input
-                      type="text"
-                      value={formData.fdmId}
-                      onChange={(e) => setFormData({ ...formData, fdmId: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
-                      placeholder="e.g. FDM-SBE12345"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">VSC ID</label>
-                    <input
-                      type="text"
-                      value={formData.vscId}
-                      onChange={(e) => setFormData({ ...formData, vscId: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
-                      placeholder="e.g. VSC-999999991"
-                    />
-                  </div>
-                </div>
 
-                <div className="pt-4 mt-4 border-t border-slate-200">
-                  <h3 className="text-lg font-bold text-slate-900 mb-4">CCV Terminal Configuration</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-bold text-slate-700 mb-1">Active Environment</label>
+                {/* 5. CCV Terminal Configuration */}
+                <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-2 mb-4 text-slate-800 border-b border-slate-200/50 pb-3">
+                    <CreditCard className="w-5 h-5 text-amber-500" />
+                    <h3 className="text-base font-bold">CCV Terminal Configuration</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Environment</label>
                       <select
                         value={formData.ccvEnvironment}
                         onChange={(e) => setFormData({ ...formData, ccvEnvironment: e.target.value as 'TEST' | 'LIVE' })}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors bg-white font-bold"
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white font-bold"
                       >
                         <option value="TEST">TEST Mode (Sandbox)</option>
                         <option value="LIVE">LIVE Mode (Production)</option>
@@ -912,8 +672,8 @@ export default function SuperAdminStores() {
                         type="text"
                         value={formData.ccvApiKeyTest}
                         onChange={(e) => setFormData({ ...formData, ccvApiKeyTest: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors font-mono text-sm"
-                        placeholder="t_xxxxxxxxxxx"
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white font-mono text-sm"
+                        placeholder="t_..."
                       />
                     </div>
                     <div>
@@ -922,51 +682,31 @@ export default function SuperAdminStores() {
                         type="text"
                         value={formData.ccvApiKeyLive}
                         onChange={(e) => setFormData({ ...formData, ccvApiKeyLive: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 outline-none transition-colors font-mono text-sm"
-                        placeholder="l_xxxxxxxxxxx"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">Management System ID</label>
-                      <select
-                        value={formData.ccvManagementSystemId}
-                        onChange={(e) => setFormData({ ...formData, ccvManagementSystemId: e.target.value as any })}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors bg-white"
-                      >
-                        <option value="GrundmasterBE">🇧🇪 GrundmasterBE</option>
-                        <option value="GrundmasterNL">🇳🇱 GrundmasterNL</option>
-                        <option value="GrundmasterNL-ThirdPartyTest">🧪 GrundmasterNL-ThirdPartyTest</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">Backend Webhook URL</label>
-                      <input
-                        type="url"
-                        value={formData.ccvBackendUrl}
-                        onChange={(e) => setFormData({ ...formData, ccvBackendUrl: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors font-mono text-sm"
-                        placeholder="https://app.mrcod.be"
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 outline-none transition-colors bg-white font-mono text-sm"
+                        placeholder="l_..."
                       />
                     </div>
                   </div>
                 </div>
-                <div className="pt-4 pb-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+
+                {/* Buttons - Sticky Footer */}
+                <div className="sticky bottom-0 bg-white/95 backdrop-blur z-10 -mx-4 -mb-4 px-4 py-4 sm:-mx-6 sm:-mb-6 sm:px-6 sm:py-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 rounded-b-3xl mt-4">
                   <button
                     type="button"
                     onClick={() => setIsStoreModalOpen(false)}
-                    className="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors border border-slate-200"
+                    className="w-full sm:w-auto px-6 py-3 sm:py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors border border-slate-200"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={isProcessingImage || isProcessingLogo || isSaving}
-                    className="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-bold bg-amber-500 text-slate-900 hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    disabled={isSaving}
+                    className="w-full sm:w-auto px-8 py-3 sm:py-2.5 rounded-xl font-bold bg-amber-500 text-slate-900 hover:bg-amber-400 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isSaving && (
                       <span className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" />
                     )}
-                    {isSaving ? 'Saving...' : (isProcessingImage || isProcessingLogo) ? 'Processing...' : (editingStore ? 'Save Changes' : 'Create Store')}
+                    {isSaving ? 'Saving...' : (editingStore ? 'Save Changes' : 'Create Store')}
                   </button>
                 </div>
               </form>
