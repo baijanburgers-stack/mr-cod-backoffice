@@ -189,7 +189,9 @@ service cloud.firestore {
     match /stores/{storeId} {
       allow read:   if true;
       allow create: if isAdmin();
-      allow update: if isAdmin() || isStoreAdmin(storeId);
+      allow update: if isAdmin() || isStoreAdmin(storeId) || (
+        isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['disabledItems'])
+      );
       allow delete: if isAdmin();
 
       // ── Kiosks ───────────────────────────────────────────────────────────
@@ -242,7 +244,9 @@ service cloud.firestore {
     match /menuItems/{menuItemId} {
       allow read:   if true;
       allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
-      allow update: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
+      allow update: if isAdmin() || isStoreAdmin(request.resource.data.storeId) || (
+        isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAvailable', 'autoEnableAt'])
+      );
       allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
     }
 
@@ -286,7 +290,9 @@ service cloud.firestore {
     match /modifiers/{modifierId} {
       allow read:   if true;
       allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
-      allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow update: if isAdmin() || isStoreAdmin(resource.data.storeId) || (
+        isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAvailable', 'autoEnableAt'])
+      );
       allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
     }
 
@@ -294,7 +300,9 @@ service cloud.firestore {
     match /combos/{comboId} {
       allow read:   if true;
       allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
-      allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow update: if isAdmin() || isStoreAdmin(resource.data.storeId) || (
+        isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAvailable', 'autoEnableAt'])
+      );
       allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
     }
 
