@@ -314,6 +314,14 @@ service cloud.firestore {
       allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
     }
 
+    // ── KDS Devices ───────────────────────────────────────────────────────────
+    match /kdsDevices/{deviceId} {
+      allow read:   if true;
+      allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId);
+      allow update: if isAdmin() || isStoreAdmin(resource.data.storeId);
+      allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId);
+    }
+
     // ── Z-Reports ─────────────────────────────────────────────────────────────
     match /z_reports/{reportId} {
       allow read:   if isAdmin() || isStoreAdmin(resource.data.storeId);
