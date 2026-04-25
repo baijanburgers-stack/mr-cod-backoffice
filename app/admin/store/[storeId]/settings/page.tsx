@@ -182,6 +182,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
   // Branding State
   const [branding, setBranding] = useState({
     storeLogo: '',
+    kioskLogo: '',
     heroImage: '', 
     splashVideo: '', 
     accentColor: '#DC2626',
@@ -233,6 +234,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
           const savedBranding = data.branding || {};
           setBranding({
             storeLogo: savedBranding.storeLogo || data.storeLogo || '',
+            kioskLogo: savedBranding.kioskLogo || '',
             heroImage: savedBranding.heroImage || savedBranding.idleBackgroundUrl || data.image || data.kioskBg || '',
             splashVideo: savedBranding.splashVideo || savedBranding.idleVideoUrl || '',
             accentColor: savedBranding.accentColor || '#DC2626',
@@ -414,6 +416,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
         kioskSettings,
         branding: {
           storeLogo: branding.storeLogo,
+          kioskLogo: branding.kioskLogo,
           receiptLogo: branding.receiptLogo,
           heroImage: branding.heroImage,
           splashVideo: branding.splashVideo,
@@ -422,6 +425,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
           promoBanners: branding.promoBanners
         },
         storeLogo: branding.storeLogo,
+        kioskLogo: branding.kioskLogo,
         image: branding.heroImage,
         kioskBg: branding.heroImage,
         promoBanners: branding.promoBanners,
@@ -1223,15 +1227,15 @@ function VatCategoryManager({
                 <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-widest text-xs flex items-center gap-2">
-                       Primary Logo
+                       Kiosk Logo
                     </label>
                     <UploadZone
                       accept="image/*"
-                      currentUrl={branding.storeLogo}
+                      currentUrl={branding.kioskLogo}
                       uploadState={logoUp}
-                      onFile={file => uploadFile(file, 'logo', setLogoUp, url => setBranding(b => ({ ...b, storeLogo: url })), branding.storeLogo)}
-                      onClear={() => handleClearFile(branding.storeLogo, 'storeLogo')}
-                      hint="PNG/SVG (transparent)"
+                      onFile={file => uploadFile(file, 'logo', setLogoUp, url => setBranding(b => ({ ...b, kioskLogo: url })), branding.kioskLogo)}
+                      onClear={() => handleClearFile(branding.kioskLogo, 'kioskLogo')}
+                      hint="PNG/SVG (Overrides Store Logo on Kiosk)"
                     />
                   </div>
                   <div>

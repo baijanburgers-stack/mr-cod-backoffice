@@ -95,6 +95,7 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
   type BannerItem = { url: string; type: 'image' | 'video' };
   const [branding, setBranding] = useState({
     storeLogo: '',
+    kioskLogo: '',
     heroImage: '', // The bg for kiosk / website
     splashVideo: '', // Idle video
     accentColor: '#DC2626',
@@ -127,6 +128,7 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
           
           setBranding({
             storeLogo: savedBranding.storeLogo || data.storeLogo || '',
+            kioskLogo: savedBranding.kioskLogo || '',
             heroImage: savedBranding.heroImage || savedBranding.idleBackgroundUrl || data.image || data.kioskBg || '',
             splashVideo: savedBranding.splashVideo || savedBranding.idleVideoUrl || '',
             accentColor: savedBranding.accentColor || '#DC2626',
@@ -213,6 +215,7 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
       await updateDoc(docRef, {
         branding: {
           storeLogo: branding.storeLogo,
+          kioskLogo: branding.kioskLogo,
           receiptLogo: branding.receiptLogo,
           heroImage: branding.heroImage,
           splashVideo: branding.splashVideo,
@@ -225,6 +228,7 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
           kioskFooterBanner: branding.kioskFooterBanner
         },
         storeLogo: branding.storeLogo,
+        kioskLogo: branding.kioskLogo,
         image: branding.heroImage, // Legacy website hero
         kioskBg: branding.heroImage, // Legacy kiosk bg fallback
         // Legacy top-level banners key
@@ -349,6 +353,20 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
                 onClear={() => handleClearFile(branding.storeLogo, 'storeLogo')}
                 hint="PNG/SVG (transparent) — used everywhere"
               />
+              
+              <div className="mt-8">
+                <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-widest text-xs flex items-center gap-2">
+                   Kiosk Logo
+                </label>
+                <UploadZone
+                  accept="image/*"
+                  currentUrl={branding.kioskLogo}
+                  uploadState={{ uploading: false, progress: 0 }} // Reusing basic state for now or we can use another state
+                  onFile={file => uploadFile(file, 'logo', setLogoUp, url => setBranding(b => ({ ...b, kioskLogo: url })), branding.kioskLogo)}
+                  onClear={() => handleClearFile(branding.kioskLogo, 'kioskLogo')}
+                  hint="PNG/SVG (Overrides Store Logo on Kiosk)"
+                />
+              </div>
             </div>
             <div className="md:col-span-2 space-y-6">
               <div>
