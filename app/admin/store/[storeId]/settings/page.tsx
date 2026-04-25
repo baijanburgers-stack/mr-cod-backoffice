@@ -200,6 +200,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
   const bannerRef = useRef<HTMLInputElement>(null);
 
   const [logoUp, setLogoUp] = useState({ uploading: false, progress: 0 });
+  const [storeLogoUp, setStoreLogoUp] = useState({ uploading: false, progress: 0 });
   const [rcptUp, setRcptUp] = useState({ uploading: false, progress: 0 });
   const [bgUp, setBgUp] = useState({ uploading: false, progress: 0 });
   const [vidUp, setVidUp] = useState({ uploading: false, progress: 0 });
@@ -898,6 +899,21 @@ function VatCategoryManager({
                         <p>Core store details and integrations are managed by the Super Admin. You can update your local notification settings below.</p>
                       </div>
                     )}
+                    
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-widest text-xs flex items-center gap-2">
+                        Store Logo
+                      </label>
+                      <UploadZone
+                        accept="image/*"
+                        currentUrl={branding.storeLogo}
+                        uploadState={storeLogoUp}
+                        onFile={file => uploadFile(file, 'logo', setStoreLogoUp, url => setBranding(b => ({ ...b, storeLogo: url })), branding.storeLogo)}
+                        onClear={() => handleClearFile(branding.storeLogo, 'storeLogo')}
+                        hint="PNG/SVG (transparent) — used everywhere except Kiosk"
+                      />
+                    </div>
+
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">
                         Store Name
