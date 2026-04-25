@@ -320,12 +320,26 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     }
   };
 
-  const handleReorder = async (newOrder: Category[]) => {
+  const handleReorder = async (newMainOrder: Category[]) => {
     if (searchQuery) return;
-    setCategories(newOrder);
+    
+    // Reconstruct the flat array by keeping sub-categories immediately after their parents
+    const newFlatOrder: Category[] = [];
+    newMainOrder.forEach(mainCat => {
+      newFlatOrder.push(mainCat);
+      const mySubCats = categories.filter(c => c.parentId === mainCat.id).sort((a, b) => a.order - b.order);
+      newFlatOrder.push(...mySubCats);
+    });
+
+    // Add any orphaned sub-categories at the bottom
+    const orphaned = categories.filter(c => c.parentId && !categories.find(m => m.id === c.parentId));
+    newFlatOrder.push(...orphaned);
+
+    setCategories(newFlatOrder);
+
     try {
       const batch = writeBatch(db);
-      newOrder.forEach((category, index) => {
+      newFlatOrder.forEach((category, index) => {
         if (category.order !== index) {
           const catRef = doc(db, 'categories', category.id);
           batch.update(catRef, { order: index });
@@ -336,6 +350,67 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
       handleFirestoreError(error, OperationType.UPDATE, 'categories');
     }
   };
+
+  const renderCategoryRow = (category: Category, isSubCat: boolean, parentName: string | null) => (
+    <div className={`flex flex-row items-center gap-3 hover:bg-slate-50 transition-colors group bg-white ${!category.isActive ? 'opacity-75' : ''} p-2 sm:p-3`}>
+      {/* Drag Handle & Image */}
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <div className={`p-1 text-slate-300 transition-colors ${isSubCat ? 'opacity-0 pointer-events-none w-4' : 'cursor-grab active:cursor-grabbing hover:text-slate-500'}`}>
+          {!isSubCat && <GripVertical className="w-4 h-4" />}
+        </div>
+        <div className={`relative w-10 h-10 rounded-xl flex-shrink-0 overflow-hidden border ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'}`}>
+          {category.imageUrl ? (
+            <Image src={category.imageUrl} alt={getCategoryName(category.name)} fill className="object-cover" unoptimized />
+          ) : (
+            <div className={`w-full h-full flex items-center justify-center ${isSubCat ? 'bg-amber-50/50 text-amber-300' : category.isActive ? 'bg-amber-50 text-amber-400' : 'bg-slate-100 text-slate-400'}`}>
+              <ImageIcon className="w-5 h-5" />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0 flex flex-col justify-center">
+        <div className="flex flex-wrap items-center gap-2">
+          {isSubCat && (
+            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[9px] font-black border border-amber-200 uppercase tracking-widest flex-shrink-0">
+              Sub of {parentName ?? '?'}
+            </span>
+          )}
+          <h4 className="text-sm sm:text-base font-bold text-slate-900 truncate">{getCategoryName(category.name)}</h4>
+          {!category.isActive && (
+            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-bold border border-slate-200 flex-shrink-0">Hidden</span>
+          )}
+        </div>
+        {!category.imageUrl && (
+          <p className="text-[10px] text-slate-400 font-medium hidden sm:block">No image</p>
+        )}
+      </div>
+
+      {/* Stats & Actions */}
+      <div className="flex items-center justify-end gap-3 sm:gap-6 flex-shrink-0">
+        <div className="text-center hidden sm:block">
+          <span className="block text-sm font-black text-slate-900 leading-none">{category.itemCount}</span>
+          <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">Items</span>
+        </div>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <label className="flex items-center cursor-pointer mr-1 sm:mr-2">
+            <div className="relative">
+              <input type="checkbox" className="sr-only" checked={category.isActive} onChange={() => toggleStatus(category.id, category.isActive)} />
+              <div className={`block w-8 h-5 rounded-full transition-colors ${category.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+              <div className={`dot absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform ${category.isActive ? 'transform translate-x-3' : ''}`}></div>
+            </div>
+          </label>
+          <button onClick={() => openEditModal(category)} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Edit Category">
+            <Edit2 className="w-4 h-4" />
+          </button>
+          <button onClick={() => handleDeleteClick(category.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Category">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -388,97 +463,71 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
             <h3 className="text-lg font-bold text-slate-900">No categories found</h3>
             <p className="text-slate-500 mt-1">Try adjusting your search query.</p>
           </div>
+        ) : searchQuery ? (
+          /* Flat list for Search mode (dragging disabled) */
+          <div className="divide-y divide-slate-100">
+            {filteredCategories.map(category => {
+              const isSubCat = !!category.parentId;
+              const parentName = isSubCat ? getCategoryName(categories.find(c => c.id === category.parentId)?.name) : null;
+              return (
+                <div key={category.id}>
+                  {renderCategoryRow(category, isSubCat, parentName)}
+                </div>
+              );
+            })}
+          </div>
         ) : (
+          /* Nested Reorder List */
           <Reorder.Group
             axis="y"
-            values={filteredCategories}
+            values={filteredCategories.filter(c => !c.parentId)}
             onReorder={handleReorder}
-            className="divide-y divide-slate-100"
+            className="p-3 sm:p-4 space-y-3"
           >
             <AnimatePresence mode="popLayout">
+              {filteredCategories.filter(c => !c.parentId).map((mainCat, idx) => {
+                const mySubCats = filteredCategories.filter(sc => sc.parentId === mainCat.id).sort((a,b) => a.order - b.order);
+                return (
+                  <Reorder.Item
+                    value={mainCat}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2, delay: idx * 0.04 }}
+                    key={mainCat.id}
+                    className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group"
+                  >
+                    {/* Main Category Row */}
+                    {renderCategoryRow(mainCat, false, null)}
+
+                    {/* Sub Categories nested inside parent item */}
+                    {mySubCats.length > 0 && (
+                      <div className="bg-slate-50/50 border-t border-slate-100">
+                        {mySubCats.map(subCat => (
+                          <div key={subCat.id} className="border-b border-slate-100 last:border-b-0 pl-6 sm:pl-10">
+                            {renderCategoryRow(subCat, true, getCategoryName(mainCat.name))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Reorder.Item>
+                );
+              })}
+              
+              {/* Orphaned subcategories (if any data is inconsistent) */}
               {(() => {
-                const mainCats = filteredCategories.filter(c => !c.parentId);
-                const subCats = filteredCategories.filter(c => !!c.parentId);
-                const rows: Category[] = [];
-                mainCats.forEach(mc => {
-                  rows.push(mc);
-                  subCats.filter(sc => sc.parentId === mc.id).forEach(sc => rows.push(sc));
-                });
-                // orphaned subs whose parent was deleted
-                subCats.filter(sc => !categories.find(c => c.id === sc.parentId)).forEach(sc => { if (!rows.includes(sc)) rows.push(sc); });
-
-                return rows.map((category, idx) => {
-                  const isSubCat = !!category.parentId;
-                  const parentName = isSubCat ? getCategoryName(categories.find(c => c.id === category.parentId)?.name) : null;
-                  return (
-                    <Reorder.Item
-                      value={category}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.2, delay: idx * 0.04 }}
-                      key={category.id}
-                      className={`flex flex-row items-center gap-3 hover:bg-slate-50 transition-colors group bg-white ${!category.isActive ? 'opacity-75' : ''} ${isSubCat ? 'pl-6 sm:pl-8 border-l-4 border-amber-200' : ''} p-2 sm:p-3`}
-                    >
-                      {/* Drag Handle & Image */}
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500 transition-colors">
-                          <GripVertical className="w-4 h-4" />
-                        </div>
-                        <div className={`relative w-10 h-10 rounded-xl flex-shrink-0 overflow-hidden border ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'}`}>
-                          {category.imageUrl ? (
-                            <Image src={category.imageUrl} alt={getCategoryName(category.name)} fill className="object-cover" unoptimized />
-                          ) : (
-                            <div className={`w-full h-full flex items-center justify-center ${isSubCat ? 'bg-amber-50/50 text-amber-300' : category.isActive ? 'bg-amber-50 text-amber-400' : 'bg-slate-100 text-slate-400'}`}>
-                              <ImageIcon className="w-5 h-5" />
-                            </div>
-                          )}
-                        </div>
+                const orphaned = filteredCategories.filter(sc => sc.parentId && !categories.find(c => c.id === sc.parentId));
+                if (orphaned.length === 0) return null;
+                return (
+                  <div className="pt-4 border-t border-slate-200">
+                    <p className="text-xs font-bold text-rose-500 mb-2 px-3">Orphaned Sub-Categories (Parent Missing)</p>
+                    {orphaned.map(subCat => (
+                      <div key={subCat.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-2">
+                        {renderCategoryRow(subCat, true, 'Unknown Parent')}
                       </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {isSubCat && (
-                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[9px] font-black border border-amber-200 uppercase tracking-widest flex-shrink-0">
-                              Sub of {parentName ?? '?'}
-                            </span>
-                          )}
-                          <h4 className="text-sm sm:text-base font-bold text-slate-900 truncate">{getCategoryName(category.name)}</h4>
-                          {!category.isActive && (
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-bold border border-slate-200 flex-shrink-0">Hidden</span>
-                          )}
-                        </div>
-                        {!category.imageUrl && (
-                          <p className="text-[10px] text-slate-400 font-medium hidden sm:block">No image</p>
-                        )}
-                      </div>
-
-                      {/* Stats & Actions */}
-                      <div className="flex items-center justify-end gap-3 sm:gap-6 flex-shrink-0">
-                        <div className="text-center hidden sm:block">
-                          <span className="block text-sm font-black text-slate-900 leading-none">{category.itemCount}</span>
-                          <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">Items</span>
-                        </div>
-                        <div className="flex items-center gap-1 sm:gap-2">
-                          <label className="flex items-center cursor-pointer mr-1 sm:mr-2">
-                            <div className="relative">
-                              <input type="checkbox" className="sr-only" checked={category.isActive} onChange={() => toggleStatus(category.id, category.isActive)} />
-                              <div className={`block w-8 h-5 rounded-full transition-colors ${category.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-                              <div className={`dot absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform ${category.isActive ? 'transform translate-x-3' : ''}`}></div>
-                            </div>
-                          </label>
-                          <button onClick={() => openEditModal(category)} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Edit Category">
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => handleDeleteClick(category.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Category">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </Reorder.Item>
-                  );
-                });
+                    ))}
+                  </div>
+                );
               })()}
             </AnimatePresence>
           </Reorder.Group>
