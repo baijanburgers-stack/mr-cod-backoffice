@@ -34,6 +34,7 @@ type Modifier = {
   identityName?: string;
   isRequired: boolean;
   allowMultiple: boolean;
+  minSelections?: number | null;
   maxSelections?: number | null;
   itemType?: 'food' | 'non-alcoholic' | 'alcoholic';
   itemIds?: string[];
@@ -66,8 +67,8 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
 
   const [formData, setFormData] = useState<Partial<Modifier>>({
     name: { en: '', fr: '', nl: '' },
-    isRequired: false,
-    allowMultiple: false,
+    minSelections: 0,
+    maxSelections: null,
     itemType: 'food',
   });
 
@@ -108,7 +109,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
   // ── CRUD ──
   const openAddModal = () => {
     setEditingModifier(null);
-    setFormData({ name: { en: '', fr: '', nl: '' }, identityName: '', isRequired: false, allowMultiple: false, itemType: 'food' });
+    setFormData({ name: { en: '', fr: '', nl: '' }, identityName: '', minSelections: 0, maxSelections: null, itemType: 'food' });
     setIsModalOpen(true);
   };
 
@@ -117,9 +118,8 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
     setFormData({
       name: typeof m.name === 'string' ? { en: m.name, fr: m.name, nl: m.name } : m.name,
       identityName: m.identityName || '',
-      isRequired: m.isRequired,
-      allowMultiple: m.allowMultiple,
-      maxSelections: m.maxSelections,
+      minSelections: m.minSelections ?? (m.isRequired ? 1 : 0),
+      maxSelections: m.maxSelections ?? (m.allowMultiple ? null : 1),
       itemType: m.itemType || 'food',
     });
     setIsModalOpen(true);
@@ -134,9 +134,10 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
         storeId,
         name: safeName,
         identityName: formData.identityName?.trim() || '',
-        isRequired: formData.isRequired || false,
-        allowMultiple: formData.allowMultiple || false,
-        maxSelections: formData.allowMultiple && formData.maxSelections ? formData.maxSelections : null,
+        minSelections: formData.minSelections || 0,
+        maxSelections: (formData.maxSelections && formData.maxSelections > 0) ? formData.maxSelections : null,
+        isRequired: (formData.minSelections || 0) > 0,
+        allowMultiple: !formData.maxSelections || formData.maxSelections > 1,
         itemType: formData.itemType || 'food',
       };
       if (editingModifier) {
@@ -454,32 +455,45 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                 </div>
 
                 {/* Rules */}
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="flex items-start gap-3 p-4 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
+                      <span>Min Selections</span>
+                      <span className="text-xs text-slate-400 font-medium">0 = Optional</span>
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={formData.isRequired || false}
-                      onChange={(e) => setFormData({ ...formData, isRequired: e.target.checked })}
-                      className="mt-0.5 w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                      type="number"
+                      min={0}
+                      value={formData.minSelections ?? 0}
+                      onChange={(e) => setFormData({ ...formData, minSelections: parseInt(e.target.value) || 0 })}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white text-sm"
                     />
-                    <div>
-                      <span className="block font-bold text-slate-900 text-sm">Required</span>
-                      <span className="block text-xs text-slate-500">Must select</span>
-                    </div>
-                  </label>
-                  <label className="flex items-start gap-3 p-4 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
+                      <span>Max Selections</span>
+                      <span className="text-xs text-slate-400 font-medium">Empty = Unlimited</span>
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={formData.allowMultiple || false}
-                      onChange={(e) => setFormData({ ...formData, allowMultiple: e.target.checked })}
-                      className="mt-0.5 w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                      type="number"
+                      min={1}
+                      value={formData.maxSelections ?? ''}
+                      onChange={(e) => setFormData({ ...formData, maxSelections: e.target.value ? parseInt(e.target.value) : null })}
+                      placeholder="Unlimited"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white text-sm"
                     />
-                    <div>
-                      <span className="block font-bold text-slate-900 text-sm">Multiple</span>
-                      <span className="block text-xs text-slate-500">Allow multi-select</span>
-                    </div>
-                  </label>
+                  </div>
                 </div>
+                {/* Rule summary text */}
+                <p className="text-xs font-medium text-amber-600 bg-amber-50 p-2.5 rounded-lg border border-amber-100">
+                  💡 {
+                    (formData.minSelections || 0) === 0 && !formData.maxSelections ? "Customer can select any number of options, or none at all." :
+                    (formData.minSelections || 0) > 0 && !formData.maxSelections ? `Customer must select at least ${formData.minSelections} option${formData.minSelections! > 1 ? 's' : ''}.` :
+                    (formData.minSelections || 0) === 0 && formData.maxSelections ? `Customer can select up to ${formData.maxSelections} option${formData.maxSelections > 1 ? 's' : ''} (optional).` :
+                    (formData.minSelections === formData.maxSelections) ? `Customer must select exactly ${formData.minSelections} option${formData.minSelections! > 1 ? 's' : ''}.` :
+                    `Customer must select between ${formData.minSelections} and ${formData.maxSelections} options.`
+                  }
+                </p>
               </div>
 
               <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-2 border-t border-slate-100 flex justify-end gap-3 flex-shrink-0 bg-white">
