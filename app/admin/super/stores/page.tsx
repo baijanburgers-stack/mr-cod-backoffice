@@ -42,9 +42,14 @@ type Store = {
   ccvApiKeyTest?: string;
   ccvEnvironment?: 'TEST' | 'LIVE';
   ccvManagementSystemId?: 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest';
-  stripeSecretKey?: string;
-  stripePublishableKey?: string;
-  mollieApiKey?: string;
+  stripeEnvironment?: 'TEST' | 'LIVE';
+  stripePublishableKeyTest?: string;
+  stripePublishableKeyLive?: string;
+  stripeSecretKeyTest?: string;
+  stripeSecretKeyLive?: string;
+  mollieEnvironment?: 'TEST' | 'LIVE';
+  mollieApiKeyTest?: string;
+  mollieApiKeyLive?: string;
 };
 
 export default function SuperAdminStores() {
@@ -66,7 +71,8 @@ export default function SuperAdminStores() {
     name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '',
     allowPos: true, allowKiosk: true, allowOnlineOrdering: true, maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
     ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest',
-    stripeSecretKey: '', stripePublishableKey: '', mollieApiKey: ''
+    stripeEnvironment: 'TEST' as 'TEST' | 'LIVE', stripePublishableKeyTest: '', stripePublishableKeyLive: '', stripeSecretKeyTest: '', stripeSecretKeyLive: '',
+    mollieEnvironment: 'TEST' as 'TEST' | 'LIVE', mollieApiKeyTest: '', mollieApiKeyLive: ''
   });
 
   useEffect(() => {
@@ -103,9 +109,14 @@ export default function SuperAdminStores() {
           ccvApiKeyTest: data.ccvApiKeyTest || '',
           ccvEnvironment: data.ccvEnvironment || 'TEST',
           ccvManagementSystemId: data.ccvManagementSystemId || 'GrundmasterBE',
-          stripeSecretKey: data.stripeSecretKey || '',
-          stripePublishableKey: data.stripePublishableKey || '',
-          mollieApiKey: data.mollieApiKey || '',
+          stripeEnvironment: data.stripeEnvironment || 'TEST',
+          stripePublishableKeyTest: data.stripePublishableKeyTest || data.stripePublishableKey || '',
+          stripePublishableKeyLive: data.stripePublishableKeyLive || '',
+          stripeSecretKeyTest: data.stripeSecretKeyTest || data.stripeSecretKey || '',
+          stripeSecretKeyLive: data.stripeSecretKeyLive || '',
+          mollieEnvironment: data.mollieEnvironment || 'TEST',
+          mollieApiKeyTest: data.mollieApiKeyTest || data.mollieApiKey || '',
+          mollieApiKeyLive: data.mollieApiKeyLive || '',
         });
       });
       setStores(fetchedStores);
@@ -128,14 +139,14 @@ export default function SuperAdminStores() {
   const openAddModal = () => {
     setEditingStore(null);
     setDuplicateErrors({});
-    setFormData({ name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', allowPos: true, allowKiosk: true, allowOnlineOrdering: true, maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', stripeSecretKey: '', stripePublishableKey: '', mollieApiKey: '' });
+    setFormData({ name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', allowPos: true, allowKiosk: true, allowOnlineOrdering: true, maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', stripeEnvironment: 'TEST', stripePublishableKeyTest: '', stripePublishableKeyLive: '', stripeSecretKeyTest: '', stripeSecretKeyLive: '', mollieEnvironment: 'TEST', mollieApiKeyTest: '', mollieApiKeyLive: '' });
     setIsStoreModalOpen(true);
   };
 
   const openEditModal = (store: Store) => {
     setEditingStore(store);
     setDuplicateErrors({});
-    setFormData({ name: store.name || '', address: store.address || '', street: store.street || '', streetNumber: store.streetNumber || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'BE', phone: store.phone || '', email: store.email || '', companyName: store.companyName || '', vatNumber: store.vatNumber || '', status: store.status || 'Active', image: store.image || '', logo: store.logo || '', allowPos: store.allowPos ?? true, allowKiosk: store.allowKiosk ?? true, allowOnlineOrdering: store.allowOnlineOrdering ?? true, maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', stripeSecretKey: store.stripeSecretKey || '', stripePublishableKey: store.stripePublishableKey || '', mollieApiKey: store.mollieApiKey || '' });
+    setFormData({ name: store.name || '', address: store.address || '', street: store.street || '', streetNumber: store.streetNumber || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'BE', phone: store.phone || '', email: store.email || '', companyName: store.companyName || '', vatNumber: store.vatNumber || '', status: store.status || 'Active', image: store.image || '', logo: store.logo || '', allowPos: store.allowPos ?? true, allowKiosk: store.allowKiosk ?? true, allowOnlineOrdering: store.allowOnlineOrdering ?? true, maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', stripeEnvironment: store.stripeEnvironment || 'TEST', stripePublishableKeyTest: store.stripePublishableKeyTest || '', stripePublishableKeyLive: store.stripePublishableKeyLive || '', stripeSecretKeyTest: store.stripeSecretKeyTest || '', stripeSecretKeyLive: store.stripeSecretKeyLive || '', mollieEnvironment: store.mollieEnvironment || 'TEST', mollieApiKeyTest: store.mollieApiKeyTest || '', mollieApiKeyLive: store.mollieApiKeyLive || '' });
     setIsStoreModalOpen(true);
   };
 
@@ -692,36 +703,93 @@ export default function SuperAdminStores() {
 
                       {formData.allowOnlineOrdering && (
                         <div className="mt-4 pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2">
-                          <h5 className="text-sm font-bold text-slate-700 mb-3">Online Payment Gateways</h5>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs font-bold text-slate-600 mb-1">Stripe Publishable Key</label>
-                              <input
-                                type="text"
-                                value={formData.stripePublishableKey}
-                                onChange={(e) => setFormData({ ...formData, stripePublishableKey: e.target.value })}
-                                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-amber-500 outline-none text-sm font-mono"
-                                placeholder="pk_test_..."
-                              />
+                          <h5 className="text-sm font-bold text-slate-700 mb-4">Online Payment Gateways</h5>
+                          
+                          {/* Stripe Configuration */}
+                          <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h6 className="font-bold text-sm text-slate-800">Stripe Integration</h6>
+                              <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData({ ...formData, stripeEnvironment: 'TEST' })}
+                                  className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${formData.stripeEnvironment === 'TEST' ? 'bg-amber-500 text-slate-900 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+                                >
+                                  TEST
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData({ ...formData, stripeEnvironment: 'LIVE' })}
+                                  className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${formData.stripeEnvironment === 'LIVE' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+                                >
+                                  LIVE
+                                </button>
+                              </div>
                             </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Publishable Key ({formData.stripeEnvironment})</label>
+                                <input
+                                  type="text"
+                                  value={formData.stripeEnvironment === 'TEST' ? formData.stripePublishableKeyTest : formData.stripePublishableKeyLive}
+                                  onChange={(e) => setFormData(formData.stripeEnvironment === 'TEST' 
+                                    ? { ...formData, stripePublishableKeyTest: e.target.value }
+                                    : { ...formData, stripePublishableKeyLive: e.target.value }
+                                  )}
+                                  className={`w-full px-3 py-2 rounded-lg border outline-none text-sm font-mono ${formData.stripeEnvironment === 'TEST' ? 'border-amber-200 focus:border-amber-500 bg-amber-50/30' : 'border-emerald-200 focus:border-emerald-500 bg-emerald-50/30'}`}
+                                  placeholder={formData.stripeEnvironment === 'TEST' ? "pk_test_..." : "pk_live_..."}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Secret Key ({formData.stripeEnvironment})</label>
+                                <input
+                                  type="password"
+                                  value={formData.stripeEnvironment === 'TEST' ? formData.stripeSecretKeyTest : formData.stripeSecretKeyLive}
+                                  onChange={(e) => setFormData(formData.stripeEnvironment === 'TEST' 
+                                    ? { ...formData, stripeSecretKeyTest: e.target.value }
+                                    : { ...formData, stripeSecretKeyLive: e.target.value }
+                                  )}
+                                  className={`w-full px-3 py-2 rounded-lg border outline-none text-sm font-mono ${formData.stripeEnvironment === 'TEST' ? 'border-amber-200 focus:border-amber-500 bg-amber-50/30' : 'border-emerald-200 focus:border-emerald-500 bg-emerald-50/30'}`}
+                                  placeholder={formData.stripeEnvironment === 'TEST' ? "sk_test_..." : "sk_live_..."}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Mollie Configuration */}
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h6 className="font-bold text-sm text-slate-800">Mollie Integration (Optional)</h6>
+                              <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData({ ...formData, mollieEnvironment: 'TEST' })}
+                                  className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${formData.mollieEnvironment === 'TEST' ? 'bg-amber-500 text-slate-900 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+                                >
+                                  TEST
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData({ ...formData, mollieEnvironment: 'LIVE' })}
+                                  className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${formData.mollieEnvironment === 'LIVE' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+                                >
+                                  LIVE
+                                </button>
+                              </div>
+                            </div>
+                            
                             <div>
-                              <label className="block text-xs font-bold text-slate-600 mb-1">Stripe Secret Key</label>
+                              <label className="block text-xs font-bold text-slate-600 mb-1">API Key ({formData.mollieEnvironment})</label>
                               <input
                                 type="password"
-                                value={formData.stripeSecretKey}
-                                onChange={(e) => setFormData({ ...formData, stripeSecretKey: e.target.value })}
-                                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-amber-500 outline-none text-sm font-mono"
-                                placeholder="sk_test_..."
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className="block text-xs font-bold text-slate-600 mb-1">Mollie API Key (Optional)</label>
-                              <input
-                                type="password"
-                                value={formData.mollieApiKey}
-                                onChange={(e) => setFormData({ ...formData, mollieApiKey: e.target.value })}
-                                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-amber-500 outline-none text-sm font-mono"
-                                placeholder="test_..."
+                                value={formData.mollieEnvironment === 'TEST' ? formData.mollieApiKeyTest : formData.mollieApiKeyLive}
+                                onChange={(e) => setFormData(formData.mollieEnvironment === 'TEST' 
+                                  ? { ...formData, mollieApiKeyTest: e.target.value }
+                                  : { ...formData, mollieApiKeyLive: e.target.value }
+                                )}
+                                className={`w-full px-3 py-2 rounded-lg border outline-none text-sm font-mono ${formData.mollieEnvironment === 'TEST' ? 'border-amber-200 focus:border-amber-500 bg-amber-50/30' : 'border-emerald-200 focus:border-emerald-500 bg-emerald-50/30'}`}
+                                placeholder={formData.mollieEnvironment === 'TEST' ? "test_..." : "live_..."}
                               />
                             </div>
                           </div>
