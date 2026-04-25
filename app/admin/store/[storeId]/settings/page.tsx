@@ -120,7 +120,6 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     isOpen: true,
     notificationSound: 'default',
     customNotificationSound: '',
-    backendWebhookUrl: '',
   });
 
   const soundInputRef = useRef<HTMLInputElement>(null);
@@ -221,8 +220,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
             address: data.address || 'Default Address',
             isOpen: data.isOpen ?? true,
             notificationSound: data.notificationSound || 'default',
-            customNotificationSound: data.customNotificationSound || '',
-            backendWebhookUrl: data.backendWebhookUrl || ''
+            customNotificationSound: data.customNotificationSound || ''
           });
           if (data.services) setStoreServices(data.services);
           if (data.vatSettings?.vatNumber) setVatNumber(data.vatSettings.vatNumber);
@@ -408,7 +406,6 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
         isOpen: generalSettings.isOpen,
         notificationSound: generalSettings.notificationSound,
         customNotificationSound: generalSettings.customNotificationSound || '',
-        backendWebhookUrl: generalSettings.backendWebhookUrl || '',
         services: storeServices,
         'vatSettings.vatNumber': vatNumber || '',
         storeHours,
@@ -1006,19 +1003,6 @@ function VatCategoryManager({
                         <MapPin className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
                         <textarea rows={3} disabled={(user as any)?.role !== 'super_admin'} value={generalSettings.address} onChange={(e) => setGeneralSettings({ ...generalSettings, address: e.target.value })} className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none resize-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" placeholder="Grand Place 1, 1000 Brussels"/>
                       </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900 mb-4 pt-4 border-t border-slate-100">Integrations</h3>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Backend Webhook URL</label>
-                      <div className="relative">
-                        <Globe className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-                        <input type="url" disabled={(user as any)?.role !== 'super_admin'} value={generalSettings.backendWebhookUrl} onChange={(e) => setGeneralSettings({ ...generalSettings, backendWebhookUrl: e.target.value })} className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" placeholder="https://your-backend.com/webhook" />
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1.5">Used for CCV payment callbacks and other backend notifications.</p>
                     </div>
                   </div>
            </div>
