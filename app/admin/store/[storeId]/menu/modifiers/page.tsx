@@ -31,6 +31,7 @@ type Modifier = {
   id: string;
   storeId: string;
   name: string | LocalizedString;
+  identityName?: string;
   isRequired: boolean;
   allowMultiple: boolean;
   maxSelections?: number | null;
