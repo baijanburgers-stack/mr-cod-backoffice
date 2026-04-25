@@ -36,6 +36,8 @@ type Modifier = {
   allowMultiple: boolean;
   minSelections?: number | null;
   maxSelections?: number | null;
+  allowQuantityPerOption?: boolean;
+  freeSelections?: number | null;
   itemType?: 'food' | 'non-alcoholic' | 'alcoholic';
   itemIds?: string[];
   options: ModifierOption[];
@@ -69,6 +71,8 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
     name: { en: '', fr: '', nl: '' },
     minSelections: 0,
     maxSelections: null,
+    allowQuantityPerOption: false,
+    freeSelections: null,
     itemType: 'food',
   });
 
@@ -109,7 +113,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
   // ── CRUD ──
   const openAddModal = () => {
     setEditingModifier(null);
-    setFormData({ name: { en: '', fr: '', nl: '' }, identityName: '', minSelections: 0, maxSelections: null, itemType: 'food' });
+    setFormData({ name: { en: '', fr: '', nl: '' }, identityName: '', minSelections: 0, maxSelections: null, allowQuantityPerOption: false, freeSelections: null, itemType: 'food' });
     setIsModalOpen(true);
   };
 
@@ -120,6 +124,8 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
       identityName: m.identityName || '',
       minSelections: m.minSelections ?? (m.isRequired ? 1 : 0),
       maxSelections: m.maxSelections ?? (m.allowMultiple ? null : 1),
+      allowQuantityPerOption: m.allowQuantityPerOption || false,
+      freeSelections: m.freeSelections ?? null,
       itemType: m.itemType || 'food',
     });
     setIsModalOpen(true);
@@ -136,6 +142,8 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
         identityName: formData.identityName?.trim() || '',
         minSelections: formData.minSelections || 0,
         maxSelections: (formData.maxSelections && formData.maxSelections > 0) ? formData.maxSelections : null,
+        allowQuantityPerOption: formData.allowQuantityPerOption || false,
+        freeSelections: (formData.freeSelections && formData.freeSelections > 0) ? formData.freeSelections : null,
         isRequired: (formData.minSelections || 0) > 0,
         allowMultiple: !formData.maxSelections || formData.maxSelections > 1,
         itemType: formData.itemType || 'food',
@@ -455,7 +463,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                 </div>
 
                 {/* Rules */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
                       <span>Min Selections</span>
@@ -483,7 +491,36 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white text-sm"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
+                      <span>Free Included</span>
+                      <span className="text-xs text-slate-400 font-medium">0 = All Paid</span>
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={formData.freeSelections ?? ''}
+                      onChange={(e) => setFormData({ ...formData, freeSelections: e.target.value ? parseInt(e.target.value) : null })}
+                      placeholder="0"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white text-sm"
+                    />
+                  </div>
                 </div>
+                {/* Allow Quantities Checkbox (only show if maxSelections > 1 or unlimited) */}
+                {(!formData.maxSelections || formData.maxSelections > 1) && (
+                  <label className="flex items-start gap-3 p-4 mt-1 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.allowQuantityPerOption || false}
+                      onChange={(e) => setFormData({ ...formData, allowQuantityPerOption: e.target.checked })}
+                      className="mt-0.5 w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                    />
+                    <div>
+                      <span className="block font-bold text-slate-900 text-sm">Allow multiple of the same option</span>
+                      <span className="block text-xs text-slate-500">Customers can pick quantities (e.g., 2x Ketchup)</span>
+                    </div>
+                  </label>
+                )}
                 {/* Rule summary text */}
                 <p className="text-xs font-medium text-amber-600 bg-amber-50 p-2.5 rounded-lg border border-amber-100">
                   💡 {
