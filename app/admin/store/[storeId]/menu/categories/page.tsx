@@ -8,6 +8,7 @@ import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, o
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
+import { onInputCap } from '@/lib/utils';
 import Image from 'next/image';
 
 type LocalizedString = {
@@ -477,6 +478,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                       value={(categoryName as LocalizedString)?.en || ''}
                       onChange={(e) => setCategoryName({ ...(categoryName as LocalizedString), en: e.target.value })}
                       placeholder="e.g. Starters"
+                      onInput={onInputCap}
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all"
                     />
                   </div>
@@ -488,6 +490,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                         value={(categoryName as LocalizedString)?.fr || ''}
                         onChange={(e) => setCategoryName({ ...(categoryName as LocalizedString), fr: e.target.value })}
                         placeholder="e.g. Entrées"
+                        onInput={onInputCap}
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all"
                       />
                     </div>
@@ -498,6 +501,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                         value={(categoryName as LocalizedString)?.nl || ''}
                         onChange={(e) => setCategoryName({ ...(categoryName as LocalizedString), nl: e.target.value })}
                         placeholder="e.g. Voorgerechten"
+                        onInput={onInputCap}
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all"
                       />
                     </div>

@@ -17,6 +17,7 @@ import {
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
 import { computeSavingsRange } from '@/lib/combo-pricing';
+import { onInputCap } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -342,6 +343,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
             placeholder="Slot label (e.g. Main, Side, Drink)"
             value={slot.label}
             onChange={e => updateSlot(slot.id, 'label', e.target.value)}
+            onInput={onInputCap}
             className="flex-1 text-sm font-bold bg-transparent border-none focus:outline-none text-slate-700 placeholder:text-slate-400"
           />
           <div className="flex items-center gap-2">
@@ -650,6 +652,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
                         type="text"
                         value={formData.name || ''}
                         onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        onInput={onInputCap}
                         placeholder="e.g. Family Burger Deal"
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:outline-none transition-colors"
                       />
@@ -681,6 +684,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
                         rows={2}
                         value={formData.description || ''}
                         onChange={e => setFormData({ ...formData, description: e.target.value })}
+                        onInput={onInputCap}
                         placeholder="Describe the combo deal..."
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:outline-none resize-none"
                       />

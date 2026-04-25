@@ -10,6 +10,7 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
 import CurrencyInput from '@/components/ui/CurrencyInput';
+import { onInputCap } from '@/lib/utils';
 import Image from 'next/image';
 
 type LocalizedString = { en: string; fr: string; nl: string };
@@ -417,6 +418,7 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
                         type="text"
                         value={typeof opt.name === 'string' ? opt.name : opt.name?.en || ''}
                         onChange={(e) => updateName(opt.id, e.target.value)}
+                        onInput={onInputCap}
                         placeholder="Option Name — e.g. Extra Cheese"
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors text-sm font-medium"
                       />

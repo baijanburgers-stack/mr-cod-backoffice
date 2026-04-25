@@ -5,6 +5,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** Capitalize the first letter of each word in a string */
+export function autoCapWords(val: string): string {
+  if (!val) return '';
+  return val.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** onInput handler for uncontrolled inputs — capitalizes words in-place */
+export function onInputCap(e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>) {
+  const input = e.currentTarget;
+  const start = input.selectionStart;
+  const end = input.selectionEnd;
+  input.value = autoCapWords(input.value);
+  input.setSelectionRange(start, end);
+}
+
 /**
  * Gets the current date and time in a specific timezone (defaults to Europe/Brussels)
  */

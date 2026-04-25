@@ -9,6 +9,7 @@ import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, o
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
 import CurrencyInput from '@/components/ui/CurrencyInput';
+import { onInputCap, autoCapWords } from '@/lib/utils';
 import { type VatCategory, type ItemType, ITEM_TYPE_LABELS } from '@/lib/vat-rules';
 
 type LocalizedString = {
@@ -81,18 +82,10 @@ function getCategoryName(name: Category['name']): string {
 }
 
 /** Capitalize the first letter of each word in a string */
-function autoCapWords(val: string): string {
-  return val.replace(/\b\w/g, (c) => c.toUpperCase());
-}
+// Exported to utils
 
 /** onInput handler for uncontrolled inputs — capitalizes words in-place */
-function onInputCap(e: React.FormEvent<HTMLInputElement>) {
-  const input = e.currentTarget;
-  const start = input.selectionStart;
-  const end = input.selectionEnd;
-  input.value = autoCapWords(input.value);
-  input.setSelectionRange(start, end);
-}
+// Exported to utils
 
 function MenuItemRow({ 
   item, 
@@ -875,6 +868,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                                   lang === 'fr' ? 'Décrivez l\'article en français...' :
                                   'Beschrijf het artikel in het Nederlands...'
                                 }
+                                onInput={onInputCap}
                                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all resize-none text-sm placeholder:text-slate-300"
                               />
                             </div>
