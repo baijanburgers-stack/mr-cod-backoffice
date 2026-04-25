@@ -39,6 +39,7 @@ type MenuItem = {
   image: string | null;
   variations: Variation[];
   comboUpsellId?: string;       // combo to suggest when ordered standalone
+  modifierOrder?: string[];     // explicit display sequence for modifiers on this item
 };
 
 type ComboOption = {
@@ -250,7 +251,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
   const [editingVariations, setEditingVariations] = useState<Variation[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [modifiers, setModifiers] = useState<Modifier[]>([]);
-  const [selectedModifierIds, setSelectedModifierIds] = useState<Set<string>>(new Set());
+  const [modifierOrder, setModifierOrder] = useState<string[]>([]);
   const [vatCategories, setVatCategories] = useState<VatCategory[]>([]);
   const [selectedItemType, setSelectedItemType] = useState<ItemType>('food');
   const [combos, setCombos] = useState<ComboOption[]>([]);
@@ -431,6 +432,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
         ...rest,
         name: `${item.name} (Copy)`,
         isAvailable: false,
+        modifierOrder: item.modifierOrder || [],
       });
       // Clone modifier associations to the new item
       const attachedModifiers = modifiers.filter(m => m.itemIds?.includes(item.id));
@@ -460,8 +462,14 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     setImagePreview(img);
     setEditingVariations(item.variations || []);
     // Pre-select modifiers already associated with this item
-    const preSelected = new Set(modifiers.filter(m => m.itemIds?.includes(item.id)).map(m => m.id));
-    setSelectedModifierIds(preSelected);
+    const preSelectedIds = new Set(modifiers.filter(m => m.itemIds?.includes(item.id)).map(m => m.id));
+    // Sort them according to modifierOrder if it exists
+    const ordered = item.modifierOrder ? [...item.modifierOrder].filter(id => preSelectedIds.has(id)) : [];
+    // Append any assigned modifiers not in the order array (fallback)
+    preSelectedIds.forEach(id => {
+      if (!ordered.includes(id)) ordered.push(id);
+    });
+    setModifierOrder(ordered);
     // Set item type (prefer new field; fall back from legacy modifier itemType)
     setSelectedItemType(item.itemType || 'food');
     setSelectedComboUpsellId(item.comboUpsellId || '');
@@ -472,7 +480,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     setEditingItem(null);
     setImagePreview(null);
     setEditingVariations([]);
-    setSelectedModifierIds(new Set());
+    setModifierOrder([]);
     setSelectedItemType('food');
     setSelectedComboUpsellId('');
     setIsModalOpen(true);
@@ -547,6 +555,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       description,
       image: imagePreview,
       variations: processedVariations,
+      modifierOrder,
     };
 
     try {
@@ -566,7 +575,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       // Sync modifier itemIds — add/remove this item from each modifier
       const modifierUpdatePromises = modifiers.map(async (modifier) => {
         const currentIds: string[] = modifier.itemIds || [];
-        const shouldBeAttached = selectedModifierIds.has(modifier.id);
+        const shouldBeAttached = modifierOrder.includes(modifier.id);
         const isCurrentlyAttached = currentIds.includes(savedItemId);
 
         if (shouldBeAttached && !isCurrentlyAttached) {
@@ -1042,11 +1051,11 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Modifiers</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">Add-ons or choices that appear at checkout for this item.</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">Drag to reorder how they appear on the Kiosk.</p>
                         </div>
-                        {selectedModifierIds.size > 0 && (
+                        {modifierOrder.length > 0 && (
                           <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black">
-                            {selectedModifierIds.size} attached
+                            {modifierOrder.length} attached
                           </span>
                         )}
                       </div>
@@ -1058,52 +1067,81 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                           <p className="text-[11px] text-slate-400 mt-0.5">Create modifiers from the Modifiers page first.</p>
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          {modifiers.map((modifier) => {
-                            const isChecked = selectedModifierIds.has(modifier.id);
-                            return (
-                              <label
-                                key={modifier.id}
-                                className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                                  isChecked
-                                    ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200'
-                                    : 'bg-slate-50 border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/30'
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-400 shrink-0"
-                                  checked={isChecked}
-                                  onChange={() => {
-                                    setSelectedModifierIds(prev => {
-                                      const next = new Set(prev);
-                                      if (next.has(modifier.id)) next.delete(modifier.id);
-                                      else next.add(modifier.id);
-                                      return next;
-                                    });
-                                  }}
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                                    <span className={`text-sm font-bold ${isChecked ? 'text-indigo-900' : 'text-slate-800'}`}>
-                                      {getModName(modifier.name)}
-                                    </span>
-                                    {modifier.isRequired && (
-                                      <span className="px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-600 text-[9px] font-black border border-rose-100 uppercase tracking-wider">Required</span>
-                                    )}
-                                    {modifier.allowMultiple && (
-                                      <span className="px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[9px] font-black border border-indigo-100 uppercase tracking-wider">Multi</span>
-                                    )}
+                        <div className="space-y-6">
+                          {/* ASSIGNED MODIFIERS (REORDERABLE) */}
+                          {modifierOrder.length > 0 && (
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 pl-1">Assigned Modifiers</p>
+                              <Reorder.Group axis="y" values={modifierOrder} onReorder={setModifierOrder} className="space-y-2">
+                                {modifierOrder.map((modId) => {
+                                  const modifier = modifiers.find(m => m.id === modId);
+                                  if (!modifier) return null;
+                                  return (
+                                    <Reorder.Item
+                                      key={modifier.id}
+                                      value={modifier.id}
+                                      className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-200 shadow-sm cursor-grab active:cursor-grabbing group relative"
+                                    >
+                                      <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors" />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                                          <span className="text-sm font-bold text-slate-800">
+                                            {getModName(modifier.name)}
+                                            {modifier.identityName ? <span className="ml-1 text-[10px] font-medium text-slate-400">({modifier.identityName})</span> : null}
+                                          </span>
+                                          {modifier.isRequired && (
+                                            <span className="px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-600 text-[9px] font-black border border-rose-100 uppercase tracking-wider">Required</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setModifierOrder(prev => prev.filter(id => id !== modifier.id));
+                                        }}
+                                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </button>
+                                    </Reorder.Item>
+                                  );
+                                })}
+                              </Reorder.Group>
+                            </div>
+                          )}
+
+                          {/* UNASSIGNED MODIFIERS */}
+                          {modifiers.filter(m => !modifierOrder.includes(m.id)).length > 0 && (
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 pl-1">Available Modifiers</p>
+                              <div className="space-y-2">
+                                {modifiers.filter(m => !modifierOrder.includes(m.id)).map((modifier) => (
+                                  <div
+                                    key={modifier.id}
+                                    onClick={() => setModifierOrder(prev => [...prev, modifier.id])}
+                                    className="flex items-center justify-between p-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer transition-all group"
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                                        <span className="text-sm font-bold text-slate-600 group-hover:text-indigo-700">
+                                          {getModName(modifier.name)}
+                                          {modifier.identityName ? <span className="ml-1 text-[10px] font-medium text-slate-400">({modifier.identityName})</span> : null}
+                                        </span>
+                                      </div>
+                                      <p className="text-[11px] text-slate-400 truncate">
+                                        {modifier.options.slice(0, 4).map(o => o.name).join(' · ')}
+                                        {modifier.options.length > 4 ? ` +${modifier.options.length - 4} more` : ''}
+                                      </p>
+                                    </div>
+                                    <div className="w-6 h-6 rounded-full bg-white border border-slate-200 flex items-center justify-center group-hover:border-indigo-300 group-hover:bg-indigo-50 transition-colors ml-3 shrink-0">
+                                      <Plus className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600" />
+                                    </div>
                                   </div>
-                                  <p className="text-[11px] text-slate-400 truncate">
-                                    {modifier.options.slice(0, 4).map(o => o.name).join(' · ')}
-                                    {modifier.options.length > 4 ? ` +${modifier.options.length - 4} more` : ''}
-                                  </p>
-                                </div>
-                                {isChecked && <Check className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />}
-                              </label>
-                            );
-                          })}
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
