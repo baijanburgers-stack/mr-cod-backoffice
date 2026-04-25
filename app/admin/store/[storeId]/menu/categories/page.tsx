@@ -516,11 +516,12 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                 </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-4 sm:p-6 overflow-y-auto flex-1">
-                <div className="flex flex-col lg:flex-row gap-5 lg:gap-6">
+              <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0">
+                <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+                  <div className="flex flex-col lg:flex-row gap-5 lg:gap-6">
 
-                  {/* ── Left column: fields ── */}
-                  <div className="flex-1 space-y-5">
+                    {/* ── Left column: fields ── */}
+                    <div className="flex-1 space-y-5">
 
                 {/* Category Name */}
                 <div className="space-y-4">
@@ -715,11 +716,12 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                     </label>
                   </div>
 
-                  </div>{/* end right column */}
-                </div>{/* end flex row */}
+                    </div>{/* end right column */}
+                  </div>{/* end flex row */}
+                </div>{/* end scrollable area */}
 
-                {/* Actions */}
-                <div className="pt-4 mt-2 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                {/* Actions - Pinned to bottom */}
+                <div className="p-4 sm:p-6 border-t border-slate-100 bg-slate-50 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 flex-shrink-0">
                   <button
                     type="button"
                     onClick={closeModal}
