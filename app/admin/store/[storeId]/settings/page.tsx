@@ -2,7 +2,7 @@
 
 import { useState, use, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Save, Check, Percent, Settings, Clock, Phone, Mail, MapPin, CalendarOff, Plus, Trash2, Copy, Image as ImageIcon, Volume2, Tablet, X, Upload, Store, Palette, Video, AlertTriangle, ShieldCheck, Globe, ChevronDown } from 'lucide-react';
+import { Save, Check, Percent, Settings, Clock, Phone, Mail, MapPin, CalendarOff, Plus, Trash2, Copy, Image as ImageIcon, Volume2, Tablet, X, Upload, Store, Palette, Video, AlertTriangle, ShieldCheck, Globe, ChevronDown, Monitor, Activity } from 'lucide-react';
 import Image from 'next/image';
 import { db, storage } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp, collection, getDocs, writeBatch } from 'firebase/firestore';
@@ -85,10 +85,12 @@ function UploadZone({
 }
 
 const TABS = [
-  { id: 'general', label: 'General Settings', icon: Settings },
-  { id: 'store',   label: 'Online Ordering',  icon: Store },
-  { id: 'kiosk',   label: 'Kiosk Settings',   icon: Tablet },
-  { id: 'vat',     label: 'VAT & Tax',        icon: ShieldCheck },
+  { id: 'general', label: 'General',       icon: Settings },
+  { id: 'store',   label: 'Online Order',  icon: Store },
+  { id: 'kiosk',   label: 'Kiosk',         icon: Tablet },
+  { id: 'pos',     label: 'POS',           icon: Monitor },
+  { id: 'live',    label: 'Live Order',    icon: Activity },
+  { id: 'vat',     label: 'VAT & Tax',     icon: ShieldCheck },
 ];
 
 const VAT_COLOR_MAP: Record<string, { bg: string; text: string; border: string; badge: string }> = {
@@ -112,7 +114,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
   // General Settings
   const [generalSettings, setGeneralSettings] = useState({
     name: '',
-    hqTelephone: '',
+    phone: '',
     email: '',
     address: '',
     isOpen: true,
@@ -214,7 +216,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
           const data = docSnap.data();
           setGeneralSettings({
             name: data.name || storeId.replace('-', ' '),
-            hqTelephone: data.hqTelephone || '',
+            phone: data.phone || data.hqTelephone || '',
             email: data.email || '',
             address: data.address || 'Default Address',
             isOpen: data.isOpen ?? true,
@@ -266,6 +268,21 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     fetchStoreData();
     fetchVatCategories();
   }, [storeId, user]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) setActiveTab(entry.target.id);
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+
+    TABS.forEach(tab => {
+      const el = document.getElementById(tab.id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleUpdateHour = (dayIndex: number, field: string, value: string | boolean) => {
     const newHours = [...storeHours];
@@ -385,7 +402,7 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
       const docRef = doc(db, 'stores', storeId);
       await updateDoc(docRef, {
         name: generalSettings.name || storeId.replace('-', ' '),
-        hqTelephone: generalSettings.hqTelephone,
+        phone: generalSettings.phone,
         email: generalSettings.email,
         address: generalSettings.address || 'Default Address',
         isOpen: generalSettings.isOpen,
@@ -847,40 +864,39 @@ function VatCategoryManager({
       </div>
 
       {/* Top Navigation Tabs */}
-      <div className="flex flex-wrap gap-2 mb-8 p-1.5 bg-slate-100 rounded-2xl w-fit">
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-             <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`relative px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors ${
-                  isActive ? 'text-amber-900' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
-                }`}
-             >
-                {isActive && (
-                  <motion.div 
-                    layoutId="header-tab"
-                    className="absolute inset-0 bg-white rounded-xl shadow-sm border border-slate-200 z-0"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <tab.icon className={`w-4 h-4 relative z-10 ${isActive ? 'text-amber-600' : ''}`} />
-                <span className="relative z-10">{tab.label}</span>
-             </button>
-          )
-        })}
+      <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-md pb-4 pt-4 border-b border-slate-100 mb-8 -mx-6 px-6 lg:-mx-10 lg:px-10 flex flex-wrap gap-2 shadow-sm">
+        <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl w-full md:w-fit overflow-x-auto scrollbar-hide">
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+               <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className={`relative px-4 md:px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors whitespace-nowrap ${
+                    isActive ? 'text-amber-900' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+                  }`}
+               >
+                  {isActive && (
+                    <motion.div 
+                      layoutId="header-tab"
+                      className="absolute inset-0 bg-white rounded-xl shadow-sm border border-slate-200 z-0"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <tab.icon className={`w-4 h-4 relative z-10 ${isActive ? 'text-amber-600' : ''}`} />
+                  <span className="relative z-10 text-sm">{tab.label}</span>
+               </button>
+            )
+          })}
+        </div>
       </div>
 
-      <motion.div
-        key={activeTab}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
-        className="space-y-8"
-      >
-        {activeTab === 'general' && (
-           <div className="space-y-8">
+      <div className="space-y-16 pb-32">
+        {/* GENERAL SETTINGS */}
+        <div id="general" className="scroll-mt-32 space-y-8">
                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden pb-8">
                   <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
@@ -892,6 +908,12 @@ function VatCategoryManager({
                     </div>
                   </div>
                   <div className="px-8 pt-8 space-y-8 max-w-2xl">
+                    {(user as any)?.role !== 'super_admin' && (
+                      <div className="p-4 bg-blue-50 text-blue-700 rounded-xl font-bold flex items-center gap-2 text-sm border border-blue-100">
+                        <ShieldCheck className="w-5 h-5 shrink-0" />
+                        <p>Core store details and integrations are managed by the Super Admin. You can update your local notification settings below.</p>
+                      </div>
+                    )}
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">
                         Store Name
@@ -901,9 +923,10 @@ function VatCategoryManager({
                         <input
                           type="text"
                           required
+                          disabled={(user as any)?.role !== 'super_admin'}
                           value={generalSettings.name}
                           onChange={(e) => setGeneralSettings({ ...generalSettings, name: e.target.value })}
-                          className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 outline-none font-bold"
+                          className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 outline-none font-bold disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
                           placeholder="e.g. Baijan Burgers Brussels"
                         />
                       </div>
@@ -965,7 +988,7 @@ function VatCategoryManager({
                       <label className="block text-sm font-bold text-slate-700 mb-2">Telephone</label>
                       <div className="relative">
                         <Phone className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-                        <input type="text" value={generalSettings.hqTelephone} onChange={(e) => setGeneralSettings({ ...generalSettings, hqTelephone: e.target.value })} className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none" placeholder="+32 2 123 45 67" />
+                        <input type="text" disabled={(user as any)?.role !== 'super_admin'} value={generalSettings.phone} onChange={(e) => setGeneralSettings({ ...generalSettings, phone: e.target.value })} className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" placeholder="+32 2 123 45 67" />
                       </div>
                     </div>
                     
@@ -973,7 +996,7 @@ function VatCategoryManager({
                       <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
                       <div className="relative">
                         <Mail className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-                        <input type="email" value={generalSettings.email} onChange={(e) => setGeneralSettings({ ...generalSettings, email: e.target.value })} className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none" placeholder="contact@mrcod.be" />
+                        <input type="email" disabled={(user as any)?.role !== 'super_admin'} value={generalSettings.email} onChange={(e) => setGeneralSettings({ ...generalSettings, email: e.target.value })} className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" placeholder="contact@mrcod.be" />
                       </div>
                     </div>
                     
@@ -981,7 +1004,7 @@ function VatCategoryManager({
                       <label className="block text-sm font-bold text-slate-700 mb-2">HQ Address</label>
                       <div className="relative">
                         <MapPin className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-                        <textarea rows={3} value={generalSettings.address} onChange={(e) => setGeneralSettings({ ...generalSettings, address: e.target.value })} className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none resize-none" placeholder="Grand Place 1, 1000 Brussels"/>
+                        <textarea rows={3} disabled={(user as any)?.role !== 'super_admin'} value={generalSettings.address} onChange={(e) => setGeneralSettings({ ...generalSettings, address: e.target.value })} className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none resize-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" placeholder="Grand Place 1, 1000 Brussels"/>
                       </div>
                     </div>
                     
@@ -993,17 +1016,16 @@ function VatCategoryManager({
                       <label className="block text-sm font-bold text-slate-700 mb-2">Backend Webhook URL</label>
                       <div className="relative">
                         <Globe className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-                        <input type="url" value={generalSettings.backendWebhookUrl} onChange={(e) => setGeneralSettings({ ...generalSettings, backendWebhookUrl: e.target.value })} className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none" placeholder="https://your-backend.com/webhook" />
+                        <input type="url" disabled={(user as any)?.role !== 'super_admin'} value={generalSettings.backendWebhookUrl} onChange={(e) => setGeneralSettings({ ...generalSettings, backendWebhookUrl: e.target.value })} className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" placeholder="https://your-backend.com/webhook" />
                       </div>
                       <p className="text-xs text-slate-400 mt-1.5">Used for CCV payment callbacks and other backend notifications.</p>
                     </div>
                   </div>
-               </div>
            </div>
-        )}
+        </div>
 
-        {activeTab === 'store' && (
-           <div className="space-y-8">
+        {/* ONLINE ORDERING SETTINGS */}
+        <div id="store" className="scroll-mt-32 space-y-8">
                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden pb-8">
                   <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
@@ -1144,8 +1166,9 @@ function VatCategoryManager({
                   </div>
                </div>
            </div>
-        )}        {activeTab === 'kiosk' && (
-           <div className="space-y-8">
+
+        {/* KIOSK SETTINGS */}
+        <div id="kiosk" className="scroll-mt-32 space-y-8">
               {/* ── Operating Hours ─────────────────────────────────────── */}
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
@@ -1305,9 +1328,49 @@ function VatCategoryManager({
              
              <CcvTransactionViewer storeId={storeId} />
            </div>
-        )}
 
-        {activeTab === 'vat' && (
+        {/* POS SETTINGS */}
+        <div id="pos" className="scroll-mt-32 space-y-8">
+           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden pb-8">
+              <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                  <Monitor className="w-5 h-5"/>
+                </div>
+                <div>
+                  <h2 className="text-xl font-heading font-black text-slate-900">POS Settings</h2>
+                  <p className="text-sm text-slate-500 font-medium">Manage registers, receipt printers, and cash drawer settings</p>
+                </div>
+              </div>
+              <div className="p-8 text-center bg-slate-50/50 m-8 rounded-2xl border border-dashed border-slate-200">
+                <Monitor className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <p className="font-bold text-slate-500">POS Configurations</p>
+                <p className="text-sm text-slate-400 mt-1">Receipt printers, fast-cash buttons, and local network devices will appear here.</p>
+              </div>
+           </div>
+        </div>
+
+        {/* LIVE ORDER SETTINGS */}
+        <div id="live" className="scroll-mt-32 space-y-8">
+           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden pb-8">
+              <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center shrink-0">
+                  <Activity className="w-5 h-5"/>
+                </div>
+                <div>
+                  <h2 className="text-xl font-heading font-black text-slate-900">Live Order & KDS</h2>
+                  <p className="text-sm text-slate-500 font-medium">Configure Kitchen Displays, TV Screens, and preparation times</p>
+                </div>
+              </div>
+              <div className="p-8 text-center bg-slate-50/50 m-8 rounded-2xl border border-dashed border-slate-200">
+                <Activity className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <p className="font-bold text-slate-500">KDS Configurations</p>
+                <p className="text-sm text-slate-400 mt-1">Bump bars, routing, and order ready timers will appear here.</p>
+              </div>
+           </div>
+        </div>
+
+        {/* VAT & TAX SETTINGS */}
+        <div id="vat" className="scroll-mt-32 space-y-8">
           <VatCategoryManager
             storeId={storeId}
             vatNumber={vatNumber}
@@ -1322,8 +1385,8 @@ function VatCategoryManager({
             showSeedConfirm={showSeedConfirm}
             onShowSeedConfirmChange={setShowSeedConfirm}
           />
-        )}
-      </motion.div>
+        </div>
+      </div>
     </div>
   );
 }
