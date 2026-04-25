@@ -111,6 +111,17 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
 
   // ── Data Fetching ──────────────────────────────────────────────────────
 
+  // Prevent browser from opening files when dropped outside the drop zone
+  useEffect(() => {
+    const preventDefault = (e: DragEvent) => e.preventDefault();
+    window.addEventListener('dragover', preventDefault);
+    window.addEventListener('drop', preventDefault);
+    return () => {
+      window.removeEventListener('dragover', preventDefault);
+      window.removeEventListener('drop', preventDefault);
+    };
+  }, []);
+
   useEffect(() => {
     if (!user) return;
 

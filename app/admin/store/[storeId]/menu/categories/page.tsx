@@ -61,6 +61,17 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
   const [isActiveState, setIsActiveState] = useState(true);
   const [selectedParentId, setSelectedParentId] = useState<string>('');
 
+  // Prevent browser from opening files when dropped outside the drop zone
+  useEffect(() => {
+    const preventDefault = (e: DragEvent) => e.preventDefault();
+    window.addEventListener('dragover', preventDefault);
+    window.addEventListener('drop', preventDefault);
+    return () => {
+      window.removeEventListener('dragover', preventDefault);
+      window.removeEventListener('drop', preventDefault);
+    };
+  }, []);
+
   useEffect(() => {
     if (!user) return;
 

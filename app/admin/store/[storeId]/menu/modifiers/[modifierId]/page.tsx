@@ -69,6 +69,17 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
   // Dirty tracking
   const [isDirty, setIsDirty] = useState(false);
 
+  // Prevent browser from opening files when dropped accidentally
+  useEffect(() => {
+    const preventDefault = (e: DragEvent) => e.preventDefault();
+    window.addEventListener('dragover', preventDefault);
+    window.addEventListener('drop', preventDefault);
+    return () => {
+      window.removeEventListener('dragover', preventDefault);
+      window.removeEventListener('drop', preventDefault);
+    };
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     const unsub = onSnapshot(doc(db, 'modifiers', modifierId), (snap) => {
