@@ -114,6 +114,8 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
   // General Settings
   const [generalSettings, setGeneralSettings] = useState({
     name: '',
+    companyName: '',
+    vatNumber: '',
     phone: '',
     email: '',
     address: '',
@@ -153,8 +155,6 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
     dineIn: true,
   });
 
-  // VAT Settings State
-  const [vatNumber, setVatNumber] = useState('');
   const [vatCategories, setVatCategories] = useState<VatCategory[]>([]);
   const [vatCatLoading, setVatCatLoading] = useState(true);
   const [vatCatSaving, setVatCatSaving] = useState(false);
@@ -215,6 +215,8 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
           const data = docSnap.data();
           setGeneralSettings({
             name: data.name || storeId.replace('-', ' '),
+            companyName: data.companyName || '',
+            vatNumber: data.vatNumber || data.vatSettings?.vatNumber || '',
             phone: data.phone || data.hqTelephone || '',
             email: data.email || '',
             address: data.address || 'Default Address',
@@ -223,8 +225,6 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
             customNotificationSound: data.customNotificationSound || ''
           });
           if (data.services) setStoreServices(data.services);
-          if (data.vatSettings?.vatNumber) setVatNumber(data.vatSettings.vatNumber);
-          else if (data.vatNumber) setVatNumber(data.vatNumber);
           if (data.storeHours) setStoreHours(data.storeHours);
           if (data.holidays) setHolidays(data.holidays);
           if (data.kioskSettings) setKioskSettings(data.kioskSettings);
@@ -400,6 +400,8 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
       const docRef = doc(db, 'stores', storeId);
       await updateDoc(docRef, {
         name: generalSettings.name || storeId.replace('-', ' '),
+        companyName: generalSettings.companyName,
+        vatNumber: generalSettings.vatNumber,
         phone: generalSettings.phone,
         email: generalSettings.email,
         address: generalSettings.address || 'Default Address',
@@ -407,7 +409,6 @@ export default function StoreSettingsPage({ params }: { params: Promise<{ storeI
         notificationSound: generalSettings.notificationSound,
         customNotificationSound: generalSettings.customNotificationSound || '',
         services: storeServices,
-        'vatSettings.vatNumber': vatNumber || '',
         storeHours,
         holidays,
         kioskSettings,
@@ -462,12 +463,12 @@ const SERVICE_TYPE_OPTIONS: { value: string; label: string }[] = [
 ];
 
 function VatCategoryManager({
-  storeId, vatNumber, onVatNumberChange,
+  storeId,
   categories, onCategoriesChange,
   isLoading, isSaving, onSavingChange,
   seedCountry, onSeedCountryChange,
   showSeedConfirm, onShowSeedConfirmChange,
-}: VatCategoryManagerProps) {
+}: Omit<VatCategoryManagerProps, 'vatNumber' | 'onVatNumberChange'>) {
   const [localCats, setLocalCats] = useState<VatCategory[]>(categories);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -553,8 +554,6 @@ function VatCategoryManager({
           cat
         );
       });
-      // Also update vatNumber on store doc
-      batch.update(doc(db, 'stores', storeId), { 'vatSettings.vatNumber': vatNumber || '' });
       await batch.commit();
       onCategoriesChange(localCats);
       setSaveSuccess(true);
@@ -599,19 +598,6 @@ function VatCategoryManager({
           </button>
         </div>
 
-        {/* VAT Number */}
-        <div className="px-8 py-6 border-b border-slate-100">
-          <label className="block text-sm font-bold text-slate-700 mb-2">Company VAT Number (shown on receipts)</label>
-          <div className="relative max-w-xs">
-            <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={vatNumber}
-              onChange={e => onVatNumberChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all text-sm font-mono"
-              placeholder="e.g. BE 0123.456.789"
-            />
-          </div>
         </div>
 
         {/* Seed Defaults */}
@@ -928,6 +914,32 @@ function VatCategoryManager({
                         />
                       </div>
                       <p className="text-xs text-slate-400 mt-1.5">Shown in the store portal header and on all screens.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Company Name</label>
+                        <input
+                          type="text"
+                          disabled={(user as any)?.role !== 'super_admin'}
+                          value={generalSettings.companyName}
+                          onChange={(e) => setGeneralSettings({ ...generalSettings, companyName: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                          placeholder="Legal Company Name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">VAT Number</label>
+                        <input
+                          type="text"
+                          disabled={(user as any)?.role !== 'super_admin'}
+                          value={generalSettings.vatNumber}
+                          onChange={(e) => setGeneralSettings({ ...generalSettings, vatNumber: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 outline-none font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                          placeholder="e.g. BE 0123.456.789"
+                        />
+                        <p className="text-xs text-slate-400 mt-1.5">Appears on fiscal receipts.</p>
+                      </div>
                     </div>
 
                     <div>
@@ -1357,8 +1369,6 @@ function VatCategoryManager({
         <div id="vat" className="scroll-mt-32 space-y-8">
           <VatCategoryManager
             storeId={storeId}
-            vatNumber={vatNumber}
-            onVatNumberChange={setVatNumber}
             categories={vatCategories}
             onCategoriesChange={setVatCategories}
             isLoading={vatCatLoading}
