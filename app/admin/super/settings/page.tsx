@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Save, Globe, Bell, Shield, Palette, Check, Store, Image as ImageIcon } from 'lucide-react';
+import { Save, Globe, Bell, Shield, Palette, Check, Store, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 import Image from 'next/image';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -12,6 +12,7 @@ import { resizeImage, base64ByteSize } from '@/lib/image-utils';
 const TABS = [
   { id: 'general', label: 'General', icon: Globe },
   { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'integrations', label: 'Integrations', icon: LinkIcon },
 ];
 
 export default function SuperAdminSettings() {
@@ -37,6 +38,7 @@ export default function SuperAdminSettings() {
     timezone: 'Europe/Brussels',
     primaryColor: '#f59e0b', // amber-500
     radiusPreference: 'rounded', // sharp, rounded, soft
+    ccvWebhookUrl: '', // Global webhook URL for CCV
   });
 
   useEffect(() => {
@@ -558,7 +560,35 @@ export default function SuperAdminSettings() {
                 </div>
               )}
 
-
+              {activeTab === 'integrations' && (
+                <div className="space-y-6 max-w-2xl">
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+                        <LinkIcon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-800">CCV Payment Terminal Webhook</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">Global webhook URL to receive payment status updates from CCV terminals across all stores.</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Backend Webhook URL</label>
+                      <input
+                        type="url"
+                        value={settings.ccvWebhookUrl || ''}
+                        onChange={(e) => setSettings({ ...settings, ccvWebhookUrl: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors font-mono text-sm"
+                        placeholder="https://your-backend-api.com/webhooks/ccv"
+                      />
+                      <p className="text-xs text-slate-400 mt-2">
+                        This URL will be used by the CCV cloud service to push real-time transaction updates (e.g., SUCCESS, FAILED) back to the Mr. Cod ecosystem.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
 
             </div>
