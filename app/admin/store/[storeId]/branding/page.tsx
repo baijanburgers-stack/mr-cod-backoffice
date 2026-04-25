@@ -195,7 +195,7 @@ export default function StoreBrandingPage({ params }: { params: Promise<{ storeI
     }
   };
 
-  const handleClearFile = async (url: string, field: 'storeLogo' | 'receiptLogo' | 'heroImage' | 'splashVideo' | 'kioskFooterBanner') => {
+  const handleClearFile = async (url: string, field: 'storeLogo' | 'kioskLogo' | 'receiptLogo' | 'heroImage' | 'splashVideo' | 'kioskFooterBanner') => {
     if (url && url.includes('firebasestorage.googleapis.com')) {
       await deleteObject(ref(storage, url)).catch(() => {});
     }
