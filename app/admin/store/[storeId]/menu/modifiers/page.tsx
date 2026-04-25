@@ -371,7 +371,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 40 }}
-              className="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative w-full sm:max-w-3xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               {/* Modal header */}
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -388,149 +388,165 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                 </button>
               </div>
 
-              <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
-                {/* Names */}
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
-                      <span>Group Name (English)</span>
-                      <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">Required</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={(formData.name as LocalizedString)?.en || ''}
-                      onChange={(e) => setFormData({ ...formData, name: { ...(formData.name as LocalizedString), en: autoCapWords(e.target.value) } })}
-                      placeholder="e.g. Burger Add-ons"
-                      autoCapitalize="words"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
-                      autoFocus
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Left Column: General Info */}
+                  <div className="space-y-5">
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Name (FR)</label>
-                      <input
-                        type="text"
-                        value={(formData.name as LocalizedString)?.fr || ''}
-                        onChange={(e) => setFormData({ ...formData, name: { ...(formData.name as LocalizedString), fr: autoCapWords(e.target.value) } })}
-                        placeholder="e.g. Suppléments"
-                        autoCapitalize="words"
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
-                      />
+                      <h3 className="text-base font-bold text-slate-900 mb-4 border-b border-slate-100 pb-2">General Details</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
+                            <span>Group Name (English)</span>
+                            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">Required</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={(formData.name as LocalizedString)?.en || ''}
+                            onChange={(e) => setFormData({ ...formData, name: { ...(formData.name as LocalizedString), en: autoCapWords(e.target.value) } })}
+                            placeholder="e.g. Burger Add-ons"
+                            autoCapitalize="words"
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Name (FR)</label>
+                            <input
+                              type="text"
+                              value={(formData.name as LocalizedString)?.fr || ''}
+                              onChange={(e) => setFormData({ ...formData, name: { ...(formData.name as LocalizedString), fr: autoCapWords(e.target.value) } })}
+                              placeholder="e.g. Suppléments"
+                              autoCapitalize="words"
+                              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Name (NL)</label>
+                            <input
+                              type="text"
+                              value={(formData.name as LocalizedString)?.nl || ''}
+                              onChange={(e) => setFormData({ ...formData, name: { ...(formData.name as LocalizedString), nl: autoCapWords(e.target.value) } })}
+                              placeholder="e.g. Toevoegingen"
+                              autoCapitalize="words"
+                              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="pt-2">
+                          <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
+                            <span>Identity Name (Office Only)</span>
+                            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">Hidden from Kiosk</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.identityName || ''}
+                            onChange={(e) => setFormData({ ...formData, identityName: e.target.value })}
+                            placeholder="e.g. Burger Sauces (Store 1)"
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-slate-50"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-1.5">Tax / Category Type</label>
+                          <select
+                            value={formData.itemType || 'food'}
+                            onChange={(e) => setFormData({ ...formData, itemType: e.target.value as 'food' | 'non-alcoholic' | 'alcoholic' })}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white"
+                          >
+                            <option value="food">🍔 Food (prepared meal)</option>
+                            <option value="non-alcoholic">🥤 Non-Alcoholic Drink</option>
+                            <option value="alcoholic">🍺 Alcoholic Drink</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Right Column: Rules & Logic */}
+                  <div className="space-y-5">
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Name (NL)</label>
-                      <input
-                        type="text"
-                        value={(formData.name as LocalizedString)?.nl || ''}
-                        onChange={(e) => setFormData({ ...formData, name: { ...(formData.name as LocalizedString), nl: autoCapWords(e.target.value) } })}
-                        placeholder="e.g. Toevoegingen"
-                        autoCapitalize="words"
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors"
-                      />
+                      <h3 className="text-base font-bold text-slate-900 mb-4 border-b border-slate-100 pb-2">Selection Rules</h3>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
+                              <span>Min Selections</span>
+                              <span className="text-xs text-slate-400 font-medium">0 = Optional</span>
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={formData.minSelections ?? 0}
+                              onChange={(e) => setFormData({ ...formData, minSelections: parseInt(e.target.value) || 0 })}
+                              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
+                              <span>Max Selections</span>
+                              <span className="text-xs text-slate-400 font-medium">Empty = Unlimited</span>
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={formData.maxSelections ?? ''}
+                              onChange={(e) => setFormData({ ...formData, maxSelections: e.target.value ? parseInt(e.target.value) : null })}
+                              placeholder="Unlimited"
+                              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
+                            <span>Free Included</span>
+                            <span className="text-xs text-slate-400 font-medium">0 = All Paid</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={formData.freeSelections ?? ''}
+                            onChange={(e) => setFormData({ ...formData, freeSelections: e.target.value ? parseInt(e.target.value) : null })}
+                            placeholder="e.g. 2 options are free"
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white text-sm"
+                          />
+                        </div>
+
+                        {(!formData.maxSelections || formData.maxSelections > 1) && (
+                          <label className="flex items-start gap-3 p-4 mt-1 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={formData.allowQuantityPerOption || false}
+                              onChange={(e) => setFormData({ ...formData, allowQuantityPerOption: e.target.checked })}
+                              className="mt-0.5 w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                            />
+                            <div>
+                              <span className="block font-bold text-slate-900 text-sm">Allow Quantity Stepper</span>
+                              <span className="block text-xs text-slate-500 mt-0.5">Customers can pick multiple of the exact same option (e.g. 3x Ketchup)</span>
+                            </div>
+                          </label>
+                        )}
+
+                        {/* Rule summary text */}
+                        <div className="mt-4 p-3 bg-amber-50/80 rounded-xl border border-amber-100/50 flex gap-3">
+                          <span className="text-amber-500 text-lg">💡</span>
+                          <p className="text-xs font-medium text-amber-700/80 leading-relaxed">
+                            {
+                              (formData.minSelections || 0) === 0 && !formData.maxSelections ? "Customer can select any number of options, or none at all." :
+                              (formData.minSelections || 0) > 0 && !formData.maxSelections ? `Customer must select at least ${formData.minSelections} option${formData.minSelections! > 1 ? 's' : ''}.` :
+                              (formData.minSelections || 0) === 0 && formData.maxSelections ? `Customer can select up to ${formData.maxSelections} option${formData.maxSelections > 1 ? 's' : ''} (optional).` :
+                              (formData.minSelections === formData.maxSelections) ? `Customer must select exactly ${formData.minSelections} option${formData.minSelections! > 1 ? 's' : ''}.` :
+                              `Customer must select between ${formData.minSelections} and ${formData.maxSelections} options.`
+                            }
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Internal / Office Name */}
-                <div className="pt-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
-                    <span>Identity Name (Office Only)</span>
-                    <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">Hidden from Kiosk</span>
-                  </label>
-                  <p className="text-xs text-slate-500 mb-2">Use this to easily identify similar groups internally (e.g. "Burger Sauces (Paid)").</p>
-                  <input
-                    type="text"
-                    value={formData.identityName || ''}
-                    onChange={(e) => setFormData({ ...formData, identityName: e.target.value })}
-                    placeholder="e.g. Burger Sauces (Store 1)"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-slate-50"
-                  />
-                </div>
-
-                {/* Tax type */}
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Tax / Category Type</label>
-                  <select
-                    value={formData.itemType || 'food'}
-                    onChange={(e) => setFormData({ ...formData, itemType: e.target.value as 'food' | 'non-alcoholic' | 'alcoholic' })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white"
-                  >
-                    <option value="food">🍔 Food (prepared meal)</option>
-                    <option value="non-alcoholic">🥤 Non-Alcoholic Drink</option>
-                    <option value="alcoholic">🍺 Alcoholic Drink</option>
-                  </select>
-                </div>
-
-                {/* Rules */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
-                      <span>Min Selections</span>
-                      <span className="text-xs text-slate-400 font-medium">0 = Optional</span>
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={formData.minSelections ?? 0}
-                      onChange={(e) => setFormData({ ...formData, minSelections: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
-                      <span>Max Selections</span>
-                      <span className="text-xs text-slate-400 font-medium">Empty = Unlimited</span>
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={formData.maxSelections ?? ''}
-                      onChange={(e) => setFormData({ ...formData, maxSelections: e.target.value ? parseInt(e.target.value) : null })}
-                      placeholder="Unlimited"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
-                      <span>Free Included</span>
-                      <span className="text-xs text-slate-400 font-medium">0 = All Paid</span>
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={formData.freeSelections ?? ''}
-                      onChange={(e) => setFormData({ ...formData, freeSelections: e.target.value ? parseInt(e.target.value) : null })}
-                      placeholder="0"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-white text-sm"
-                    />
-                  </div>
-                </div>
-                {/* Allow Quantities Checkbox (only show if maxSelections > 1 or unlimited) */}
-                {(!formData.maxSelections || formData.maxSelections > 1) && (
-                  <label className="flex items-start gap-3 p-4 mt-1 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={formData.allowQuantityPerOption || false}
-                      onChange={(e) => setFormData({ ...formData, allowQuantityPerOption: e.target.checked })}
-                      className="mt-0.5 w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
-                    />
-                    <div>
-                      <span className="block font-bold text-slate-900 text-sm">Allow multiple of the same option</span>
-                      <span className="block text-xs text-slate-500">Customers can pick quantities (e.g., 2x Ketchup)</span>
-                    </div>
-                  </label>
-                )}
-                {/* Rule summary text */}
-                <p className="text-xs font-medium text-amber-600 bg-amber-50 p-2.5 rounded-lg border border-amber-100">
-                  💡 {
-                    (formData.minSelections || 0) === 0 && !formData.maxSelections ? "Customer can select any number of options, or none at all." :
-                    (formData.minSelections || 0) > 0 && !formData.maxSelections ? `Customer must select at least ${formData.minSelections} option${formData.minSelections! > 1 ? 's' : ''}.` :
-                    (formData.minSelections || 0) === 0 && formData.maxSelections ? `Customer can select up to ${formData.maxSelections} option${formData.maxSelections > 1 ? 's' : ''} (optional).` :
-                    (formData.minSelections === formData.maxSelections) ? `Customer must select exactly ${formData.minSelections} option${formData.minSelections! > 1 ? 's' : ''}.` :
-                    `Customer must select between ${formData.minSelections} and ${formData.maxSelections} options.`
-                  }
-                </p>
               </div>
 
               <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-2 border-t border-slate-100 flex justify-end gap-3 flex-shrink-0 bg-white">
