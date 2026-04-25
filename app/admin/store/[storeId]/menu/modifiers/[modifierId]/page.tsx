@@ -28,6 +28,7 @@ type Modifier = {
   id: string;
   storeId: string;
   name: string | LocalizedString;
+  identityName?: string;
   isRequired: boolean;
   allowMultiple: boolean;
   maxSelections?: number | null;
@@ -268,7 +269,14 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-heading font-black text-slate-900">{modName}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-heading font-black text-slate-900">{modName}</h1>
+              {modifier.identityName && (
+                <span className="px-2 py-1 rounded bg-amber-50 text-amber-700 text-xs font-black border border-amber-200 uppercase tracking-widest mt-1">
+                  {modifier.identityName}
+                </span>
+              )}
+            </div>
             <p className="mt-1 text-slate-500 font-medium">
               Manage options below — each can have a kiosk image.
             </p>

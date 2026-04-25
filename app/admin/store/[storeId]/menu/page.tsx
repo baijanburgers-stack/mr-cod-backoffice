@@ -62,7 +62,8 @@ type ModifierOption = {
 type Modifier = {
   id: string;
   storeId: string;
-  name: string | { en: string; fr: string; nl: string };
+  name: string | LocalizedString;
+  identityName?: string;
   isRequired: boolean;
   allowMultiple: boolean;
   itemIds?: string[];

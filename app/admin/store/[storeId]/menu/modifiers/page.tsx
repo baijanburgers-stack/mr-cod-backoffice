@@ -107,7 +107,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
   // ── CRUD ──
   const openAddModal = () => {
     setEditingModifier(null);
-    setFormData({ name: { en: '', fr: '', nl: '' }, isRequired: false, allowMultiple: false, itemType: 'food' });
+    setFormData({ name: { en: '', fr: '', nl: '' }, identityName: '', isRequired: false, allowMultiple: false, itemType: 'food' });
     setIsModalOpen(true);
   };
 
@@ -115,6 +115,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
     setEditingModifier(m);
     setFormData({
       name: typeof m.name === 'string' ? { en: m.name, fr: m.name, nl: m.name } : m.name,
+      identityName: m.identityName || '',
       isRequired: m.isRequired,
       allowMultiple: m.allowMultiple,
       maxSelections: m.maxSelections,
@@ -131,6 +132,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
       const data = {
         storeId,
         name: safeName,
+        identityName: formData.identityName?.trim() || '',
         isRequired: formData.isRequired || false,
         allowMultiple: formData.allowMultiple || false,
         maxSelections: formData.allowMultiple && formData.maxSelections ? formData.maxSelections : null,
@@ -273,6 +275,11 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <h4 className="text-base font-bold text-slate-900 truncate">{getModName(modifier.name)}</h4>
+                          {modifier.identityName && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-black border border-amber-200 uppercase tracking-widest flex-shrink-0" title="Internal Office Name">
+                              {modifier.identityName}
+                            </span>
+                          )}
                           {modifier.isRequired
                             ? <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100">Required</span>
                             : <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-bold border border-slate-200">Optional</span>
@@ -412,6 +419,22 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Internal / Office Name */}
+                <div className="pt-2">
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 flex justify-between">
+                    <span>Identity Name (Office Only)</span>
+                    <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">Hidden from Kiosk</span>
+                  </label>
+                  <p className="text-xs text-slate-500 mb-2">Use this to easily identify similar groups internally (e.g. "Burger Sauces (Paid)").</p>
+                  <input
+                    type="text"
+                    value={formData.identityName || ''}
+                    onChange={(e) => setFormData({ ...formData, identityName: e.target.value })}
+                    placeholder="e.g. Burger Sauces (Store 1)"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors bg-slate-50"
+                  />
                 </div>
 
                 {/* Tax type */}
