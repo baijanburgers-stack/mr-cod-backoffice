@@ -33,20 +33,17 @@ export default function CurrencyInput({
   );
 
   useEffect(() => {
-    // Only remote-sync if it varies mathematically from our current internal state
+    // Only remote-sync if defaultValue changes externally
     if (defaultValue === undefined) return;
     
-    // Parse our current string back to float for comparison
+    // Check if the new defaultValue differs from our current parsed string
     const rawDigits = strValue.replace(/[^\d]/g, '');
     const currentNum = rawDigits ? parseInt(rawDigits, 10) / 100 : 0;
     
     if (currentNum !== defaultValue) {
-      const t = setTimeout(() => {
-        setStrValue(defaultValue === 0 ? '' : defaultValue.toFixed(2).replace('.', ','));
-      }, 0);
-      return () => clearTimeout(t);
+      setStrValue(defaultValue === 0 ? '' : defaultValue.toFixed(2).replace('.', ','));
     }
-  }, [defaultValue, strValue]);
+  }, [defaultValue]); // Intentionally omitting strValue to allow typing without continuous overwrites
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
