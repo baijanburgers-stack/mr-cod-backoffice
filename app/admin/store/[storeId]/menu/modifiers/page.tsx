@@ -167,6 +167,7 @@ export default function StoreModifiersPage({ params }: { params: Promise<{ store
       const { id, ...data } = m;
       await addDoc(collection(db, 'modifiers'), {
         ...data,
+        itemIds: [], // Clear assigned items on duplicate
         name: typeof m.name === 'string'
           ? `${m.name} (Copy)`
           : { en: `${m.name.en} (Copy)`, fr: `${m.name.fr} (Copy)`, nl: `${m.name.nl} (Copy)` },
