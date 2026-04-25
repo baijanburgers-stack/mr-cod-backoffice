@@ -291,32 +291,10 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
               <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-bold border border-slate-200 capitalize">{modifier.itemType?.replace('_', ' ') || 'Food'}</span>
             </div>
           </div>
-
           <div className="flex items-center gap-3">
-            <button
-              onClick={addOption}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm"
-            >
-              <PlusCircle className="w-4 h-4" />
-              Add Option
-            </button>
-            <button
-              onClick={handleSaveAll}
-              disabled={isSaving || anyUploading || !isDirty}
-              className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 text-slate-900 rounded-xl font-bold hover:bg-amber-400 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving || anyUploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Save Options
-                </>
-              )}
-            </button>
+            <span className="text-sm font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-lg">
+              {options.length} Option{options.length !== 1 ? 's' : ''}
+            </span>
           </div>
         </div>
       </div>
@@ -467,65 +445,47 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
               })}
             </AnimatePresence>
 
-            {/* Add option row */}
-            <button
-              onClick={addOption}
-              className="w-full p-4 sm:p-5 flex items-center justify-center gap-2 text-sm font-bold text-slate-400 hover:text-amber-600 hover:bg-amber-50/50 transition-colors"
-            >
-              <PlusCircle className="w-4 h-4" />
-              Add Another Option
-            </button>
           </div>
         )}
       </div>
 
-      {/* Sticky save footer (visible when dirty) */}
-      <AnimatePresence>
-        {isDirty && (
-          <motion.div
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
-            className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 py-4 flex items-center justify-between shadow-lg"
+      {/* Sticky Action Footer */}
+      <div className="fixed bottom-0 left-0 right-0 sm:left-64 p-4 sm:p-5 bg-white border-t border-slate-200 z-[100] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
+        <div className="text-sm font-bold text-slate-500 hidden sm:block">
+          {options.length} Option{options.length !== 1 ? 's' : ''} Configure
+        </div>
+        
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <button
+            onClick={addOption}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors shadow-sm"
           >
-            <p className="text-sm font-bold text-slate-600">
-              <span className="text-amber-600">{options.length}</span> option{options.length !== 1 ? 's' : ''} — unsaved changes
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  // Reset to DB state
-                  if (modifier) {
-                    setOptions(modifier.options || []);
-                    initImageStates(modifier.options || []);
-                    setIsDirty(false);
-                  }
-                }}
-                className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors"
-              >
-                Discard
-              </button>
-              <button
-                onClick={handleSaveAll}
-                disabled={isSaving || anyUploading}
-                className="px-6 py-2.5 bg-amber-500 text-slate-900 font-bold rounded-xl hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isSaving || anyUploading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving…
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Save All Options
-                  </>
-                )}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <PlusCircle className="w-4 h-4" />
+            Add Option
+          </button>
+          <button
+            onClick={handleSaveAll}
+            disabled={isSaving || anyUploading || !isDirty}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 sm:py-2.5 bg-amber-500 text-slate-900 rounded-xl font-bold hover:bg-amber-400 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaving || anyUploading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save Changes
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+      
+      {/* Spacer to prevent content from hiding behind footer */}
+      <div className="h-24 sm:h-20" />
+
 
       {/* Delete option confirm */}
       <AnimatePresence>
