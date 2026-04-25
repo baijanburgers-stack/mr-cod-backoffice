@@ -31,6 +31,9 @@ type Store = {
   postalCode?: string;
   countryCode?: string;
   isOpen?: boolean;
+  allowPos?: boolean;
+  allowKiosk?: boolean;
+  allowOnlineOrdering?: boolean;
   maxPosTerminals?: number;
   maxKiosks?: number;
   fdmId?: string;
@@ -57,7 +60,8 @@ export default function SuperAdminStores() {
 
   // Form State
   const [formData, setFormData] = useState({
-    name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
+    name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '',
+    allowPos: true, allowKiosk: true, allowOnlineOrdering: true, maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
     ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest'
   });
 
@@ -84,6 +88,9 @@ export default function SuperAdminStores() {
           image: data.image || '',
           logo: data.logo || '',
           isOpen: data.isOpen ?? false,
+          allowPos: data.allowPos ?? true,
+          allowKiosk: data.allowKiosk ?? true,
+          allowOnlineOrdering: data.allowOnlineOrdering ?? true,
           maxPosTerminals: data.maxPosTerminals ?? 5,
           maxKiosks: data.maxKiosks ?? 2,
           fdmId: data.fdmId || '',
@@ -114,14 +121,14 @@ export default function SuperAdminStores() {
   const openAddModal = () => {
     setEditingStore(null);
     setDuplicateErrors({});
-    setFormData({ name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE' });
+    setFormData({ name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', allowPos: true, allowKiosk: true, allowOnlineOrdering: true, maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE' });
     setIsStoreModalOpen(true);
   };
 
   const openEditModal = (store: Store) => {
     setEditingStore(store);
     setDuplicateErrors({});
-    setFormData({ name: store.name || '', address: store.address || '', street: store.street || '', streetNumber: store.streetNumber || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'BE', phone: store.phone || '', email: store.email || '', companyName: store.companyName || '', vatNumber: store.vatNumber || '', status: store.status || 'Active', image: store.image || '', logo: store.logo || '', maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE' });
+    setFormData({ name: store.name || '', address: store.address || '', street: store.street || '', streetNumber: store.streetNumber || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'BE', phone: store.phone || '', email: store.email || '', companyName: store.companyName || '', vatNumber: store.vatNumber || '', status: store.status || 'Active', image: store.image || '', logo: store.logo || '', allowPos: store.allowPos ?? true, allowKiosk: store.allowKiosk ?? true, allowOnlineOrdering: store.allowOnlineOrdering ?? true, maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE' });
     setIsStoreModalOpen(true);
   };
 

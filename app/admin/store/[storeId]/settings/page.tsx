@@ -597,9 +597,6 @@ function VatCategoryManager({
             )}
           </button>
         </div>
-
-        </div>
-
         {/* Seed Defaults */}
         <div className="px-8 py-5 bg-slate-50/50 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
