@@ -42,6 +42,9 @@ type Store = {
   ccvApiKeyTest?: string;
   ccvEnvironment?: 'TEST' | 'LIVE';
   ccvManagementSystemId?: 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest';
+  stripeSecretKey?: string;
+  stripePublishableKey?: string;
+  mollieApiKey?: string;
 };
 
 export default function SuperAdminStores() {
@@ -62,7 +65,8 @@ export default function SuperAdminStores() {
   const [formData, setFormData] = useState({
     name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '',
     allowPos: true, allowKiosk: true, allowOnlineOrdering: true, maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
-    ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest'
+    ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest',
+    stripeSecretKey: '', stripePublishableKey: '', mollieApiKey: ''
   });
 
   useEffect(() => {
@@ -99,6 +103,9 @@ export default function SuperAdminStores() {
           ccvApiKeyTest: data.ccvApiKeyTest || '',
           ccvEnvironment: data.ccvEnvironment || 'TEST',
           ccvManagementSystemId: data.ccvManagementSystemId || 'GrundmasterBE',
+          stripeSecretKey: data.stripeSecretKey || '',
+          stripePublishableKey: data.stripePublishableKey || '',
+          mollieApiKey: data.mollieApiKey || '',
         });
       });
       setStores(fetchedStores);
@@ -121,14 +128,14 @@ export default function SuperAdminStores() {
   const openAddModal = () => {
     setEditingStore(null);
     setDuplicateErrors({});
-    setFormData({ name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', allowPos: true, allowKiosk: true, allowOnlineOrdering: true, maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE' });
+    setFormData({ name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', allowPos: true, allowKiosk: true, allowOnlineOrdering: true, maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', stripeSecretKey: '', stripePublishableKey: '', mollieApiKey: '' });
     setIsStoreModalOpen(true);
   };
 
   const openEditModal = (store: Store) => {
     setEditingStore(store);
     setDuplicateErrors({});
-    setFormData({ name: store.name || '', address: store.address || '', street: store.street || '', streetNumber: store.streetNumber || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'BE', phone: store.phone || '', email: store.email || '', companyName: store.companyName || '', vatNumber: store.vatNumber || '', status: store.status || 'Active', image: store.image || '', logo: store.logo || '', allowPos: store.allowPos ?? true, allowKiosk: store.allowKiosk ?? true, allowOnlineOrdering: store.allowOnlineOrdering ?? true, maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE' });
+    setFormData({ name: store.name || '', address: store.address || '', street: store.street || '', streetNumber: store.streetNumber || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'BE', phone: store.phone || '', email: store.email || '', companyName: store.companyName || '', vatNumber: store.vatNumber || '', status: store.status || 'Active', image: store.image || '', logo: store.logo || '', allowPos: store.allowPos ?? true, allowKiosk: store.allowKiosk ?? true, allowOnlineOrdering: store.allowOnlineOrdering ?? true, maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', stripeSecretKey: store.stripeSecretKey || '', stripePublishableKey: store.stripePublishableKey || '', mollieApiKey: store.mollieApiKey || '' });
     setIsStoreModalOpen(true);
   };
 
@@ -601,56 +608,149 @@ export default function SuperAdminStores() {
                   </div>
                 </div>
 
-                {/* 4. System Limits & Hardware */}
+                {/* 4. Platform Licensing & Hardware */}
                 <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100">
-                  <div className="flex items-center gap-2 mb-4 text-slate-800 border-b border-slate-200/50 pb-3">
+                  <div className="flex items-center gap-2 mb-6 text-slate-800 border-b border-slate-200/50 pb-3">
                     <MonitorSmartphone className="w-5 h-5 text-amber-500" />
-                    <h3 className="text-base font-bold">System Limits & Hardware</h3>
+                    <h3 className="text-base font-bold">Platform Licensing & Hardware</h3>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">Max POS</label>
-                      <input
-                        required
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={formData.maxPosTerminals}
-                        onChange={(e) => setFormData({ ...formData, maxPosTerminals: parseInt(e.target.value) || 0 })}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white"
-                      />
+                  
+                  <div className="space-y-6">
+                    {/* POS Platform */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border border-slate-200">
+                      <div>
+                        <h4 className="font-bold text-slate-800">Point of Sale (POS)</h4>
+                        <p className="text-xs text-slate-500 mt-1">Allow store to use the POS cashier app.</p>
+                      </div>
+                      <div className="flex items-center gap-4 mt-3 sm:mt-0">
+                        {formData.allowPos && (
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-bold text-slate-600">Terminals limit:</label>
+                            <input
+                              type="number" min="0" max="100"
+                              value={formData.maxPosTerminals}
+                              onChange={(e) => setFormData({ ...formData, maxPosTerminals: parseInt(e.target.value) || 0 })}
+                              className="w-20 px-3 py-1.5 rounded-lg border border-slate-200 focus:border-amber-500 outline-none text-sm font-bold text-center"
+                            />
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, allowPos: !formData.allowPos, maxPosTerminals: !formData.allowPos ? 5 : 0 })}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.allowPos ? 'bg-amber-500' : 'bg-slate-300'}`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.allowPos ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">Max Kiosks</label>
-                      <input
-                        required
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={formData.maxKiosks}
-                        onChange={(e) => setFormData({ ...formData, maxKiosks: parseInt(e.target.value) || 0 })}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white"
-                      />
+
+                    {/* Kiosk Platform */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border border-slate-200">
+                      <div>
+                        <h4 className="font-bold text-slate-800">Self-Service Kiosk</h4>
+                        <p className="text-xs text-slate-500 mt-1">Allow store to deploy ordering kiosks.</p>
+                      </div>
+                      <div className="flex items-center gap-4 mt-3 sm:mt-0">
+                        {formData.allowKiosk && (
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-bold text-slate-600">Kiosks limit:</label>
+                            <input
+                              type="number" min="0" max="100"
+                              value={formData.maxKiosks}
+                              onChange={(e) => setFormData({ ...formData, maxKiosks: parseInt(e.target.value) || 0 })}
+                              className="w-20 px-3 py-1.5 rounded-lg border border-slate-200 focus:border-amber-500 outline-none text-sm font-bold text-center"
+                            />
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, allowKiosk: !formData.allowKiosk, maxKiosks: !formData.allowKiosk ? 2 : 0 })}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.allowKiosk ? 'bg-amber-500' : 'bg-slate-300'}`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.allowKiosk ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">FDM ID (BE)</label>
-                      <input
-                        type="text"
-                        value={formData.fdmId}
-                        onChange={(e) => setFormData({ ...formData, fdmId: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white font-mono text-sm"
-                        placeholder="FDM-..."
-                      />
+
+                    {/* Online Ordering Platform */}
+                    <div className="flex flex-col p-4 bg-white rounded-xl border border-slate-200 transition-all duration-300">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between">
+                        <div>
+                          <h4 className="font-bold text-slate-800">Online Ordering & Drivers</h4>
+                          <p className="text-xs text-slate-500 mt-1">Makes store visible on web and allows driver assignment.</p>
+                        </div>
+                        <div className="mt-3 sm:mt-0">
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, allowOnlineOrdering: !formData.allowOnlineOrdering })}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.allowOnlineOrdering ? 'bg-amber-500' : 'bg-slate-300'}`}
+                          >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.allowOnlineOrdering ? 'translate-x-6' : 'translate-x-1'}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {formData.allowOnlineOrdering && (
+                        <div className="mt-4 pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2">
+                          <h5 className="text-sm font-bold text-slate-700 mb-3">Online Payment Gateways</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-bold text-slate-600 mb-1">Stripe Publishable Key</label>
+                              <input
+                                type="text"
+                                value={formData.stripePublishableKey}
+                                onChange={(e) => setFormData({ ...formData, stripePublishableKey: e.target.value })}
+                                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-amber-500 outline-none text-sm font-mono"
+                                placeholder="pk_test_..."
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-600 mb-1">Stripe Secret Key</label>
+                              <input
+                                type="password"
+                                value={formData.stripeSecretKey}
+                                onChange={(e) => setFormData({ ...formData, stripeSecretKey: e.target.value })}
+                                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-amber-500 outline-none text-sm font-mono"
+                                placeholder="sk_test_..."
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-bold text-slate-600 mb-1">Mollie API Key (Optional)</label>
+                              <input
+                                type="password"
+                                value={formData.mollieApiKey}
+                                onChange={(e) => setFormData({ ...formData, mollieApiKey: e.target.value })}
+                                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-amber-500 outline-none text-sm font-mono"
+                                placeholder="test_..."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">VSC ID (BE)</label>
-                      <input
-                        type="text"
-                        value={formData.vscId}
-                        onChange={(e) => setFormData({ ...formData, vscId: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white font-mono text-sm"
-                        placeholder="VSC-..."
-                      />
+
+                    {/* Fiscal Integration */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-200/50">
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">FDM ID (Belgium only)</label>
+                        <input
+                          type="text"
+                          value={formData.fdmId}
+                          onChange={(e) => setFormData({ ...formData, fdmId: e.target.value })}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white font-mono text-sm"
+                          placeholder="FDM-..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">VSC ID (Belgium only)</label>
+                        <input
+                          type="text"
+                          value={formData.vscId}
+                          onChange={(e) => setFormData({ ...formData, vscId: e.target.value })}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white font-mono text-sm"
+                          placeholder="VSC-..."
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
