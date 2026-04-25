@@ -418,61 +418,61 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.2, delay: idx * 0.04 }}
                       key={category.id}
-                      className={`flex flex-col gap-3 hover:bg-slate-50 transition-colors group bg-white ${!category.isActive ? 'opacity-75' : ''} ${isSubCat ? 'pl-6 sm:pl-8 border-l-4 border-amber-200' : ''} p-4 sm:p-5`}
+                      className={`flex flex-row items-center gap-3 hover:bg-slate-50 transition-colors group bg-white ${!category.isActive ? 'opacity-75' : ''} ${isSubCat ? 'pl-6 sm:pl-8 border-l-4 border-amber-200' : ''} p-2 sm:p-3`}
                     >
                       {/* Drag Handle & Image */}
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3 flex-shrink-0">
                         <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500 transition-colors">
-                          <GripVertical className="w-5 h-5" />
+                          <GripVertical className="w-4 h-4" />
                         </div>
-                        <div className={`relative w-14 h-14 rounded-2xl flex-shrink-0 overflow-hidden border-2 ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'}`}>
+                        <div className={`relative w-10 h-10 rounded-xl flex-shrink-0 overflow-hidden border ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'}`}>
                           {category.imageUrl ? (
                             <Image src={category.imageUrl} alt={getCategoryName(category.name)} fill className="object-cover" unoptimized />
                           ) : (
                             <div className={`w-full h-full flex items-center justify-center ${isSubCat ? 'bg-amber-50/50 text-amber-300' : category.isActive ? 'bg-amber-50 text-amber-400' : 'bg-slate-100 text-slate-400'}`}>
-                              <ImageIcon className="w-6 h-6" />
+                              <ImageIcon className="w-5 h-5" />
                             </div>
                           )}
                         </div>
                       </div>
 
                       {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <div className="flex flex-wrap items-center gap-2">
                           {isSubCat && (
-                            <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[9px] font-black border border-amber-200 uppercase tracking-widest flex-shrink-0">
+                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[9px] font-black border border-amber-200 uppercase tracking-widest flex-shrink-0">
                               Sub of {parentName ?? '?'}
                             </span>
                           )}
-                          <h4 className="text-base font-bold text-slate-900 truncate">{getCategoryName(category.name)}</h4>
+                          <h4 className="text-sm sm:text-base font-bold text-slate-900 truncate">{getCategoryName(category.name)}</h4>
                           {!category.isActive && (
-                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs font-bold border border-slate-200">Hidden</span>
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-bold border border-slate-200 flex-shrink-0">Hidden</span>
                           )}
                         </div>
                         {!category.imageUrl && (
-                          <p className="text-xs text-slate-400 font-medium">No image — click edit to add one</p>
+                          <p className="text-[10px] text-slate-400 font-medium hidden sm:block">No image</p>
                         )}
                       </div>
 
                       {/* Stats & Actions */}
-                       <div className="flex items-center justify-between gap-4">
-                        <div className="text-center">
-                          <span className="block text-xl font-black text-slate-900">{category.itemCount}</span>
-                          <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Items</span>
+                      <div className="flex items-center justify-end gap-3 sm:gap-6 flex-shrink-0">
+                        <div className="text-center hidden sm:block">
+                          <span className="block text-sm font-black text-slate-900 leading-none">{category.itemCount}</span>
+                          <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">Items</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <label className="flex items-center cursor-pointer mr-2">
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <label className="flex items-center cursor-pointer mr-1 sm:mr-2">
                             <div className="relative">
                               <input type="checkbox" className="sr-only" checked={category.isActive} onChange={() => toggleStatus(category.id, category.isActive)} />
-                              <div className={`block w-10 h-6 rounded-full transition-colors ${category.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-                              <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${category.isActive ? 'transform translate-x-4' : ''}`}></div>
+                              <div className={`block w-8 h-5 rounded-full transition-colors ${category.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                              <div className={`dot absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform ${category.isActive ? 'transform translate-x-3' : ''}`}></div>
                             </div>
                           </label>
-                          <button onClick={() => openEditModal(category)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors" title="Edit Category">
-                            <Edit2 className="w-5 h-5" />
+                          <button onClick={() => openEditModal(category)} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Edit Category">
+                            <Edit2 className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleDeleteClick(category.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Delete Category">
-                            <Trash2 className="w-5 h-5" />
+                          <button onClick={() => handleDeleteClick(category.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Category">
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
