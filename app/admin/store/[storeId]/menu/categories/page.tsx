@@ -425,7 +425,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                         <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500 transition-colors">
                           <GripVertical className="w-5 h-5" />
                         </div>
-                        <div className={`w-14 h-14 rounded-2xl flex-shrink-0 overflow-hidden border-2 ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'}`}>
+                        <div className={`relative w-14 h-14 rounded-2xl flex-shrink-0 overflow-hidden border-2 ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'}`}>
                           {category.imageUrl ? (
                             <Image src={category.imageUrl} alt={getCategoryName(category.name)} fill className="object-cover" unoptimized />
                           ) : (
