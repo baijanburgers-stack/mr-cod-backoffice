@@ -129,7 +129,7 @@ export function DigitalSignageManager({ storeId }: { storeId: string }) {
                 <div className="px-5 pb-5 space-y-2 text-sm text-slate-600">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Layout Split</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{profile.layoutRatio}% Menu / {100 - profile.layoutRatio}% Media</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{profile.layoutRatio || 0}% Menu / {100 - (profile.layoutRatio || 0)}% Media</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Categories</span>
@@ -141,7 +141,7 @@ export function DigitalSignageManager({ storeId }: { storeId: string }) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Sleep Schedule</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{profile.closeHour}:00 to {profile.openHour}:00</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{profile.closeHour || 0}:00 to {profile.openHour || 0}:00</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Orientation</span>
@@ -218,13 +218,13 @@ export function DigitalSignageManager({ storeId }: { storeId: string }) {
                   <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-widest">2. Layout Split</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm font-medium mb-2">
-                      <span className="text-slate-700">Menu Width: {editingProfile.layoutRatio}%</span>
-                      <span className="text-slate-700">Media Width: {100 - editingProfile.layoutRatio}%</span>
+                      <span className="text-slate-700">Menu Width: {editingProfile.layoutRatio || 0}%</span>
+                      <span className="text-slate-700">Media Width: {100 - (editingProfile.layoutRatio || 0)}%</span>
                     </div>
                     <input 
                       type="range" min="0" max="100" step="5"
-                      value={editingProfile.layoutRatio}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingProfile({...editingProfile, layoutRatio: parseInt(e.target.value)})}
+                      value={editingProfile.layoutRatio || 0}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingProfile({...editingProfile, layoutRatio: parseInt(e.target.value) || 0})}
                       className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
                     />
                     <p className="text-xs text-slate-500 mt-1">Set to 100% to hide media, or 0% to show only full-screen videos.</p>
@@ -232,11 +232,11 @@ export function DigitalSignageManager({ storeId }: { storeId: string }) {
                   
                   {/* Visualizer */}
                   <div className="h-16 w-full flex rounded-lg overflow-hidden border border-slate-200">
-                    <div className="bg-slate-800 flex items-center justify-center text-white text-[10px] font-black tracking-widest" style={{ width: `${editingProfile.layoutRatio}%` }}>
-                      {editingProfile.layoutRatio > 10 ? 'MENU ITEMS' : ''}
+                    <div className="bg-slate-800 flex items-center justify-center text-white text-[10px] font-black tracking-widest" style={{ width: `${editingProfile.layoutRatio || 0}%` }}>
+                      {(editingProfile.layoutRatio || 0) > 10 ? 'MENU ITEMS' : ''}
                     </div>
-                    <div className="bg-amber-500 flex items-center justify-center text-white text-[10px] font-black tracking-widest" style={{ width: `${100 - editingProfile.layoutRatio}%` }}>
-                      {editingProfile.layoutRatio < 90 ? 'PROMO MEDIA' : ''}
+                    <div className="bg-amber-500 flex items-center justify-center text-white text-[10px] font-black tracking-widest" style={{ width: `${100 - (editingProfile.layoutRatio || 0)}%` }}>
+                      {(editingProfile.layoutRatio || 0) < 90 ? 'PROMO MEDIA' : ''}
                     </div>
                   </div>
                 </div>
