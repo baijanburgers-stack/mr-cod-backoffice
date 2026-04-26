@@ -248,7 +248,8 @@ export function DigitalSignageManager({ storeId }: { storeId: string }) {
                     {categories.length === 0 ? <p className="text-sm text-slate-500">No categories found in store.</p> : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {categories.map(cat => {
-                          const isSelected = editingProfile.assignedCategories.includes(cat.id);
+                          const safeCats = editingProfile.assignedCategories || [];
+                          const isSelected = safeCats.includes(cat.id);
                           return (
                             <label key={cat.id} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors border ${isSelected ? 'border-amber-500 bg-amber-50/50' : 'border-transparent hover:bg-slate-100'}`}>
                               <input 
@@ -256,8 +257,8 @@ export function DigitalSignageManager({ storeId }: { storeId: string }) {
                                 checked={isSelected}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                   const newCats = e.target.checked 
-                                    ? [...editingProfile.assignedCategories, cat.id]
-                                    : editingProfile.assignedCategories.filter(id => id !== cat.id);
+                                    ? [...safeCats, cat.id]
+                                    : safeCats.filter(id => id !== cat.id);
                                   setEditingProfile({...editingProfile, assignedCategories: newCats});
                                 }}
                                 className="rounded text-amber-500 focus:ring-amber-500 w-4 h-4"
@@ -275,7 +276,7 @@ export function DigitalSignageManager({ storeId }: { storeId: string }) {
                 <div className="space-y-4">
                   <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-widest">4. Media Playlist (URLs)</h4>
                   <div className="space-y-3">
-                    {editingProfile.mediaPlaylist.map((url, i) => (
+                    {(editingProfile.mediaPlaylist || []).map((url, i) => (
                       <div key={i} className="flex gap-2">
                         <input 
                           type="text"
@@ -283,7 +284,7 @@ export function DigitalSignageManager({ storeId }: { storeId: string }) {
                           placeholder="Paste image or mp4 url here..."
                           className="flex-1 px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-amber-500 outline-none transition-colors text-sm font-medium text-slate-900"
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                            const newList = [...editingProfile.mediaPlaylist];
+                            const newList = [...(editingProfile.mediaPlaylist || [])];
                             newList[i] = e.target.value;
                             setEditingProfile({...editingProfile, mediaPlaylist: newList});
                           }}
@@ -292,7 +293,7 @@ export function DigitalSignageManager({ storeId }: { storeId: string }) {
                           type="button"
                           className="p-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-colors shrink-0"
                           onClick={() => {
-                            const newList = [...editingProfile.mediaPlaylist];
+                            const newList = [...(editingProfile.mediaPlaylist || [])];
                             newList.splice(i, 1);
                             setEditingProfile({...editingProfile, mediaPlaylist: newList});
                           }}
@@ -303,7 +304,7 @@ export function DigitalSignageManager({ storeId }: { storeId: string }) {
                     ))}
                     <button 
                       type="button"
-                      onClick={() => setEditingProfile({...editingProfile, mediaPlaylist: [...editingProfile.mediaPlaylist, '']})}
+                      onClick={() => setEditingProfile({...editingProfile, mediaPlaylist: [...(editingProfile.mediaPlaylist || []), '']})}
                       className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 font-bold text-sm hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/40 transition-all flex items-center justify-center gap-2"
                     >
                       <Plus className="w-4 h-4" /> Add Media URL
