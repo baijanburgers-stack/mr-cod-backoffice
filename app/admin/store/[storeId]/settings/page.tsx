@@ -10,6 +10,7 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
 import CcvTransactionViewer from '@/components/settings/CcvTransactionViewer';
+import { DigitalSignageManager } from '@/components/settings/DigitalSignageManager';
 import { type VatCategory, getDefaultVatCategories, getCountryLabel } from '@/lib/vat-rules';
 
 function UploadZone({ 
@@ -89,6 +90,7 @@ const TABS = [
   { id: 'store',   label: 'Online Order',  icon: Store },
   { id: 'kiosk',   label: 'Kiosk',         icon: Tablet },
   { id: 'pos',     label: 'POS',           icon: Monitor },
+  { id: 'tv',      label: 'Signage TV',    icon: Monitor },
   { id: 'live',    label: 'Live Order',    icon: Activity },
   { id: 'vat',     label: 'VAT & Tax',     icon: ShieldCheck },
 ];
@@ -1360,6 +1362,11 @@ function VatCategoryManager({
                 <p className="text-sm text-slate-400 mt-1">Receipt printers, fast-cash buttons, and local network devices will appear here.</p>
               </div>
            </div>
+        </div>
+
+        {/* TV SIGNAGE SETTINGS */}
+        <div id="tv" className="scroll-mt-32 space-y-8">
+           <DigitalSignageManager storeId={storeId} />
         </div>
 
         {/* LIVE ORDER SETTINGS */}
