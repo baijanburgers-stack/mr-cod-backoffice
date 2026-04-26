@@ -31,7 +31,11 @@ export function DigitalSignageManager({ storeId }: { storeId: string }) {
     const fetchCats = async () => {
       const q = query(collection(db, 'categories'), where('storeId', '==', storeId));
       const catSnap = await getDocs(q);
-      setCategories(catSnap.docs.map(d => ({ id: d.id, name: d.data().name })));
+      setCategories(catSnap.docs.map(d => {
+        const n = d.data().name;
+        const safeName = typeof n === 'string' ? n : (n?.en || 'Unknown');
+        return { id: d.id, name: safeName };
+      }));
     };
     fetchCats();
 
