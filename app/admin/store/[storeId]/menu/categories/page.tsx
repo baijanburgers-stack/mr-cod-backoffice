@@ -23,6 +23,7 @@ type Category = {
   itemCount: number;
   order: number;
   color?: string;
+  emoji?: string;
   parentId?: string | null;
 };
 
@@ -59,6 +60,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
   const [isActiveState, setIsActiveState] = useState(true);
   const [selectedParentId, setSelectedParentId] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>(POS_COLORS[0]);
+  const [selectedEmoji, setSelectedEmoji] = useState<string>('');
 
   useEffect(() => {
     if (!user) return;
@@ -115,6 +117,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     setIsActiveState(category.isActive);
     setSelectedParentId(category.parentId || '');
     setSelectedColor(category.color || POS_COLORS[0]);
+    setSelectedEmoji(category.emoji || '');
     setIsModalOpen(true);
   };
 
@@ -124,6 +127,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     setIsActiveState(true);
     setSelectedParentId('');
     setSelectedColor(POS_COLORS[0]);
+    setSelectedEmoji('');
     setIsModalOpen(true);
   };
 
@@ -145,6 +149,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
           isActive: isActiveState,
           parentId: selectedParentId || null,
           color: selectedColor,
+          emoji: selectedEmoji,
         });
       } else {
         await addDoc(collection(db, 'categories'), {
@@ -154,6 +159,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
           itemCount: 0,
           order: categories.length,
           color: selectedColor,
+          emoji: selectedEmoji,
           parentId: selectedParentId || null,
         });
       }
@@ -204,9 +210,10 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
           {!isSubCat && <GripVertical className="w-4 h-4" />}
         </div>
         <div 
-          className={`relative w-10 h-10 rounded-xl flex-shrink-0 shadow-sm border ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'}`}
+          className={`relative w-10 h-10 rounded-xl flex-shrink-0 shadow-sm border ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'} flex items-center justify-center text-lg`}
           style={{ backgroundColor: category.color || '#e2e8f0' }}
         >
+          {category.emoji && <span>{category.emoji}</span>}
         </div>
       </div>
 
@@ -501,6 +508,22 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                           ))}
                         </div>
                       </div>
+                    </div>
+
+                    {/* Emoji Picker */}
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">POS Category Emoji</label>
+                      <input
+                        type="text"
+                        value={selectedEmoji}
+                        onChange={(e) => setSelectedEmoji(e.target.value)}
+                        placeholder="e.g. 🍔"
+                        maxLength={5}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all text-xl"
+                      />
+                      <p className="mt-1.5 text-xs text-slate-500 font-medium">
+                        Optional. Displays an emoji on the POS.
+                      </p>
                     </div>
 
                     {/* Active Status */}
