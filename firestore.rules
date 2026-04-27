@@ -248,6 +248,14 @@ service cloud.firestore {
       }
     }
 
+    // ── Cashiers ──────────────────────────────────────────────────────────────
+    match /cashiers/{cashierId} {
+      allow read:   if true; // POS needs read access without auth
+      allow create: if isAdmin() || isStoreAdmin(request.resource.data.storeId) || isManager(request.resource.data.storeId);
+      allow update: if isAdmin() || isStoreAdmin(resource.data.storeId) || isManager(resource.data.storeId);
+      allow delete: if isAdmin() || isStoreAdmin(resource.data.storeId) || isManager(resource.data.storeId);
+    }
+
     // ── Menu Items ────────────────────────────────────────────────────────────
     match /menuItems/{menuItemId} {
       allow read:   if true;

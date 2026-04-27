@@ -36,7 +36,7 @@ type MenuItem = {
   vatRate?: number;             // legacy — kept for old data compatibility
   category: string;
   isAvailable: boolean;
-  image: string | null;
+  color?: string;
   variations: Variation[];
   comboUpsellId?: string;       // combo to suggest when ordered standalone
   modifierOrder?: string[];     // explicit display sequence for modifiers on this item
@@ -89,6 +89,14 @@ function getCategoryName(name: Category['name']): string {
 /** onInput handler for uncontrolled inputs — capitalizes words in-place */
 // Exported to utils
 
+const POS_COLORS = [
+  '#f87171', '#fb923c', '#fbbf24', '#facc15', 
+  '#a3e635', '#4ade80', '#34d399', '#2dd4bf', 
+  '#22d3ee', '#38bdf8', '#60a5fa', '#818cf8', 
+  '#a78bfa', '#c084fc', '#f472b6', '#fb7185', 
+  '#94a3b8', '#1e293b'
+];
+
 function MenuItemRow({ 
   item, 
   idx, 
@@ -132,21 +140,20 @@ function MenuItemRow({
         </div>
       )}
 
-      {/* Image Container */}
-      <div className="w-24 h-24 sm:w-28 sm:h-28 bg-slate-100 rounded-2xl relative flex items-center justify-center flex-shrink-0 border border-slate-200/60 overflow-hidden shadow-sm group-hover:shadow-md transition-shadow duration-300">
-        {item.image ? (
-          <Image src={item.image} alt={item.name} fill className="object-contain p-2 pointer-events-none group-hover:scale-105 transition-transform duration-500" />
-        ) : (
-          <ImageIcon className="w-10 h-10 text-slate-300 opacity-40" />
-        )}
+      {/* Color Container */}
+      <div 
+        className="w-24 h-24 sm:w-28 sm:h-28 bg-slate-100 rounded-2xl relative flex items-center justify-center flex-shrink-0 border border-slate-200/60 shadow-sm group-hover:shadow-md transition-shadow duration-300"
+        style={{ backgroundColor: item.color || '#e2e8f0' }}
+      >
         {!item.isAvailable && (
-          <div className="absolute inset-0 bg-slate-900/20 flex items-center justify-center backdrop-blur-[2px]">
+          <div className="absolute inset-0 bg-slate-900/20 flex items-center justify-center backdrop-blur-[2px] rounded-2xl">
             <span className="px-3 py-1.5 bg-slate-900 text-white font-black rounded-xl text-[10px] shadow-xl uppercase tracking-widest">
               Hidden
             </span>
           </div>
         )}
       </div>
+
 
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-3 mb-2">
@@ -247,7 +254,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
   const [modalLang, setModalLang] = useState<'en' | 'fr' | 'nl'>('en');
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string>('#f87171');
   const [editingVariations, setEditingVariations] = useState<Variation[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [modifiers, setModifiers] = useState<Modifier[]>([]);
@@ -345,59 +352,6 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     };
   }, [storeId, user]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      alert('Please upload a PNG or JPG file.');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = reader.result as string;
-      // Compress image before setting preview and saving
-      const compressed = await compressImage(base64);
-      setImagePreview(compressed);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const compressImage = (base64Str: string, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> => {
-    return new Promise((resolve) => {
-      const img = new window.Image();
-      img.src = base64Str;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxWidth) {
-            height *= maxWidth / width;
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width *= maxHeight / height;
-            height = maxHeight;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-    });
-  };
 
   const filteredItems = items.filter(item => {
     const matchesCategory = activeCategory === 'All' || item.category === activeCategory;
@@ -450,16 +404,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
 
   const openEditModal = async (item: MenuItem) => {
     setEditingItem(item);
-    let img = item.image;
-    // If existing image is a large base64 string, compress it to avoid future save errors
-    if (img && img.startsWith('data:image') && img.length > 500000) {
-      try {
-        img = await compressImage(img);
-      } catch (e) {
-        console.error("Failed to compress existing image:", e);
-      }
-    }
-    setImagePreview(img);
+    setSelectedColor(item.color || POS_COLORS[0]);
     setEditingVariations(item.variations || []);
     // Pre-select modifiers already associated with this item
     const preSelectedIds = new Set(modifiers.filter(m => m.itemIds?.includes(item.id)).map(m => m.id));
@@ -478,7 +423,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
 
   const openAddModal = () => {
     setEditingItem(null);
-    setImagePreview(null);
+    setSelectedColor(POS_COLORS[0]);
     setEditingVariations([]);
     setModifierOrder([]);
     setSelectedItemType('food');
@@ -553,7 +498,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       comboUpsellId: selectedComboUpsellId || null,
       category,
       description,
-      image: imagePreview,
+      color: selectedColor,
       variations: processedVariations,
       modifierOrder,
     };
@@ -784,56 +729,30 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
               <form id="item-form" onSubmit={handleSave} className="overflow-y-auto flex-1">
                 <div className="flex flex-col lg:flex-row min-h-0">
 
-                  {/* ── LEFT PANEL: Image Upload ── */}
+                  {/* ── LEFT PANEL: Color Picker ── */}
                   <div className="lg:w-64 xl:w-72 flex-shrink-0 bg-slate-50 border-b lg:border-b-0 lg:border-r border-slate-100 p-6 flex flex-col gap-4">
                     <div>
-                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Item Photo</p>
-                      <div
-                        onClick={() => fileInputRef.current?.click()}
-                        className="relative w-full aspect-square rounded-2xl border-2 border-dashed border-slate-200 overflow-hidden cursor-pointer group hover:border-amber-400 transition-colors bg-white"
-                      >
-                        {imagePreview ? (
-                          <>
-                            <Image src={imagePreview} alt="Preview" fill className="object-contain p-3 group-hover:scale-105 transition-transform duration-500" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end pb-5 gap-1">
-                              <ImageIcon className="w-5 h-5 text-white" />
-                              <span className="text-white font-bold text-xs">Change Photo</span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 group-hover:text-amber-500 transition-colors">
-                            <div className="w-14 h-14 rounded-2xl bg-slate-100 group-hover:bg-amber-50 flex items-center justify-center transition-colors">
-                              <ImageIcon className="w-7 h-7" />
-                            </div>
-                            <span className="text-xs font-bold text-center px-2 leading-relaxed">
-                              Click to upload<br />
-                              <span className="font-medium text-slate-400">PNG, JPG up to 5MB</span>
-                            </span>
-                          </div>
-                        )}
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={handleImageUpload}
-                          accept="image/png, image/jpeg"
-                          className="hidden"
-                        />
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Item Color</p>
+                      <div className="bg-white border border-slate-200 rounded-2xl p-4">
+                        <div className="grid grid-cols-5 gap-2.5">
+                          {POS_COLORS.map(color => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => setSelectedColor(color)}
+                              className={`w-full aspect-square rounded-full transition-transform ${selectedColor === color ? 'scale-110 ring-2 ring-offset-2 ring-slate-400 shadow-md' : 'hover:scale-110'}`}
+                              style={{ backgroundColor: color }}
+                              title={color}
+                            />
+                          ))}
+                        </div>
                       </div>
-                      {imagePreview && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setImagePreview(null); }}
-                          className="mt-2.5 w-full text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center gap-1.5 py-1.5"
-                        >
-                          <X className="w-3.5 h-3.5" /> Remove photo
-                        </button>
-                      )}
                     </div>
 
                     {/* Quick-info pills */}
                     <div className="mt-auto pt-4 border-t border-slate-200 space-y-2">
                       <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Tips</p>
-                      <p className="text-[11px] text-slate-400 leading-relaxed">Use a square, high-contrast image on a white or transparent background for best kiosk & web display.</p>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">Choose a vibrant color. This helps cashiers identify items quickly on the POS screen.</p>
                     </div>
                   </div>
 

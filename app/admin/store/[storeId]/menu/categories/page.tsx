@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useEffect, use, useRef, useCallback } from 'react';
+import { useState, useEffect, use, useCallback } from 'react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
-import { Search, Plus, Edit2, Trash2, GripVertical, Tag, X, AlertCircle, Upload, Image as ImageIcon, Loader2, CheckCircle2 } from 'lucide-react';
-import { db, storage } from '@/lib/firebase';
+import { Search, Plus, Edit2, Trash2, GripVertical, Tag, X, AlertCircle, Loader2, Palette } from 'lucide-react';
+import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, orderBy, writeBatch } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
 import { useAuth } from '@/lib/AuthContext';
 import { onInputCap } from '@/lib/utils';
-import Image from 'next/image';
 
 type LocalizedString = {
   en: string;
@@ -24,10 +22,17 @@ type Category = {
   isActive: boolean;
   itemCount: number;
   order: number;
-  imageUrl?: string;
-  imagePath?: string;
+  color?: string;
   parentId?: string | null;
 };
+
+const POS_COLORS = [
+  '#f87171', '#fb923c', '#fbbf24', '#facc15', 
+  '#a3e635', '#4ade80', '#34d399', '#2dd4bf', 
+  '#22d3ee', '#38bdf8', '#60a5fa', '#818cf8', 
+  '#a78bfa', '#c084fc', '#f472b6', '#fb7185', 
+  '#94a3b8', '#1e293b'
+];
 
 export default function StoreCategoriesPage({ params }: { params: Promise<{ storeId: string }> }) {
   const getCategoryName = (name: string | LocalizedString | undefined) => {
@@ -49,28 +54,11 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
 
-  // Image upload state
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isDraggingOver, setIsDraggingOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [categoryName, setCategoryName] = useState<string | LocalizedString>({ en: '', fr: '', nl: '' });
   const [isActiveState, setIsActiveState] = useState(true);
   const [selectedParentId, setSelectedParentId] = useState<string>('');
-
-  // Prevent browser from opening files when dropped outside the drop zone
-  useEffect(() => {
-    const preventDefault = (e: DragEvent) => e.preventDefault();
-    window.addEventListener('dragover', preventDefault);
-    window.addEventListener('drop', preventDefault);
-    return () => {
-      window.removeEventListener('dragover', preventDefault);
-      window.removeEventListener('drop', preventDefault);
-    };
-  }, []);
+  const [selectedColor, setSelectedColor] = useState<string>(POS_COLORS[0]);
 
   useEffect(() => {
     if (!user) return;
@@ -113,11 +101,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
 
   const confirmDelete = async () => {
     if (!categoryToDelete) return;
-    const cat = categories.find(c => c.id === categoryToDelete);
     try {
-      if (cat?.imagePath) {
-        await deleteObject(ref(storage, cat.imagePath)).catch(() => {});
-      }
       await deleteDoc(doc(db, 'categories', categoryToDelete));
       setCategoryToDelete(null);
     } catch (error) {
@@ -129,10 +113,8 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     setEditingCategory(category);
     setCategoryName(typeof category.name === 'string' ? { en: category.name, fr: category.name, nl: category.name } : (category.name || { en: '', fr: '', nl: '' }));
     setIsActiveState(category.isActive);
-    setImagePreview(category.imageUrl || null);
-    setImageFile(null);
-    setUploadProgress(0);
     setSelectedParentId(category.parentId || '');
+    setSelectedColor(category.color || POS_COLORS[0]);
     setIsModalOpen(true);
   };
 
@@ -140,124 +122,14 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     setEditingCategory(null);
     setCategoryName({ en: '', fr: '', nl: '' });
     setIsActiveState(true);
-    setImagePreview(null);
-    setImageFile(null);
-    setUploadProgress(0);
     setSelectedParentId('');
+    setSelectedColor(POS_COLORS[0]);
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setImageFile(null);
-    setImagePreview(null);
-    setUploadProgress(0);
     setSelectedParentId('');
-  };
-
-  const compressImage = (base64Str: string, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> => {
-    return new Promise((resolve) => {
-      const img = new window.Image();
-      img.src = base64Str;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxWidth) {
-            height *= maxWidth / width;
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width *= maxHeight / height;
-            height = maxHeight;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-    });
-  };
-
-  const handleFileSelect = (file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    
-    // Check file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB.');
-      return;
-    }
-
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = e.target?.result as string;
-      try {
-        const compressed = await compressImage(base64);
-        setImagePreview(compressed);
-      } catch (err) {
-        console.error("Failed to compress image", err);
-        setImagePreview(base64);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleDropZoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileSelect(file);
-  };
-
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDraggingOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
-  }, []);
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDraggingOver(true);
-  };
-
-  const handleDragLeave = () => setIsDraggingOver(false);
-
-  const removeImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const uploadImage = async (categoryId: string): Promise<{ imageUrl: string; imagePath: string } | null> => {
-    if (!imageFile) return null;
-    const imagePath = `stores/${storeId}/categories/${categoryId}/${Date.now()}_${imageFile.name}`;
-    const storageRef = ref(storage, imagePath);
-    setIsUploading(true);
-    return new Promise((resolve, reject) => {
-      const uploadTask = uploadBytesResumable(storageRef, imageFile);
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
-        },
-        (error) => {
-          setIsUploading(false);
-          reject(error);
-        },
-        async () => {
-          const imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          setIsUploading(false);
-          resolve({ imageUrl, imagePath });
-        }
-      );
-    });
   };
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -268,49 +140,22 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
 
     try {
       if (editingCategory) {
-        // Handle image replacement
-        let imageData: { imageUrl?: string; imagePath?: string } = {};
-
-        if (imageFile) {
-          // Delete old image if exists
-          if (editingCategory.imagePath) {
-            await deleteObject(ref(storage, editingCategory.imagePath)).catch(() => {});
-          }
-          const result = await uploadImage(editingCategory.id);
-          if (result) imageData = result;
-        } else if (!imagePreview && editingCategory.imageUrl) {
-          // User removed the image
-          if (editingCategory.imagePath) {
-            await deleteObject(ref(storage, editingCategory.imagePath)).catch(() => {});
-          }
-          imageData = { imageUrl: '', imagePath: '' };
-        }
-
         await updateDoc(doc(db, 'categories', editingCategory.id), {
           name: safeName,
           isActive: isActiveState,
           parentId: selectedParentId || null,
-          ...imageData,
+          color: selectedColor,
         });
       } else {
-        // Create first to get the ID, then upload image
-        const docRef = await addDoc(collection(db, 'categories'), {
+        await addDoc(collection(db, 'categories'), {
           storeId,
           name: safeName,
           isActive: isActiveState,
           itemCount: 0,
           order: categories.length,
-          imageUrl: '',
-          imagePath: '',
+          color: selectedColor,
           parentId: selectedParentId || null,
         });
-
-        if (imageFile) {
-          const result = await uploadImage(docRef.id);
-          if (result) {
-            await updateDoc(docRef, result);
-          }
-        }
       }
       closeModal();
     } catch (error) {
@@ -353,19 +198,15 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
 
   const renderCategoryRow = (category: Category, isSubCat: boolean, parentName: string | null) => (
     <div className={`flex flex-row items-center gap-3 hover:bg-slate-50 transition-colors group bg-white ${!category.isActive ? 'opacity-75' : ''} p-2 sm:p-3`}>
-      {/* Drag Handle & Image */}
+      {/* Drag Handle & Color Block */}
       <div className="flex items-center gap-3 flex-shrink-0">
         <div className={`p-1 text-slate-300 transition-colors ${isSubCat ? 'opacity-0 pointer-events-none w-4' : 'cursor-grab active:cursor-grabbing hover:text-slate-500'}`}>
           {!isSubCat && <GripVertical className="w-4 h-4" />}
         </div>
-        <div className={`relative w-10 h-10 rounded-xl flex-shrink-0 overflow-hidden border ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'}`}>
-          {category.imageUrl ? (
-            <Image src={category.imageUrl} alt={getCategoryName(category.name)} fill className="object-cover" unoptimized />
-          ) : (
-            <div className={`w-full h-full flex items-center justify-center ${isSubCat ? 'bg-amber-50/50 text-amber-300' : category.isActive ? 'bg-amber-50 text-amber-400' : 'bg-slate-100 text-slate-400'}`}>
-              <ImageIcon className="w-5 h-5" />
-            </div>
-          )}
+        <div 
+          className={`relative w-10 h-10 rounded-xl flex-shrink-0 shadow-sm border ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'}`}
+          style={{ backgroundColor: category.color || '#e2e8f0' }}
+        >
         </div>
       </div>
 
@@ -382,9 +223,6 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
             <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-bold border border-slate-200 flex-shrink-0">Hidden</span>
           )}
         </div>
-        {!category.imageUrl && (
-          <p className="text-[10px] text-slate-400 font-medium hidden sm:block">No image</p>
-        )}
       </div>
 
       {/* Stats & Actions */}
@@ -643,129 +481,49 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
 
                   </div>{/* end left column */}
 
-                  {/* ── Right column: image ── */}
-                  <div className="lg:w-56 flex-shrink-0">
+                  {/* ── Right column: color & active ── */}
+                  <div className="lg:w-64 flex-shrink-0 flex flex-col gap-5">
 
-                {/* Image Upload */}
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                    Category Image
-                    <span className="text-slate-400 font-medium ml-1">(optional)</span>
-                  </label>
-
-                  {imagePreview ? (
-                    /* Image Preview */
-                    <div className="relative h-48 rounded-2xl overflow-hidden border-2 border-amber-300 bg-slate-100">
-                      <Image
-                        src={imagePreview}
-                        alt="Preview"
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                      {/* Upload progress overlay */}
-                      <AnimatePresence>
-                        {isUploading && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-slate-900/60 flex flex-col items-center justify-center gap-3"
-                          >
-                            <Loader2 className="w-8 h-8 text-white animate-spin" />
-                            <div className="w-2/3 bg-slate-700 rounded-full h-2">
-                              <motion.div
-                                className="h-full bg-amber-400 rounded-full"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${uploadProgress}%` }}
-                                transition={{ ease: 'linear' }}
-                              />
-                            </div>
-                            <span className="text-white text-sm font-bold">{Math.round(uploadProgress)}%</span>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                      {/* Remove button */}
-                      {!isUploading && (
-                        <button
-                          type="button"
-                          onClick={removeImage}
-                          className="absolute top-2 right-2 p-1.5 bg-slate-900/70 hover:bg-rose-600 text-white rounded-full transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                      {/* Change image overlay */}
-                      {!isUploading && (
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/70 hover:bg-slate-900/90 text-white text-xs font-bold rounded-lg transition-colors"
-                        >
-                          <Upload className="w-3.5 h-3.5" />
-                          Change
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    /* Drop Zone */
-                    <div
-                      onDrop={handleDrop}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`relative flex flex-col items-center justify-center gap-3 h-44 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
-                        isDraggingOver
-                          ? 'border-amber-400 bg-amber-50 scale-[1.01]'
-                          : 'border-slate-200 bg-slate-50 hover:border-amber-400 hover:bg-amber-50/50'
-                      }`}
-                    >
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${isDraggingOver ? 'bg-amber-100' : 'bg-slate-100'}`}>
-                        <ImageIcon className={`w-6 h-6 transition-colors ${isDraggingOver ? 'text-amber-500' : 'text-slate-400'}`} />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm font-bold text-slate-700">
-                          {isDraggingOver ? 'Drop image here' : 'Click or drag & drop'}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-0.5">PNG, JPG, WEBP · Max 5MB</p>
-                      </div>
-                      <div className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${isDraggingOver ? 'bg-amber-400 text-slate-900' : 'bg-amber-100 text-amber-700'}`}>
-                        <Upload className="w-3.5 h-3.5" />
-                        Browse Files
-                      </div>
-                    </div>
-                  )}
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleDropZoneChange}
-                    className="hidden"
-                  />
-                </div>
-
-                  {/* Active Status */}
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 mt-5">
+                    {/* Color Picker */}
                     <div>
-                      <h4 className="font-bold text-slate-900">Active</h4>
-                      <p className="text-xs text-slate-500">Show on customer menu.</p>
-                    </div>
-                    <label className="flex items-center cursor-pointer">
-                      <div className="relative">
-                        <input
-                          type="checkbox"
-                          className="sr-only"
-                          checked={isActiveState}
-                          onChange={(e) => setIsActiveState(e.target.checked)}
-                        />
-                        <div className={`block w-12 h-7 rounded-full transition-colors ${isActiveState ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-                        <div className={`dot absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform shadow-sm ${isActiveState ? 'translate-x-5' : ''}`}></div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">POS Category Color</label>
+                      <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                        <div className="grid grid-cols-6 gap-2">
+                          {POS_COLORS.map(color => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => setSelectedColor(color)}
+                              className={`w-8 h-8 rounded-full transition-transform ${selectedColor === color ? 'scale-110 ring-2 ring-offset-2 ring-slate-400 shadow-md' : 'hover:scale-110'}`}
+                              style={{ backgroundColor: color }}
+                              title={color}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    </label>
-                  </div>
+                    </div>
 
-                    </div>{/* end right column */}
+                    {/* Active Status */}
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div>
+                        <h4 className="font-bold text-slate-900">Active</h4>
+                        <p className="text-xs text-slate-500">Show on POS and Kiosk.</p>
+                      </div>
+                      <label className="flex items-center cursor-pointer">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={isActiveState}
+                            onChange={(e) => setIsActiveState(e.target.checked)}
+                          />
+                          <div className={`block w-12 h-7 rounded-full transition-colors ${isActiveState ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                          <div className={`dot absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform shadow-sm ${isActiveState ? 'translate-x-5' : ''}`}></div>
+                        </div>
+                      </label>
+                    </div>
+
+                  </div>{/* end right column */}
                   </div>{/* end flex row */}
                 </div>{/* end scrollable area */}
 
@@ -781,7 +539,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                   </button>
                   <button
                     type="submit"
-                    disabled={isSaving || isUploading || !((categoryName as LocalizedString)?.en || '').trim()}
+                    disabled={isSaving || !((categoryName as LocalizedString)?.en || '').trim()}
                     className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-amber-500 text-slate-900 font-bold rounded-xl hover:bg-amber-400 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isSaving ? (
@@ -822,7 +580,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
               </div>
               <h2 className="text-2xl font-heading font-black text-slate-900 mb-2">Delete Category?</h2>
               <p className="text-slate-500 mb-6">
-                Are you sure you want to delete this category? Its image will also be permanently removed.
+                Are you sure you want to delete this category? 
               </p>
               <div className="flex gap-3">
                 <button
