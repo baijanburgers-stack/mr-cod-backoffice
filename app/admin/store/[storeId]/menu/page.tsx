@@ -1000,13 +1000,20 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                           <p className="text-[11px] text-slate-400 mt-0.5">Add one if this item comes in sizes (e.g. Small / Large)</p>
                         </div>
                       ) : (
-                        <div className="space-y-2.5">
+                        <Reorder.Group axis="y" values={editingVariations} onReorder={setEditingVariations} className="space-y-2.5">
                           {editingVariations.map((variation, vidx) => {
                             const basePrice = editingItem?.price || 0;
                             const adj = parseFloat(variation.priceAdjustment as any) || 0;
                             const finalPrice = basePrice + adj;
                             return (
-                              <div key={variation.id} className="flex flex-wrap items-center gap-2 bg-slate-50 px-3 py-3 rounded-xl border border-slate-200">
+                              <Reorder.Item 
+                                key={variation.id} 
+                                value={variation}
+                                className="flex flex-wrap items-center gap-2 bg-slate-50 px-3 py-3 rounded-xl border border-slate-200"
+                              >
+                                <div className="flex items-center justify-center cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 transition-colors mr-1">
+                                  <GripVertical className="w-4 h-4" />
+                                </div>
                                 <span className="text-[10px] font-black text-slate-400 w-4 shrink-0 text-center">{vidx + 1}</span>
                                 <input
                                   type="text"
@@ -1016,14 +1023,12 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                                   autoCapitalize="words"
                                   className="flex-1 px-3 py-2 rounded-lg border border-slate-200 focus:border-amber-500 focus:outline-none text-sm font-bold bg-white min-w-0"
                                 />
-                                <div className="flex items-center gap-1 shrink-0 bg-white border border-slate-200 rounded-lg px-2 py-1.5">
-                                  <span className="text-[11px] font-bold text-slate-400">±€</span>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    value={adj}
-                                    onChange={(e) => handleUpdateVariation(variation.id, 'priceAdjustment', parseFloat(e.target.value) || 0)}
-                                    className="w-16 text-sm font-mono text-center bg-transparent focus:outline-none"
+                                <div className="flex items-center gap-1 shrink-0 bg-white border border-slate-200 rounded-lg py-1 w-24">
+                                  <CurrencyInput
+                                    defaultValue={adj}
+                                    onChange={(val) => handleUpdateVariation(variation.id, 'priceAdjustment', val)}
+                                    className="w-full text-sm font-mono focus:outline-none bg-transparent"
+                                    allowNegative={true}
                                   />
                                 </div>
                                 <span className={`text-xs font-black shrink-0 w-16 text-right ${adj > 0 ? 'text-emerald-600' : adj < 0 ? 'text-rose-500' : 'text-slate-400'}`}>
@@ -1034,15 +1039,15 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                                   onClick={() => handleRemoveVariation(variation.id)}
                                   className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
-                              </div>
+                              </Reorder.Item>
                             );
                           })}
                           <p className="text-[11px] text-slate-400 italic px-1 pt-1">
-                            💡 +€1.50 for pricier option, -€1.00 for cheaper. 0 = same as base price.
+                            💡 Drag to reorder. Use negative values for cheaper options.
                           </p>
-                        </div>
+                        </Reorder.Group>
                       )}
                     </div>
 

@@ -22,6 +22,7 @@ export default function CurrencyInput({
   required?: boolean;
   className?: string;
   placeholder?: string;
+  allowNegative?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -38,31 +39,36 @@ export default function CurrencyInput({
     
     // Check if the new defaultValue differs from our current parsed string
     const rawDigits = strValue.replace(/[^\d]/g, '');
-    const currentNum = rawDigits ? parseInt(rawDigits, 10) / 100 : 0;
+    const isNegative = strValue.includes('-');
+    const currentNum = (rawDigits ? parseInt(rawDigits, 10) / 100 : 0) * (isNegative ? -1 : 1);
     
     if (currentNum !== defaultValue) {
-      setStrValue(defaultValue === 0 ? '' : defaultValue.toFixed(2).replace('.', ','));
+      const isDefNeg = defaultValue < 0;
+      const absVal = Math.abs(defaultValue);
+      setStrValue(defaultValue === 0 ? '' : (isDefNeg ? '-' : '') + absVal.toFixed(2).replace('.', ','));
     }
   }, [defaultValue]); // Intentionally omitting strValue to allow typing without continuous overwrites
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
+    const isNegative = allowNegative && raw.includes('-');
     
     // Extract only the digits from the input
     const digitsOnly = raw.replace(/[^\d]/g, '');
     
     if (!digitsOnly) {
-      setStrValue('');
+      setStrValue(isNegative ? '-' : '');
       if (onChange) onChange(0);
       return;
     }
 
     // Convert digits to an integer, then divide by 100
     const valCents = parseInt(digitsOnly, 10);
-    const floatVal = valCents / 100;
+    const absFloatVal = valCents / 100;
+    const floatVal = absFloatVal * (isNegative ? -1 : 1);
     
     // Format the result to always have 2 decimal places and a comma
-    const formatted = floatVal.toFixed(2).replace('.', ',');
+    const formatted = (isNegative ? '-' : '') + absFloatVal.toFixed(2).replace('.', ',');
     
     setStrValue(formatted);
 
@@ -83,6 +89,9 @@ export default function CurrencyInput({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
+    }
+    if (e.key === '-' && allowNegative) {
+      // Allow minus key to be handled normally or we can just let it through and it will be parsed
     }
   };
 
