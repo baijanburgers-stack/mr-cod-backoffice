@@ -390,9 +390,15 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
           <div className="flex-1 flex flex-col gap-1">
             <input
               type="text"
-              placeholder="Slot label (e.g. Main, Drink) - EN"
-              value={getSlotLabel(slot.label)}
-              onChange={e => updateSlot(slot.id, 'label', { en: e.target.value, fr: (slot.label as any)?.fr || e.target.value, nl: (slot.label as any)?.nl || e.target.value })}
+              placeholder={`Slot label (e.g. Main, Drink) - ${modalLang.toUpperCase()}`}
+              value={typeof slot.label === 'string' ? (modalLang === 'en' ? slot.label : '') : ((slot.label as any)?.[modalLang] || '')}
+              onChange={e => {
+                const currentLabel = typeof slot.label === 'string' 
+                  ? { en: slot.label, fr: slot.label, nl: slot.label } 
+                  : { ...(slot.label as LocalizedString) };
+                currentLabel[modalLang] = e.target.value;
+                updateSlot(slot.id, 'label', currentLabel);
+              }}
               onInput={onInputCap}
               className="w-full text-sm font-bold bg-transparent border-none focus:outline-none text-slate-700 placeholder:text-slate-400"
             />
