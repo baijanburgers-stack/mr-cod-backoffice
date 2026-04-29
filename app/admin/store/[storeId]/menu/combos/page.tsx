@@ -381,164 +381,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
     return { ...computeSavingsRange(minBasket, maxBasket, price), minBasket, maxBasket };
   })();
 
-  const SlotEditor = ({ slot }: { slot: ComboSlot }) => {
-    const isExpanded = expandedSlot === slot.id;
-    const isPickerOpen = slotPicker === slot.id;
 
-    return (
-      <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-        {/* Slot Header */}
-        <div className="flex items-center gap-3 px-4 py-3 bg-slate-50">
-          <div className="flex items-center justify-center cursor-grab text-slate-300 hover:text-slate-500">
-            <GripVertical className="w-5 h-5" />
-          </div>
-          <div className="flex-1 flex flex-col gap-1">
-            <input
-              type="text"
-              placeholder={`Slot label (e.g. Main, Drink) - ${modalLang.toUpperCase()}`}
-              value={typeof slot.label === 'string' ? (modalLang === 'en' ? slot.label : '') : ((slot.label as any)?.[modalLang] || '')}
-              onChange={e => {
-                const val = e.target.value;
-                const currentLabel = typeof slot.label === 'string' 
-                  ? { en: slot.label, fr: slot.label, nl: slot.label } 
-                  : { ...(slot.label as LocalizedString) };
-                  
-                currentLabel[modalLang] = val;
-                
-                // Auto-fill FR and NL if typing in EN to save time
-                if (modalLang === 'en') {
-                  currentLabel.fr = val;
-                  currentLabel.nl = val;
-                }
-                
-                updateSlot(slot.id, 'label', currentLabel);
-              }}
-              onInput={onInputCap}
-              className="w-full text-sm font-bold bg-transparent border-none focus:outline-none text-slate-700 placeholder:text-slate-400"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-500">Qty:</span>
-            <input
-              type="number"
-              min={1}
-              max={10}
-              value={slot.quantity}
-              onChange={e => updateSlot(slot.id, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-12 text-center text-sm font-bold border border-slate-200 rounded-lg px-1 py-0.5 focus:border-amber-500 focus:outline-none"
-            />
-          </div>
-          <button
-            onClick={() => setExpandedSlot(isExpanded ? null : slot.id)}
-            className="p-1.5 text-slate-400 hover:text-amber-600 transition-colors"
-          >
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={() => removeSlot(slot.id)}
-            disabled={(formData.slots?.length || 0) <= 1}
-            className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors disabled:opacity-30"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Options chips */}
-        <div className="px-4 py-3 flex flex-wrap gap-2 min-h-[52px] items-center">
-          {slot.options.length === 0 && (
-            <span className="text-xs text-slate-400 italic">No items added — click + to add options</span>
-          )}
-          {slot.options.map(opt => (
-            <div
-              key={opt.menuItemId}
-              className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold px-3 py-1.5 rounded-full"
-            >
-              <span>{getItemName(opt.name)}</span>
-              {opt.priceAdjustment !== 0 && (
-                <span className="text-amber-600 font-mono">
-                  {opt.priceAdjustment > 0 ? `+€${opt.priceAdjustment.toFixed(2)}` : `-€${Math.abs(opt.priceAdjustment).toFixed(2)}`}
-                </span>
-              )}
-              <button
-                onClick={() => removeOptionFromSlot(slot.id, opt.menuItemId)}
-                className="text-amber-500 hover:text-rose-500 transition-colors ml-0.5"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          ))}
-          {/* Add option button */}
-          <button
-            onClick={() => { setSlotPicker(isPickerOpen ? null : slot.id); setPickerSearch(''); }}
-            className="flex items-center gap-1 text-xs font-bold text-amber-600 hover:text-amber-700 hover:bg-amber-50 px-2 py-1.5 rounded-full border border-dashed border-amber-300 transition-all"
-          >
-            <Plus className="w-3 h-3" />
-            Add
-          </button>
-        </div>
-
-        {/* Item picker dropdown */}
-        {isPickerOpen && (
-          <div className="border-t border-slate-100 bg-white px-4 py-3">
-            <input
-              autoFocus
-              type="text"
-              placeholder="Search menu items..."
-              value={pickerSearch}
-              onChange={e => setPickerSearch(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 mb-2 focus:border-amber-500 focus:outline-none"
-            />
-            <div className="max-h-44 overflow-y-auto space-y-1">
-              {menuItems
-                .filter(m => getItemName(m.name).toLowerCase().includes(pickerSearch.toLowerCase()))
-                .map(mi => {
-                  const alreadyAdded = slot.options.some(o => o.menuItemId === mi.id);
-                  return (
-                    <button
-                      key={mi.id}
-                      onClick={() => { addOptionToSlot(slot.id, mi.id); setSlotPicker(null); }}
-                      disabled={alreadyAdded}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all ${alreadyAdded ? 'opacity-40 cursor-not-allowed' : 'hover:bg-amber-50'}`}
-                    >
-                      <span className="font-bold text-slate-800 text-left">{getItemName(mi.name)}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-500 font-mono text-xs">€{mi.price.toFixed(2)}</span>
-                        {alreadyAdded && <Check className="w-3.5 h-3.5 text-emerald-500" />}
-                      </div>
-                    </button>
-                  );
-                })}
-              {menuItems.filter(m => getItemName(m.name).toLowerCase().includes(pickerSearch.toLowerCase())).length === 0 && (
-                <p className="text-xs text-slate-400 text-center py-4">No menu items match your search</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Expanded: price adjustment per option */}
-        {isExpanded && slot.options.length > 0 && (
-          <div className="border-t border-slate-100 px-4 py-3 bg-slate-50/50 space-y-2">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Price Adjustments (vs combo base price)</p>
-            {slot.options.map(opt => (
-              <div key={opt.menuItemId} className="flex items-center justify-between gap-4">
-                <span className="text-sm font-bold text-slate-700 truncate flex-1">{getItemName(opt.name)}</span>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-xs text-slate-500">+/- €</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={opt.priceAdjustment}
-                    onChange={e => updateOptionAdj(slot.id, opt.menuItemId, parseFloat(e.target.value) || 0)}
-                    className="w-20 text-sm font-mono border border-slate-200 rounded-lg px-2 py-1 focus:border-amber-500 focus:outline-none text-center"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   // ── Render ─────────────────────────────────────────────────────────────
 
@@ -855,11 +698,166 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
                     onReorder={newOrder => setFormData({ ...formData, slots: newOrder })}
                     className="space-y-3"
                   >
-                    {(formData.slots || []).map(slot => (
-                      <Reorder.Item key={slot.id} value={slot}>
-                        <SlotEditor slot={slot} />
-                      </Reorder.Item>
-                    ))}
+                    {(formData.slots || []).map(slot => {
+                      const isExpanded = expandedSlot === slot.id;
+                      const isPickerOpen = slotPicker === slot.id;
+
+                      return (
+                        <Reorder.Item key={slot.id} value={slot}>
+                          <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+                            {/* Slot Header */}
+                            <div className="flex items-center gap-3 px-4 py-3 bg-slate-50">
+                              <div className="flex items-center justify-center cursor-grab text-slate-300 hover:text-slate-500">
+                                <GripVertical className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1 flex flex-col gap-1">
+                                <input
+                                  type="text"
+                                  placeholder={`Slot label (e.g. Main, Drink) - ${modalLang.toUpperCase()}`}
+                                  value={typeof slot.label === 'string' ? (modalLang === 'en' ? slot.label : '') : ((slot.label as any)?.[modalLang] || '')}
+                                  onChange={e => {
+                                    const val = e.target.value;
+                                    const currentLabel = typeof slot.label === 'string' 
+                                      ? { en: slot.label, fr: slot.label, nl: slot.label } 
+                                      : { ...(slot.label as LocalizedString) };
+                                      
+                                    currentLabel[modalLang] = val;
+                                    
+                                    // Auto-fill FR and NL if typing in EN to save time
+                                    if (modalLang === 'en') {
+                                      currentLabel.fr = val;
+                                      currentLabel.nl = val;
+                                    }
+                                    
+                                    updateSlot(slot.id, 'label', currentLabel);
+                                  }}
+                                  onInput={onInputCap}
+                                  className="w-full text-sm font-bold bg-transparent border-none focus:outline-none text-slate-700 placeholder:text-slate-400"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-slate-500">Qty:</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={10}
+                                  value={slot.quantity}
+                                  onChange={e => updateSlot(slot.id, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                                  className="w-12 text-center text-sm font-bold border border-slate-200 rounded-lg px-1 py-0.5 focus:border-amber-500 focus:outline-none"
+                                />
+                              </div>
+                              <button
+                                onClick={() => setExpandedSlot(isExpanded ? null : slot.id)}
+                                className="p-1.5 text-slate-400 hover:text-amber-600 transition-colors"
+                              >
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                              <button
+                                onClick={() => removeSlot(slot.id)}
+                                disabled={(formData.slots?.length || 0) <= 1}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors disabled:opacity-30"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            {/* Options chips */}
+                            <div className="px-4 py-3 flex flex-wrap gap-2 min-h-[52px] items-center">
+                              {slot.options.length === 0 && (
+                                <span className="text-xs text-slate-400 italic">No items added — click + to add options</span>
+                              )}
+                              {slot.options.map(opt => (
+                                <div
+                                  key={opt.menuItemId}
+                                  className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold px-3 py-1.5 rounded-full"
+                                >
+                                  <span>{getItemName(opt.name)}</span>
+                                  {opt.priceAdjustment !== 0 && (
+                                    <span className="text-amber-600 font-mono">
+                                      {opt.priceAdjustment > 0 ? `+€${opt.priceAdjustment.toFixed(2)}` : `-€${Math.abs(opt.priceAdjustment).toFixed(2)}`}
+                                    </span>
+                                  )}
+                                  <button
+                                    onClick={() => removeOptionFromSlot(slot.id, opt.menuItemId)}
+                                    className="text-amber-500 hover:text-rose-500 transition-colors ml-0.5"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                              {/* Add option button */}
+                              <button
+                                onClick={() => { setSlotPicker(isPickerOpen ? null : slot.id); setPickerSearch(''); }}
+                                className="flex items-center gap-1 text-xs font-bold text-amber-600 hover:text-amber-700 hover:bg-amber-50 px-2 py-1.5 rounded-full border border-dashed border-amber-300 transition-all"
+                              >
+                                <Plus className="w-3 h-3" />
+                                Add
+                              </button>
+                            </div>
+
+                            {/* Item picker dropdown */}
+                            {isPickerOpen && (
+                              <div className="border-t border-slate-100 bg-white px-4 py-3">
+                                <input
+                                  autoFocus
+                                  type="text"
+                                  placeholder="Search menu items..."
+                                  value={pickerSearch}
+                                  onChange={e => setPickerSearch(e.target.value)}
+                                  className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 mb-2 focus:border-amber-500 focus:outline-none"
+                                />
+                                <div className="max-h-44 overflow-y-auto space-y-1">
+                                  {menuItems
+                                    .filter(m => getItemName(m.name).toLowerCase().includes(pickerSearch.toLowerCase()))
+                                    .map(mi => {
+                                      const alreadyAdded = slot.options.some(o => o.menuItemId === mi.id);
+                                      return (
+                                        <button
+                                          key={mi.id}
+                                          onClick={() => { addOptionToSlot(slot.id, mi.id); setSlotPicker(null); }}
+                                          disabled={alreadyAdded}
+                                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all ${alreadyAdded ? 'opacity-40 cursor-not-allowed' : 'hover:bg-amber-50'}`}
+                                        >
+                                          <span className="font-bold text-slate-800 text-left">{getItemName(mi.name)}</span>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-slate-500 font-mono text-xs">€{mi.price.toFixed(2)}</span>
+                                            {alreadyAdded && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                                          </div>
+                                        </button>
+                                      );
+                                    })}
+                                  {menuItems.filter(m => getItemName(m.name).toLowerCase().includes(pickerSearch.toLowerCase())).length === 0 && (
+                                    <p className="text-xs text-slate-400 text-center py-4">No menu items match your search</p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Expanded: price adjustment per option */}
+                            {isExpanded && slot.options.length > 0 && (
+                              <div className="border-t border-slate-100 px-4 py-3 bg-slate-50/50 space-y-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Price Adjustments (vs combo base price)</p>
+                                {slot.options.map(opt => (
+                                  <div key={opt.menuItemId} className="flex items-center justify-between gap-4">
+                                    <span className="text-sm font-bold text-slate-700 truncate flex-1">{getItemName(opt.name)}</span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className="text-xs text-slate-500">+/- €</span>
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        value={opt.priceAdjustment}
+                                        onChange={e => updateOptionAdj(slot.id, opt.menuItemId, parseFloat(e.target.value) || 0)}
+                                        className="w-20 text-sm font-mono border border-slate-200 rounded-lg px-2 py-1 focus:border-amber-500 focus:outline-none text-center"
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </Reorder.Item>
+                      );
+                    })}
                   </Reorder.Group>
 
                   {(formData.slots || []).length === 0 && (
