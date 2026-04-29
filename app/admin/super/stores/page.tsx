@@ -161,6 +161,27 @@ export default function SuperAdminStores() {
 
 
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64 = await resizeImage(reader.result as string, 400, 400);
+          setFormData(prev => ({ ...prev, logo: base64 }));
+        } catch (error) {
+          console.error('Error resizing logo:', error);
+          alert('Failed to process image. Please try another file.');
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      alert('Failed to process image. Please try another file.');
+    }
+  };
+
   const handleSaveStore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSaving) return;
@@ -447,6 +468,45 @@ export default function SuperAdminStores() {
                     <Store className="w-5 h-5 text-amber-500" />
                     <h3 className="text-base font-bold">Basic Information</h3>
                   </div>
+                  
+                  {/* Store Logo Upload */}
+                  <div className="mb-6 flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative w-24 h-24 bg-white rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden shrink-0 group">
+                      {formData.logo ? (
+                        <>
+                          <Image src={formData.logo} alt="Store Logo" fill className="object-contain p-2" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <ImageIcon className="w-6 h-6 text-white" />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center text-slate-400">
+                          <ImageIcon className="w-6 h-6 mb-1" />
+                          <span className="text-[10px] font-bold">Logo</span>
+                        </div>
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        onChange={handleLogoUpload}
+                      />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm">Official Store Logo</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">Used in the Store Admin header and POS application. Recommended: Square image with transparent background.</p>
+                      {formData.logo && (
+                        <button 
+                          type="button" 
+                          onClick={() => setFormData(prev => ({ ...prev, logo: '' }))}
+                          className="mt-2 text-xs font-bold text-rose-500 hover:text-rose-600 flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" /> Remove Logo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1">Store Name</label>

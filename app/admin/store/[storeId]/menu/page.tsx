@@ -27,7 +27,7 @@ type Variation = {
 type MenuItem = {
   id: string;
   storeId: string;
-  name: string;
+  name: string | LocalizedString;
   description: LocalizedString;
   price: number;
   itemType?: ItemType;           // nature of item — drives VAT auto-resolution
@@ -79,6 +79,12 @@ function getModName(name: Modifier['name']): string {
 }
 
 function getCategoryName(name: Category['name']): string {
+  if (!name) return '';
+  if (typeof name === 'string') return name;
+  return name.en || '';
+}
+
+function getItemName(name: MenuItem['name']): string {
   if (!name) return '';
   if (typeof name === 'string') return name;
   return name.en || '';
@@ -158,7 +164,7 @@ function MenuItemRow({
 
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-3 mb-2">
-          <h3 className="font-heading font-bold text-lg text-slate-900 truncate group-hover:text-amber-600 transition-colors">{item.name}</h3>
+          <h3 className="font-heading font-bold text-lg text-slate-900 truncate group-hover:text-amber-600 transition-colors">{getItemName(item.name)}</h3>
           <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-500 text-[9px] font-black border border-slate-200 uppercase tracking-widest">
             {item.category}
           </span>
@@ -384,7 +390,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
 
   const filteredItems = items.filter(item => {
     const matchesCategory = activeCategory === 'All' || item.category === activeCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesSearch = getItemName(item.name).toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.description.en.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
@@ -411,9 +417,21 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
   const handleDuplicate = async (item: MenuItem) => {
     try {
       const { id: _id, ...rest } = item;
+      
+      let dupName: string | LocalizedString;
+      if (typeof item.name === 'string') {
+        dupName = `${item.name} (Copy)`;
+      } else {
+        dupName = {
+          en: `${item.name.en} (Copy)`,
+          fr: `${item.name.fr} (Copy)`,
+          nl: `${item.name.nl} (Copy)`,
+        };
+      }
+
       const newDoc = await addDoc(collection(db, 'menuItems'), {
         ...rest,
-        name: `${item.name} (Copy)`,
+        name: dupName,
         isAvailable: false,
         modifierOrder: item.modifierOrder || [],
       });
@@ -502,13 +520,17 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const name = formData.get('name') as string;
+    const nameEn = formData.get('name_en') as string;
+    const nameFr = formData.get('name_fr') as string;
+    const nameNl = formData.get('name_nl') as string;
+    
     const category = formData.get('category') as string;
     const descEn = formData.get('description_en') as string;
     const descFr = formData.get('description_fr') as string;
     const descNl = formData.get('description_nl') as string;
 
     const description = { en: descEn, fr: descFr, nl: descNl };
+    const nameObj = { en: nameEn, fr: nameFr || nameEn, nl: nameNl || nameEn };
 
     let priceRaw = (formData.get('price') as string).replace(',', '.');
     if (priceRaw && !priceRaw.includes('.')) {
@@ -523,7 +545,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
 
     const itemData = {
       storeId,
-      name,
+      name: nameObj,
       price,
       itemType: selectedItemType,
       comboUpsellId: selectedComboUpsellId || null,
@@ -816,41 +838,41 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                     <div>
                       <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Identity</p>
                       <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-bold text-slate-700 mb-1.5">Item Name <span className="text-slate-400 font-medium">(shown on all platforms)</span></label>
-                          <input
-                            type="text"
-                            name="name"
-                            required
-                            defaultValue={editingItem?.name}
-                            placeholder="e.g. Spicy Cod Bites"
-                            autoCapitalize="words"
-                            onInput={onInputCap}
-                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all text-sm font-medium placeholder:text-slate-300"
-                          />
+                        {/* Language Tabs */}
+                        <div className="flex gap-1 mb-4 bg-slate-100 p-1 rounded-xl w-fit">
+                          {([['en', '🇬🇧'], ['fr', '🇫🇷'], ['nl', '🇳🇱']] as const).map(([lang, flag]) => (
+                            <button
+                              key={lang}
+                              type="button"
+                              onClick={() => setModalLang(lang as 'en' | 'fr' | 'nl')}
+                              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                modalLang === lang
+                                  ? 'bg-white text-slate-900 shadow-sm'
+                                  : 'text-slate-500 hover:text-slate-700'
+                              }`}
+                            >
+                              {flag} {lang.toUpperCase()}
+                            </button>
+                          ))}
                         </div>
 
-                        {/* Language Tabs */}
-                        <div>
-                          <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
-                          <div className="flex gap-1 mb-2 bg-slate-100 p-1 rounded-xl w-fit">
-                            {([['en', '🇬🇧'], ['fr', '🇫🇷'], ['nl', '🇳🇱']] as const).map(([lang, flag]) => (
-                              <button
-                                key={lang}
-                                type="button"
-                                onClick={() => setModalLang(lang as 'en' | 'fr' | 'nl')}
-                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                                  modalLang === lang
-                                    ? 'bg-white text-slate-900 shadow-sm'
-                                    : 'text-slate-500 hover:text-slate-700'
-                                }`}
-                              >
-                                {flag} {lang.toUpperCase()}
-                              </button>
-                            ))}
-                          </div>
-                          {(['en', 'fr', 'nl'] as const).map(lang => (
-                            <div key={lang} className={modalLang === lang ? 'block' : 'hidden'}>
+                        {(['en', 'fr', 'nl'] as const).map(lang => (
+                          <div key={lang} className={`space-y-4 ${modalLang === lang ? 'block' : 'hidden'}`}>
+                            <div>
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">Item Name ({lang.toUpperCase()}) <span className="text-slate-400 font-medium">(shown on all platforms)</span></label>
+                              <input
+                                type="text"
+                                name={`name_${lang}`}
+                                required={lang === 'en'}
+                                defaultValue={typeof editingItem?.name === 'string' ? (lang === 'en' ? editingItem?.name : '') : editingItem?.name?.[lang]}
+                                placeholder={lang === 'en' ? 'e.g. Spicy Cod Bites' : ''}
+                                autoCapitalize="words"
+                                onInput={onInputCap}
+                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all text-sm font-medium placeholder:text-slate-300"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">Description ({lang.toUpperCase()})</label>
                               <textarea
                                 name={`description_${lang}`}
                                 required={lang === 'en'}
@@ -865,8 +887,8 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all resize-none text-sm placeholder:text-slate-300"
                               />
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 

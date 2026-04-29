@@ -200,9 +200,15 @@ export default function StoreAdminLayout({ children, params }: { children: React
         {/* Store Card */}
         <div className="px-6 mb-4">
           <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-red-600 shadow-sm flex items-center justify-center font-black text-white uppercase text-sm flex-shrink-0">
-              {storeName ? storeName.substring(0, 2) : '··'}
-            </div>
+            {storeLogo ? (
+              <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-100 bg-white flex-shrink-0">
+                <Image src={storeLogo} alt={storeName} width={40} height={40} className="w-full h-full object-contain p-1" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-red-600 shadow-sm flex items-center justify-center font-black text-white uppercase text-sm flex-shrink-0">
+                {storeName ? storeName.substring(0, 2) : '··'}
+              </div>
+            )}
             <div className="overflow-hidden flex-1">
               {storeName ? (
                 <p className="text-sm font-black text-slate-900 truncate">{storeName}</p>

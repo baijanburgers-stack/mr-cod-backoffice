@@ -58,6 +58,7 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
   const [modifier, setModifier] = useState<Modifier | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [modalLang, setModalLang] = useState<'en' | 'fr' | 'nl'>('en');
 
   // Working copy of options being edited
   const [options, setOptions] = useState<ModifierOption[]>([]);
@@ -164,7 +165,7 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
   const addOption = () => {
     const newOpt: ModifierOption = {
       id: crypto.randomUUID(),
-      name: '',
+      name: { en: '', fr: '', nl: '' },
       price: 0,
       imageUrl: '',
       imagePath: ''
@@ -174,11 +175,15 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
     setIsDirty(true);
   };
 
-  const updateName = (id: string, value: string) => {
+  const updateName = (id: string, lang: 'en' | 'fr' | 'nl', value: string) => {
     setIsDirty(true);
     setOptions(prev => prev.map(o => {
       if (o.id !== id) return o;
-      return { ...o, name: value };
+      const currentName = typeof o.name === 'string' 
+        ? { en: o.name, fr: o.name, nl: o.name }
+        : { ...(o.name as LocalizedString) };
+      currentName[lang] = value;
+      return { ...o, name: currentName };
     }));
   };
 
@@ -292,6 +297,20 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+              {([['en', '🇬🇧'], ['fr', '🇫🇷'], ['nl', '🇳🇱']] as const).map(([lang, flag]) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => setModalLang(lang as 'en' | 'fr' | 'nl')}
+                  className={`px-2 py-1 rounded-md text-xs font-bold transition-all ${
+                    modalLang === lang ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {flag} {lang.toUpperCase()}
+                </button>
+              ))}
+            </div>
             <span className="text-sm font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-lg">
               {options.length} Option{options.length !== 1 ? 's' : ''}
             </span>
@@ -413,10 +432,10 @@ export default function ModifierOptionsPage({ params }: { params: Promise<{ stor
                     <div className="flex-1 min-w-0 space-y-2">
                       <input
                         type="text"
-                        value={typeof opt.name === 'string' ? opt.name : opt.name?.en || ''}
-                        onChange={(e) => updateName(opt.id, e.target.value)}
+                        value={typeof opt.name === 'string' ? (modalLang === 'en' ? opt.name : '') : (opt.name as any)?.[modalLang] || ''}
+                        onChange={(e) => updateName(opt.id, modalLang, e.target.value)}
                         onInput={onInputCap}
-                        placeholder="Option Name — e.g. Extra Cheese"
+                        placeholder={`Option Name (${modalLang.toUpperCase()}) — e.g. Extra Cheese`}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 transition-colors text-sm font-medium"
                       />
                       <div className="flex items-center gap-2">

@@ -35,7 +35,7 @@ type SlotOption = {
  */
 type ComboSlot = {
   id: string;            // local UUID for UI keying
-  label: string;         // e.g. "Main", "Side", "Drink"
+  label: string | LocalizedString;         // e.g. "Main", "Side", "Drink"
   quantity: number;      // how many of this slot (e.g. 2 drinks)
   options: SlotOption[]; // the menu items the customer can choose from
 };
@@ -51,9 +51,9 @@ type MenuItem = {
 type Combo = {
   id: string;
   storeId: string;
-  name: string;
+  name: string | LocalizedString;
   category?: string;
-  description: string;
+  description: string | LocalizedString;
   price: number;
   isActive: boolean;
   displaySavings: boolean;  // show 🎉 savings badge on kiosk
@@ -97,10 +97,28 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
     return name.en || '';
   };
 
+  const getComboName = (name: Combo['name'] | undefined) => {
+    if (!name) return '';
+    if (typeof name === 'string') return name;
+    return name.en || '';
+  };
+
+  const getComboDesc = (desc: Combo['description'] | undefined) => {
+    if (!desc) return '';
+    if (typeof desc === 'string') return desc;
+    return desc.en || '';
+  };
+
+  const getSlotLabel = (label: ComboSlot['label'] | undefined) => {
+    if (!label) return '';
+    if (typeof label === 'string') return label;
+    return label.en || '';
+  };
+
   const emptyForm = (): Partial<Combo> => ({
-    name: '',
+    name: { en: '', fr: '', nl: '' },
     category: '',
-    description: '',
+    description: { en: '', fr: '', nl: '' },
     price: 0,
     isActive: true,
     displaySavings: true,
@@ -109,6 +127,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
   });
 
   const [formData, setFormData] = useState<Partial<Combo>>(emptyForm());
+  const [modalLang, setModalLang] = useState<'en' | 'fr' | 'nl'>('en');
 
   // ── Data Fetching ──────────────────────────────────────────────────────
 
@@ -184,7 +203,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
   // ── Slot helpers ───────────────────────────────────────────────────────
 
   function newSlot(): ComboSlot {
-    return { id: crypto.randomUUID(), label: '', quantity: 1, options: [] };
+    return { id: crypto.randomUUID(), label: { en: '', fr: '', nl: '' }, quantity: 1, options: [] };
   }
 
   const addSlot = () =>
@@ -247,11 +266,16 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
       ? combo.slots
       : (combo.items || []).map(it => ({
           id: crypto.randomUUID(),
-          label: it.name,
+          label: { en: it.name, fr: it.name, nl: it.name },
           quantity: it.quantity,
           options: [{ menuItemId: it.id, name: it.name, priceAdjustment: 0 }]
         }));
-    setFormData({ ...combo, slots });
+    setFormData({ 
+      ...combo, 
+      slots,
+      name: typeof combo.name === 'string' ? { en: combo.name, fr: combo.name, nl: combo.name } : combo.name,
+      description: typeof combo.description === 'string' ? { en: combo.description, fr: combo.description, nl: combo.description } : combo.description
+    });
     setIsModalOpen(true);
   };
 
@@ -267,7 +291,9 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
 
   const handleSave = async () => {
     const slots = (formData.slots || []).filter(s => s.options.length > 0);
-    if (!formData.name?.trim()) { alert('Please provide a combo name.'); return; }
+    const safeName = formData.name as LocalizedString;
+    if (!safeName?.en?.trim() && typeof formData.name !== 'string') { alert('Please provide a combo name in English.'); return; }
+    if (typeof formData.name === 'string' && !formData.name.trim()) { alert('Please provide a combo name.'); return; }
     if (!formData.price || formData.price <= 0) { alert('Please set a combo price.'); return; }
     if (slots.length === 0) { alert('Please add at least one slot with at least one item option.'); return; }
 
@@ -290,7 +316,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
       storeId,
       name: formData.name,
       category: formData.category || '',
-      description: formData.description || '',
+      description: formData.description || { en: '', fr: '', nl: '' },
       price: Number(formData.price),
       isActive: formData.isActive ?? true,
       displaySavings: formData.displaySavings ?? true,
@@ -310,8 +336,8 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
   // ── Helpers ────────────────────────────────────────────────────────────
 
   const filteredCombos = combos.filter(c =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    getComboName(c.name).toLowerCase().includes(searchQuery.toLowerCase()) ||
+    getComboDesc(c.description).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
 
@@ -361,14 +387,16 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
           <div className="flex items-center justify-center cursor-grab text-slate-300 hover:text-slate-500">
             <GripVertical className="w-5 h-5" />
           </div>
-          <input
-            type="text"
-            placeholder="Slot label (e.g. Main, Side, Drink)"
-            value={slot.label}
-            onChange={e => updateSlot(slot.id, 'label', e.target.value)}
-            onInput={onInputCap}
-            className="flex-1 text-sm font-bold bg-transparent border-none focus:outline-none text-slate-700 placeholder:text-slate-400"
-          />
+          <div className="flex-1 flex flex-col gap-1">
+            <input
+              type="text"
+              placeholder="Slot label (e.g. Main, Drink) - EN"
+              value={getSlotLabel(slot.label)}
+              onChange={e => updateSlot(slot.id, 'label', { en: e.target.value, fr: (slot.label as any)?.fr || e.target.value, nl: (slot.label as any)?.nl || e.target.value })}
+              onInput={onInputCap}
+              className="w-full text-sm font-bold bg-transparent border-none focus:outline-none text-slate-700 placeholder:text-slate-400"
+            />
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-500">Qty:</span>
             <input
@@ -570,25 +598,25 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
                   {/* Image */}
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 bg-amber-50 text-amber-500 border border-amber-100 overflow-hidden relative">
                     {combo.image
-                      ? <Image src={combo.image} alt={combo.name} fill className="object-cover" />
+                      ? <Image src={combo.image} alt={getComboName(combo.name)} fill className="object-cover" />
                       : <Layers className="w-8 h-8" />}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h4 className="text-lg font-heading font-black text-slate-900 truncate">{combo.name}</h4>
+                      <h4 className="text-lg font-heading font-black text-slate-900 truncate">{getComboName(combo.name)}</h4>
                       <span className="font-black text-lg text-slate-900">€{combo.price.toFixed(2)}</span>
                     </div>
-                    {combo.description && (
-                      <p className="text-sm text-slate-500 mb-2 line-clamp-1">{combo.description}</p>
+                    {getComboDesc(combo.description) && (
+                      <p className="text-sm text-slate-500 mb-2 line-clamp-1">{getComboDesc(combo.description)}</p>
                     )}
                     {/* Slots summary */}
                     <div className="flex flex-wrap gap-2">
                       {(combo.slots || []).map(s => (
                         <div key={s.id} className="flex items-center gap-1">
-                          {s.label && (
-                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">{s.quantity > 1 ? `${s.quantity}×` : ''}{s.label}:</span>
+                          {getSlotLabel(s.label) && (
+                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">{s.quantity > 1 ? `${s.quantity}×` : ''}{getSlotLabel(s.label)}:</span>
                           )}
                           <span className="text-[11px] text-slate-600 font-medium">
                             {s.options.length === 1
@@ -667,19 +695,41 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
 
                 {/* ─ Basic Info ─ */}
                 <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Basic Info</p>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Combo Name <span className="text-rose-500">*</span></label>
-                      <input
-                        type="text"
-                        value={formData.name || ''}
-                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        onInput={onInputCap}
-                        placeholder="e.g. Family Burger Deal"
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:outline-none transition-colors"
-                      />
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Basic Info</p>
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+                      {([['en', '🇬🇧'], ['fr', '🇫🇷'], ['nl', '🇳🇱']] as const).map(([lang, flag]) => (
+                        <button
+                          key={lang}
+                          type="button"
+                          onClick={() => setModalLang(lang as 'en' | 'fr' | 'nl')}
+                          className={`px-2 py-1 rounded-md text-xs font-bold transition-all ${
+                            modalLang === lang ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          {flag} {lang.toUpperCase()}
+                        </button>
+                      ))}
                     </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {(['en', 'fr', 'nl'] as const).map(lang => (
+                      <div key={lang} className={modalLang === lang ? 'block' : 'hidden'}>
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Combo Name ({lang.toUpperCase()}) <span className="text-rose-500">*</span></label>
+                        <input
+                          type="text"
+                          value={(formData.name as any)?.[lang] || ''}
+                          onChange={e => {
+                            const newName = { ...(formData.name as any), [lang]: e.target.value };
+                            setFormData({ ...formData, name: newName });
+                          }}
+                          onInput={onInputCap}
+                          placeholder={lang === 'en' ? "e.g. Family Burger Deal" : ""}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    ))}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-bold text-slate-700 mb-1.5">Category</label>
@@ -701,17 +751,22 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
                         />
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Description</label>
-                      <textarea
-                        rows={2}
-                        value={formData.description || ''}
-                        onChange={e => setFormData({ ...formData, description: e.target.value })}
-                        onInput={onInputCap}
-                        placeholder="Describe the combo deal..."
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:outline-none resize-none"
-                      />
-                    </div>
+                    {(['en', 'fr', 'nl'] as const).map(lang => (
+                      <div key={lang} className={modalLang === lang ? 'block' : 'hidden'}>
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Description ({lang.toUpperCase()})</label>
+                        <textarea
+                          rows={2}
+                          value={(formData.description as any)?.[lang] || ''}
+                          onChange={e => {
+                            const newDesc = { ...(formData.description as any), [lang]: e.target.value };
+                            setFormData({ ...formData, description: newDesc });
+                          }}
+                          onInput={onInputCap}
+                          placeholder={lang === 'en' ? "Describe the combo deal..." : ""}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:outline-none resize-none"
+                        />
+                      </div>
+                    ))}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-bold text-slate-700 mb-1.5">Image (Optional)</label>
