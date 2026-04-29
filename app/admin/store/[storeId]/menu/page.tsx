@@ -37,6 +37,7 @@ type MenuItem = {
   category: string;
   isAvailable: boolean;
   color?: string;
+  imageUrl?: string;
   variations: Variation[];
   comboUpsellId?: string;       // combo to suggest when ordered standalone
   modifierOrder?: string[];     // explicit display sequence for modifiers on this item
@@ -263,6 +264,34 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
   const [selectedItemType, setSelectedItemType] = useState<ItemType>('food');
   const [combos, setCombos] = useState<ComboOption[]>([]);
   const [selectedComboUpsellId, setSelectedComboUpsellId] = useState<string>('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const compressImage = (b64: string, mw = 800, mh = 800, q = 0.7): Promise<string> =>
+    new Promise((resolve) => {
+      const img = new window.Image();
+      img.src = b64;
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > mw) { h = Math.round((h * mw) / w); w = mw; } }
+        else { if (h > mh) { w = Math.round((w * mh) / h); h = mh; } }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d')?.drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/webp', q));
+      };
+    });
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert('Image must be less than 5MB'); return; }
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const compressed = await compressImage(reader.result as string);
+      setImagePreview(compressed);
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Prevent browser from opening files when dropped outside the drop zone
   useEffect(() => {
@@ -418,6 +447,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     // Set item type (prefer new field; fall back from legacy modifier itemType)
     setSelectedItemType(item.itemType || 'food');
     setSelectedComboUpsellId(item.comboUpsellId || '');
+    setImagePreview(item.imageUrl || null);
     setIsModalOpen(true);
   };
 
@@ -428,6 +458,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
     setModifierOrder([]);
     setSelectedItemType('food');
     setSelectedComboUpsellId('');
+    setImagePreview(null);
     setIsModalOpen(true);
   };
 
@@ -499,6 +530,7 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
       category,
       description,
       color: selectedColor,
+      imageUrl: imagePreview || null,
       variations: processedVariations,
       modifierOrder,
     };
@@ -750,9 +782,30 @@ export default function StoreMenuPage({ params }: { params: Promise<{ storeId: s
                     </div>
 
                     {/* Quick-info pills */}
-                    <div className="mt-auto pt-4 border-t border-slate-200 space-y-2">
+                    <div className="pt-4 border-t border-slate-200 space-y-2">
                       <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Tips</p>
                       <p className="text-[11px] text-slate-400 leading-relaxed">Choose a vibrant color. This helps cashiers identify items quickly on the POS screen.</p>
+                    </div>
+                    
+                    {/* Item Image (Kiosk) */}
+                    <div className="mt-auto pt-4 border-t border-slate-200">
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Item Image <span className="text-slate-400 font-medium normal-case">(For Kiosk)</span></p>
+                      <div className="relative h-[120px] w-full rounded-xl border-2 border-dashed border-slate-200 bg-white hover:bg-slate-50 hover:border-amber-400 transition-colors cursor-pointer overflow-hidden flex items-center justify-center">
+                        <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                        {imagePreview ? (
+                          <div className="relative w-full h-full flex flex-col items-center justify-center p-2">
+                            <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 mb-2">
+                              <Image src={imagePreview} alt="Preview" fill className="object-cover" />
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-600 truncate bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">✓ Image Uploaded</span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center gap-2 text-slate-400">
+                            <ImageIcon className="w-8 h-8 opacity-50" />
+                            <span className="text-sm font-bold">Upload Image</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 

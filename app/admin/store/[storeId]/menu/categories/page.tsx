@@ -2,7 +2,8 @@
 
 import { useState, useEffect, use, useCallback } from 'react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
-import { Search, Plus, Edit2, Trash2, GripVertical, Tag, X, AlertCircle, Loader2, Palette } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, GripVertical, Tag, X, AlertCircle, Loader2, Palette, Image as ImageIcon } from 'lucide-react';
+import Image from 'next/image';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, orderBy, writeBatch } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '@/lib/firestore-error';
@@ -25,6 +26,7 @@ type Category = {
   color?: string;
   emoji?: string;
   parentId?: string | null;
+  imageUrl?: string;
 };
 
 const POS_COLORS = [
@@ -61,6 +63,34 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
   const [selectedParentId, setSelectedParentId] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>(POS_COLORS[0]);
   const [selectedEmoji, setSelectedEmoji] = useState<string>('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const compressImage = (b64: string, mw = 800, mh = 800, q = 0.7): Promise<string> =>
+    new Promise((resolve) => {
+      const img = new window.Image();
+      img.src = b64;
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > mw) { h = Math.round((h * mw) / w); w = mw; } }
+        else { if (h > mh) { w = Math.round((w * mh) / h); h = mh; } }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d')?.drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/webp', q));
+      };
+    });
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert('Image must be less than 5MB'); return; }
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const compressed = await compressImage(reader.result as string);
+      setImagePreview(compressed);
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -118,6 +148,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     setSelectedParentId(category.parentId || '');
     setSelectedColor(category.color || POS_COLORS[0]);
     setSelectedEmoji(category.emoji || '');
+    setImagePreview(category.imageUrl || null);
     setIsModalOpen(true);
   };
 
@@ -128,6 +159,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
     setSelectedParentId('');
     setSelectedColor(POS_COLORS[0]);
     setSelectedEmoji('');
+    setImagePreview(null);
     setIsModalOpen(true);
   };
 
@@ -150,6 +182,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
           parentId: selectedParentId || null,
           color: selectedColor,
           emoji: selectedEmoji,
+          imageUrl: imagePreview || null,
         });
       } else {
         await addDoc(collection(db, 'categories'), {
@@ -161,6 +194,7 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
           color: selectedColor,
           emoji: selectedEmoji,
           parentId: selectedParentId || null,
+          imageUrl: imagePreview || null,
         });
       }
       closeModal();
@@ -210,10 +244,14 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
           {!isSubCat && <GripVertical className="w-4 h-4" />}
         </div>
         <div 
-          className={`relative w-10 h-10 rounded-xl flex-shrink-0 shadow-sm border ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'} flex items-center justify-center text-lg`}
+          className={`relative w-10 h-10 rounded-xl flex-shrink-0 shadow-sm border ${isSubCat ? 'border-amber-100' : category.isActive ? 'border-amber-200' : 'border-slate-200'} flex items-center justify-center text-lg overflow-hidden`}
           style={{ backgroundColor: category.color || '#e2e8f0' }}
         >
-          {category.emoji && <span>{category.emoji}</span>}
+          {category.imageUrl ? (
+            <Image src={category.imageUrl} alt={getCategoryName(category.name)} fill className="object-cover" />
+          ) : category.emoji ? (
+            <span>{category.emoji}</span>
+          ) : null}
         </div>
       </div>
 
@@ -484,6 +522,27 @@ export default function StoreCategoriesPage({ params }: { params: Promise<{ stor
                       ✦ This will appear as a sub-category inside &quot;{getCategoryName(categories.find(c => c.id === selectedParentId)?.name)}&quot;
                     </p>
                   )}
+                </div>
+
+                {/* Category Image (Kiosk) */}
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Category Image <span className="text-slate-400 font-medium ml-1">(for Kiosk)</span></label>
+                  <div className="relative h-[120px] w-full rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-amber-400 transition-colors cursor-pointer overflow-hidden flex items-center justify-center">
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    {imagePreview ? (
+                      <div className="relative w-full h-full flex flex-col items-center justify-center p-2">
+                        <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 mb-2">
+                          <Image src={imagePreview} alt="Preview" fill className="object-cover" />
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-600 truncate bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">✓ Image Uploaded</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-slate-400">
+                        <ImageIcon className="w-8 h-8 opacity-50" />
+                        <span className="text-sm font-bold">Upload Image</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                   </div>{/* end left column */}
