@@ -398,10 +398,19 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
               placeholder={`Slot label (e.g. Main, Drink) - ${modalLang.toUpperCase()}`}
               value={typeof slot.label === 'string' ? (modalLang === 'en' ? slot.label : '') : ((slot.label as any)?.[modalLang] || '')}
               onChange={e => {
+                const val = e.target.value;
                 const currentLabel = typeof slot.label === 'string' 
                   ? { en: slot.label, fr: slot.label, nl: slot.label } 
                   : { ...(slot.label as LocalizedString) };
-                currentLabel[modalLang] = e.target.value;
+                  
+                currentLabel[modalLang] = val;
+                
+                // Auto-fill FR and NL if typing in EN to save time
+                if (modalLang === 'en') {
+                  currentLabel.fr = val;
+                  currentLabel.nl = val;
+                }
+                
                 updateSlot(slot.id, 'label', currentLabel);
               }}
               onInput={onInputCap}
