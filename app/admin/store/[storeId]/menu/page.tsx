@@ -149,11 +149,20 @@ function MenuItemRow({
 
       {/* Color Container */}
       <div 
-        className="w-24 h-24 sm:w-28 sm:h-28 bg-slate-100 rounded-2xl relative flex items-center justify-center flex-shrink-0 border border-slate-200/60 shadow-sm group-hover:shadow-md transition-shadow duration-300"
+        className="w-24 h-24 sm:w-28 sm:h-28 bg-slate-100 rounded-2xl relative flex items-center justify-center flex-shrink-0 border border-slate-200/60 shadow-sm group-hover:shadow-md transition-shadow duration-300 overflow-hidden"
         style={{ backgroundColor: item.color || '#e2e8f0' }}
       >
+        {item.imageUrl && (
+          <Image 
+            src={item.imageUrl} 
+            alt={getItemName(item.name)} 
+            fill 
+            className="object-cover" 
+            unoptimized 
+          />
+        )}
         {!item.isAvailable && (
-          <div className="absolute inset-0 bg-slate-900/20 flex items-center justify-center backdrop-blur-[2px] rounded-2xl">
+          <div className="absolute inset-0 z-10 bg-slate-900/40 flex items-center justify-center backdrop-blur-[2px]">
             <span className="px-3 py-1.5 bg-slate-900 text-white font-black rounded-xl text-[10px] shadow-xl uppercase tracking-widest">
               Hidden
             </span>
