@@ -50,6 +50,8 @@ type Store = {
   mollieEnvironment?: 'TEST' | 'LIVE';
   mollieApiKeyTest?: string;
   mollieApiKeyLive?: string;
+  allowKds?: boolean;
+  maxKdsDevices?: number;
 };
 
 export default function SuperAdminStores() {
@@ -69,7 +71,7 @@ export default function SuperAdminStores() {
   // Form State
   const [formData, setFormData] = useState({
     name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '',
-    allowPos: true, allowKiosk: true, allowOnlineOrdering: true, maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '',
+    allowPos: true, allowKiosk: true, allowKds: true, allowOnlineOrdering: true, maxPosTerminals: 5, maxKiosks: 2, maxKdsDevices: 5, fdmId: '', vscId: '',
     ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST' as 'TEST' | 'LIVE', ccvManagementSystemId: 'GrundmasterBE' as 'GrundmasterBE' | 'GrundmasterNL' | 'GrundmasterNL-ThirdPartyTest',
     stripeEnvironment: 'TEST' as 'TEST' | 'LIVE', stripePublishableKeyTest: '', stripePublishableKeyLive: '', stripeSecretKeyTest: '', stripeSecretKeyLive: '',
     mollieEnvironment: 'TEST' as 'TEST' | 'LIVE', mollieApiKeyTest: '', mollieApiKeyLive: ''
@@ -100,9 +102,11 @@ export default function SuperAdminStores() {
           isOpen: data.isOpen ?? false,
           allowPos: data.allowPos ?? true,
           allowKiosk: data.allowKiosk ?? true,
+          allowKds: data.allowKds ?? true,
           allowOnlineOrdering: data.allowOnlineOrdering ?? true,
           maxPosTerminals: data.maxPosTerminals ?? 5,
           maxKiosks: data.maxKiosks ?? 2,
+          maxKdsDevices: data.maxKdsDevices ?? 5,
           fdmId: data.fdmId || '',
           vscId: data.vscId || '',
           ccvApiKeyLive: data.ccvApiKeyLive || '',
@@ -139,14 +143,14 @@ export default function SuperAdminStores() {
   const openAddModal = () => {
     setEditingStore(null);
     setDuplicateErrors({});
-    setFormData({ name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', allowPos: true, allowKiosk: true, allowOnlineOrdering: true, maxPosTerminals: 5, maxKiosks: 2, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', stripeEnvironment: 'TEST', stripePublishableKeyTest: '', stripePublishableKeyLive: '', stripeSecretKeyTest: '', stripeSecretKeyLive: '', mollieEnvironment: 'TEST', mollieApiKeyTest: '', mollieApiKeyLive: '' });
+    setFormData({ name: '', address: '', street: '', streetNumber: '', city: '', postalCode: '', countryCode: 'BE', phone: '', email: '', companyName: '', vatNumber: '', status: 'Active', image: '', logo: '', allowPos: true, allowKiosk: true, allowKds: true, allowOnlineOrdering: true, maxPosTerminals: 5, maxKiosks: 2, maxKdsDevices: 5, fdmId: '', vscId: '', ccvApiKeyLive: '', ccvApiKeyTest: '', ccvEnvironment: 'TEST', ccvManagementSystemId: 'GrundmasterBE', stripeEnvironment: 'TEST', stripePublishableKeyTest: '', stripePublishableKeyLive: '', stripeSecretKeyTest: '', stripeSecretKeyLive: '', mollieEnvironment: 'TEST', mollieApiKeyTest: '', mollieApiKeyLive: '' });
     setIsStoreModalOpen(true);
   };
 
   const openEditModal = (store: Store) => {
     setEditingStore(store);
     setDuplicateErrors({});
-    setFormData({ name: store.name || '', address: store.address || '', street: store.street || '', streetNumber: store.streetNumber || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'BE', phone: store.phone || '', email: store.email || '', companyName: store.companyName || '', vatNumber: store.vatNumber || '', status: store.status || 'Active', image: store.image || '', logo: store.logo || '', allowPos: store.allowPos ?? true, allowKiosk: store.allowKiosk ?? true, allowOnlineOrdering: store.allowOnlineOrdering ?? true, maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', stripeEnvironment: store.stripeEnvironment || 'TEST', stripePublishableKeyTest: store.stripePublishableKeyTest || '', stripePublishableKeyLive: store.stripePublishableKeyLive || '', stripeSecretKeyTest: store.stripeSecretKeyTest || '', stripeSecretKeyLive: store.stripeSecretKeyLive || '', mollieEnvironment: store.mollieEnvironment || 'TEST', mollieApiKeyTest: store.mollieApiKeyTest || '', mollieApiKeyLive: store.mollieApiKeyLive || '' });
+    setFormData({ name: store.name || '', address: store.address || '', street: store.street || '', streetNumber: store.streetNumber || '', city: store.city || '', postalCode: store.postalCode || '', countryCode: store.countryCode || 'BE', phone: store.phone || '', email: store.email || '', companyName: store.companyName || '', vatNumber: store.vatNumber || '', status: store.status || 'Active', image: store.image || '', logo: store.logo || '', allowPos: store.allowPos ?? true, allowKiosk: store.allowKiosk ?? true, allowKds: store.allowKds ?? true, allowOnlineOrdering: store.allowOnlineOrdering ?? true, maxPosTerminals: store.maxPosTerminals || 5, maxKiosks: store.maxKiosks || 2, maxKdsDevices: store.maxKdsDevices || 5, fdmId: store.fdmId || '', vscId: store.vscId || '', ccvApiKeyLive: store.ccvApiKeyLive || '', ccvApiKeyTest: store.ccvApiKeyTest || '', ccvEnvironment: store.ccvEnvironment || 'TEST', ccvManagementSystemId: store.ccvManagementSystemId || 'GrundmasterBE', stripeEnvironment: store.stripeEnvironment || 'TEST', stripePublishableKeyTest: store.stripePublishableKeyTest || '', stripePublishableKeyLive: store.stripePublishableKeyLive || '', stripeSecretKeyTest: store.stripeSecretKeyTest || '', stripeSecretKeyLive: store.stripeSecretKeyLive || '', mollieEnvironment: store.mollieEnvironment || 'TEST', mollieApiKeyTest: store.mollieApiKeyTest || '', mollieApiKeyLive: store.mollieApiKeyLive || '' });
     setIsStoreModalOpen(true);
   };
 
@@ -679,6 +683,34 @@ export default function SuperAdminStores() {
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.allowKiosk ? 'bg-amber-500' : 'bg-slate-300'}`}
                         >
                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.allowKiosk ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* KDS Platform */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border border-slate-200">
+                      <div>
+                        <h4 className="font-bold text-slate-800">Kitchen Display (KDS)</h4>
+                        <p className="text-xs text-slate-500 mt-1">Allow store to use Kitchen screens & Live Orders app.</p>
+                      </div>
+                      <div className="flex items-center gap-4 mt-3 sm:mt-0">
+                        {formData.allowKds && (
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-bold text-slate-600">KDS limit:</label>
+                            <input
+                              type="number" min="0" max="100"
+                              value={formData.maxKdsDevices}
+                              onChange={(e) => setFormData({ ...formData, maxKdsDevices: parseInt(e.target.value) || 0 })}
+                              className="w-20 px-3 py-1.5 rounded-lg border border-slate-200 focus:border-amber-500 outline-none text-sm font-bold text-center"
+                            />
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, allowKds: !formData.allowKds, maxKdsDevices: !formData.allowKds ? 5 : 0 })}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.allowKds ? 'bg-amber-500' : 'bg-slate-300'}`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.allowKds ? 'translate-x-6' : 'translate-x-1'}`} />
                         </button>
                       </div>
                     </div>
