@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, X, Clock, ChevronDown, Users, Monitor, Tablet, CreditCard, Palette } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, X, Clock, ChevronDown, Users, Monitor, Tablet, CreditCard, Palette, RefreshCw } from 'lucide-react';
 import { useState, use, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '@/lib/AuthContext';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 export default function StoreAdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storeId: string }> }) {
   const pathname = usePathname();
@@ -23,6 +23,8 @@ export default function StoreAdminLayout({ children, params }: { children: React
   const [storeLogo, setStoreLogo] = useState('');
   const { user, loading, isSuperAdmin, storeIds } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [lastPublished, setLastPublished] = useState<Date | null>(null);
 
   useEffect(() => {
     const fetchStoreAndCheckAuth = async () => {
@@ -51,6 +53,9 @@ export default function StoreAdminLayout({ children, params }: { children: React
           setStoreName(d.name || '');
           // Fetch store's own logo from branding sub-object or legacy top-level field
           setStoreLogo(d.branding?.storeLogo || d.storeLogo || d.logo || '');
+          if (d.lastPublishedAt instanceof Timestamp) {
+            setLastPublished(d.lastPublishedAt.toDate());
+          }
         }
       } catch (error) {
         console.error('Error fetching store data:', error);
@@ -86,6 +91,21 @@ export default function StoreAdminLayout({ children, params }: { children: React
   const handleLogout = async () => {
     await auth.signOut();
     router.push('/login');
+  };
+
+  const handlePublish = async () => {
+    setIsPublishing(true);
+    try {
+      await updateDoc(doc(db, 'stores', storeId), { 
+        lastPublishedAt: serverTimestamp(),
+        kioskSyncAt: serverTimestamp() // trigger legacy kiosks too
+      });
+      setLastPublished(new Date());
+    } catch (err) {
+      console.error('Publish failed', err);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   if (loading || !user || !isAuthorized) {
@@ -308,7 +328,28 @@ export default function StoreAdminLayout({ children, params }: { children: React
               )}
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Publish Button */}
+            <div className="hidden sm:flex flex-col items-end mr-2">
+              <button
+                onClick={handlePublish}
+                disabled={isPublishing}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {isPublishing ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+                Publish Changes
+              </button>
+              {lastPublished && (
+                <span className="text-[10px] text-slate-400 font-medium mt-1">
+                  Last: {lastPublished.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </div>
+
             <button
               onClick={handleLogout}
               className="flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors border border-transparent hover:border-red-100"
