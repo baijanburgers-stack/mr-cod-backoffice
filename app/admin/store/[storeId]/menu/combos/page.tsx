@@ -21,10 +21,9 @@ import { onInputCap } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-/** One option inside a combo slot (customer picks one) */
 type SlotOption = {
   menuItemId: string;
-  name: string;
+  name: string | LocalizedString;
   priceAdjustment: number; // extra charge vs combo base price (0 most of the time)
 };
 
@@ -42,10 +41,16 @@ type ComboSlot = {
 
 type MenuItem = {
   id: string;
-  name: string;
+  name: string | LocalizedString;
   price: number;
   itemType?: 'food' | 'soft_drink' | 'alcohol';
   category: string;
+};
+
+const getItemName = (name: string | LocalizedString | undefined): string => {
+  if (!name) return '';
+  if (typeof name === 'string') return name;
+  return name.en || '';
 };
 
 type Combo = {
@@ -157,7 +162,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
     const unsubMenu = onSnapshot(qMenu, (snap) => {
       const rows: MenuItem[] = [];
       snap.forEach((d) => rows.push({ id: d.id, name: d.data().name, price: d.data().price || 0, itemType: d.data().itemType, category: d.data().category || '' }));
-      rows.sort((a, b) => a.name.localeCompare(b.name));
+      rows.sort((a, b) => getItemName(a.name).localeCompare(getItemName(b.name)));
       setMenuItems(rows);
     });
 
@@ -439,7 +444,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
               key={opt.menuItemId}
               className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold px-3 py-1.5 rounded-full"
             >
-              <span>{opt.name}</span>
+              <span>{getItemName(opt.name)}</span>
               {opt.priceAdjustment !== 0 && (
                 <span className="text-amber-600 font-mono">
                   {opt.priceAdjustment > 0 ? `+€${opt.priceAdjustment.toFixed(2)}` : `-€${Math.abs(opt.priceAdjustment).toFixed(2)}`}
@@ -476,7 +481,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
             />
             <div className="max-h-44 overflow-y-auto space-y-1">
               {menuItems
-                .filter(m => m.name.toLowerCase().includes(pickerSearch.toLowerCase()))
+                .filter(m => getItemName(m.name).toLowerCase().includes(pickerSearch.toLowerCase()))
                 .map(mi => {
                   const alreadyAdded = slot.options.some(o => o.menuItemId === mi.id);
                   return (
@@ -486,7 +491,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
                       disabled={alreadyAdded}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all ${alreadyAdded ? 'opacity-40 cursor-not-allowed' : 'hover:bg-amber-50'}`}
                     >
-                      <span className="font-bold text-slate-800 text-left">{mi.name}</span>
+                      <span className="font-bold text-slate-800 text-left">{getItemName(mi.name)}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-slate-500 font-mono text-xs">€{mi.price.toFixed(2)}</span>
                         {alreadyAdded && <Check className="w-3.5 h-3.5 text-emerald-500" />}
@@ -494,7 +499,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
                     </button>
                   );
                 })}
-              {menuItems.filter(m => m.name.toLowerCase().includes(pickerSearch.toLowerCase())).length === 0 && (
+              {menuItems.filter(m => getItemName(m.name).toLowerCase().includes(pickerSearch.toLowerCase())).length === 0 && (
                 <p className="text-xs text-slate-400 text-center py-4">No menu items match your search</p>
               )}
             </div>
@@ -507,7 +512,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Price Adjustments (vs combo base price)</p>
             {slot.options.map(opt => (
               <div key={opt.menuItemId} className="flex items-center justify-between gap-4">
-                <span className="text-sm font-bold text-slate-700 truncate flex-1">{opt.name}</span>
+                <span className="text-sm font-bold text-slate-700 truncate flex-1">{getItemName(opt.name)}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-xs text-slate-500">+/- €</span>
                   <input
