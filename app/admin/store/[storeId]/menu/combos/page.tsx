@@ -60,7 +60,8 @@ type Combo = {
   image?: string | null;
   slots: ComboSlot[];
   // Legacy compat: keep "items" for the menu page reader
-  items: { id: string; name: string; quantity: number }[];
+  // price + itemType are now required for GKS proportional VAT split
+  items: { id: string; name: string; quantity: number; price: number; itemType: string }[];
 };
 
 
@@ -270,9 +271,19 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
     if (!formData.price || formData.price <= 0) { alert('Please set a combo price.'); return; }
     if (slots.length === 0) { alert('Please add at least one slot with at least one item option.'); return; }
 
-    // Build legacy "items" field for backward compat with the menu page reader
+    // Build legacy "items" field for backward compat with POS receipt engine.
+    // IMPORTANT: price + itemType are required for Belgian GKS proportional VAT split.
     const legacyItems = slots.flatMap(s =>
-      s.options.slice(0, 1).map(o => ({ id: o.menuItemId, name: o.name, quantity: s.quantity }))
+      s.options.slice(0, 1).map(o => {
+        const mi = menuItems.find(m => m.id === o.menuItemId);
+        return {
+          id:       o.menuItemId,
+          name:     o.name,
+          quantity: s.quantity,
+          price:    mi?.price ?? 0,          // catalogue price — needed for GKS discount split
+          itemType: mi?.itemType ?? 'food',  // VAT category — needed for GKS band assignment
+        };
+      })
     );
 
     const payload = {
@@ -285,8 +296,9 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
       displaySavings: formData.displaySavings ?? true,
       image: imagePreview || null,
       slots,
-      items: legacyItems, // legacy compat
+      items: legacyItems,
     };
+
 
     try {
       if (editingCombo) await updateDoc(doc(db, 'combos', editingCombo.id), payload);
