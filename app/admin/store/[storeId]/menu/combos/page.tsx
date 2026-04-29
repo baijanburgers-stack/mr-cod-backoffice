@@ -631,7 +631,7 @@ export default function StoreCombosPage({ params }: { params: Promise<{ storeId:
                           )}
                           <span className="text-[11px] text-slate-600 font-medium">
                             {s.options.length === 1
-                              ? s.options[0].name
+                              ? getItemName(s.options[0].name)
                               : `${s.options.length} choices`}
                           </span>
                         </div>
