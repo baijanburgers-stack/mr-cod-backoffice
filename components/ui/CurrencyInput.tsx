@@ -13,7 +13,8 @@ export default function CurrencyInput({
   name,
   required,
   className,
-  placeholder = '0,00'
+  placeholder = '0,00',
+  allowNegative = false
 }: {
   defaultValue?: number;
   onChange?: (val: number) => void;
