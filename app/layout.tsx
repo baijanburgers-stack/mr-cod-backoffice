@@ -28,20 +28,20 @@ export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers();
   const hostname = headersList.get('host') || '';
 
-  let title = 'MR COD Belgium';
-  let appName = 'Mr. Cod';
+  let title = 'EazyOrder Back Office';
+  let appName = 'EazyOrder';
 
   if (hostname.includes('manager')) {
-    title = 'Mr. Cod Manager';
-    appName = 'Manager';
+    title = 'EazyOrder Manager';
+    appName = 'EazyOrder Manager';
   } else if (hostname.includes('admin') || hostname.includes('super')) {
-    title = 'Mr. Cod Admin';
-    appName = 'Admin';
+    title = 'EazyOrder Admin';
+    appName = 'EazyOrder Admin';
   }
 
   return {
     title,
-    description: 'Modern online food ordering web app for MR COD Belgium',
+    description: 'EazyOrder — Smart POS & ordering ecosystem for restaurants',
     manifest: '/manifest.webmanifest',
     appleWebApp: {
       capable: true,
