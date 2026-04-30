@@ -27,7 +27,7 @@ export default function SuperAdminSettings() {
   const [logoInputMode, setLogoInputMode] = useState<'upload' | 'url'>('url');
 
   const [settings, setSettings] = useState({
-    appName: 'MR COD',
+    appName: 'EazyOrder',
     appSubtitle: 'Belgium',
     appLogo: 'https://firebasestorage.googleapis.com/v0/b/mr-cod-online-ordering.firebasestorage.app/o/logo%20mr%20cod.png?alt=media&token=9ecf39cd-567f-437a-b395-6ffd949f7f1e',
     supportEmail: 'support@mrcod.be',
@@ -274,7 +274,7 @@ export default function SuperAdminSettings() {
                         value={settings.appName}
                         onChange={(e) => setSettings({ ...settings, appName: e.target.value })}
                         className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-amber-500 outline-none transition-colors"
-                        placeholder="e.g. MR COD"
+                        placeholder="e.g. EazyOrder"
                       />
                     </div>
                     <div>

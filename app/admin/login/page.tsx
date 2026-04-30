@@ -266,10 +266,10 @@ function BrandPanel({ subtitle, heading }: { subtitle: string; heading: React.Re
       <div className="relative z-10">
         <div className="flex items-center gap-4 mb-16">
           <div className="w-14 h-14 rounded-2xl bg-white/15 p-1.5 flex items-center justify-center backdrop-blur-sm flex-shrink-0 overflow-hidden">
-            <Image src={LOGO_URL} alt="MR COD Logo" width={44} height={44} className="object-contain" />
+            <Image src={LOGO_URL} alt="EazyOrder Logo" width={44} height={44} className="object-contain" />
           </div>
           <div>
-            <p className="font-black text-white text-2xl leading-none tracking-tight">MR COD</p>
+            <p className="font-black text-white text-2xl leading-none tracking-tight">EazyOrder</p>
             <p className="text-white/60 text-xs font-bold uppercase tracking-[0.2em] mt-1">{subtitle}</p>
           </div>
         </div>

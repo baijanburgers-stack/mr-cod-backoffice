@@ -38,7 +38,7 @@ const portals = [
 ];
 
 export default function UnifiedLoginPortal() {
-  const [brand, setBrand] = useState({ name: 'MR COD', subtitle: 'Belgium' });
+  const [brand, setBrand] = useState({ name: 'EazyOrder', subtitle: 'Belgium' });
 
   useEffect(() => {
     const fetchBrand = async () => {
@@ -46,7 +46,7 @@ export default function UnifiedLoginPortal() {
         const snap = await getDoc(doc(db, 'settings', 'global'));
         if (snap.exists()) {
           const data = snap.data();
-          setBrand({ name: data.appName || 'MR COD', subtitle: data.appSubtitle || 'Belgium' });
+          setBrand({ name: data.appName || 'EazyOrder', subtitle: data.appSubtitle || 'Belgium' });
         }
       } catch (e) {
         console.error('Error fetching brand', e);
@@ -76,7 +76,7 @@ export default function UnifiedLoginPortal() {
             <div className="w-14 h-14 rounded-2xl bg-white/15 p-1.5 flex items-center justify-center backdrop-blur-sm flex-shrink-0 overflow-hidden">
               <Image
                 src={LOGO_URL}
-                alt="MR COD Logo"
+                alt="EazyOrder Logo"
                 width={44}
                 height={44}
                 className="object-contain"
@@ -94,7 +94,7 @@ export default function UnifiedLoginPortal() {
             Choose<br />your portal
           </h1>
           <p className="text-white/60 text-base font-medium leading-relaxed max-w-xs">
-            Select your access level to enter the MR COD management system.
+            Select your access level to enter the EazyOrder management system.
           </p>
         </div>
 
