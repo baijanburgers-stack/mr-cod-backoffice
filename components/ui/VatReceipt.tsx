@@ -129,7 +129,7 @@ export function VatReceipt({ order, store }: VatReceiptProps) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={store.logo} alt="Store Logo" className="w-16 h-16 object-contain mb-2 grayscale" />
         )}
-        <h1 className="text-lg font-bold uppercase">{store.name || 'EazyOrder'}</h1>
+        <h1 className="text-lg font-bold uppercase">{store.name || 'MR COD'}</h1>
         <p className="whitespace-pre-line text-[10px] mt-1">{store.address}</p>
         {phone && <p className="text-[10px] mt-1">Tel: {phone}</p>}
         {vatNumber && <p className="text-[10px] mt-1 font-bold">TVA / BTW: {vatNumber}</p>}

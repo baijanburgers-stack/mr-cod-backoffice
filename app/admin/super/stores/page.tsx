@@ -284,7 +284,7 @@ export default function SuperAdminStores() {
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-black text-slate-900">Store Management</h1>
-          <p className="mt-2 text-slate-500 font-medium">Manage all EazyOrder locations, managers, and statuses.</p>
+          <p className="mt-2 text-slate-500 font-medium">Manage all MR COD locations, managers, and statuses.</p>
         </div>
         <button 
           onClick={openAddModal}
@@ -537,7 +537,7 @@ export default function SuperAdminStores() {
                         value={formData.companyName}
                         onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none transition-colors bg-white"
-                        placeholder="e.g. EazyOrder Brussels BV"
+                        placeholder="e.g. MR COD Brussels BV"
                       />
                     </div>
                     <div>

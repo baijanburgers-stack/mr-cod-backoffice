@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 /**
- * Live Orders have moved to the dedicated EazyOrder Orders Android app.
+ * Live Orders have moved to the dedicated MR COD Orders Android app.
  * Redirect to Order History for any bookmarked links.
  */
 export default async function ManagerOrdersRedirectPage({
